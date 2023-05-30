@@ -1,0 +1,7 @@
+https://stackoverflow.com/questions/7724569/debug-vs-release-in-cmake
+
+cmake -S . -B build/Debug -D CMAKE_BUILD_TYPE=Debug
+cmake --build build/Debug
+
+cmake -S . -B build/Release -D CMAKE_BUILD_TYPE=Release
+cmake --build build/Release

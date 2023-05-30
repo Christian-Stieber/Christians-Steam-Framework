@@ -1,0 +1,10 @@
+g++
+libboost-all-dev
+cmake
+libprotobuf-dev
+protobuf-compiler
+libssl-dev
+libsystemd-dev
+libzstd-dev
+libbz2-dev
+liblzma-dev

@@ -1,0 +1,2 @@
+https://partner.steamgames.com/doc/webapi_overview
+https://partner.steamgames.com/doc/webapi

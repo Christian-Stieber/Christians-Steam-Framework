@@ -1,0 +1,3 @@
+[submodule "steamdatabase/protobufs"]
+	path = steamdatabase/protobufs
+	url = https://github.com/steamdatabase/protobufs.git
