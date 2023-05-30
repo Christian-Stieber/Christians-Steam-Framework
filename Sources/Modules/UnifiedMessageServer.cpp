@@ -96,7 +96,7 @@ namespace
 
 void UnifiedMessageServerModule::run()
 {
-    getClient().launchFiber("HeartbeatModule::run", [this](){
+    getClient().launchFiber("UnifiedMessageServerModule::run", [this](){
         SteamBot::Waiter waiter;
         auto cancellation=getClient().cancel.registerObject(waiter);
 
