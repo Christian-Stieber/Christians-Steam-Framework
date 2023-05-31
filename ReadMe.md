@@ -55,3 +55,19 @@ MacOS is likely to not ever happen, due to lack of hardware on my side.
 * boost 1.81
 * protobuf, ssl, and a couple other minor libraries
 * I'm not very happy with the cmake stuff, but I'm currently using that to build
+
+# 3RD PARTY CODE
+
+In addition to libraries, the framework includes some other 3rd party code:
+
+* https://github.com/steamdatabase/protobufs.git \
+  Was added as a **submodule**
+* https://github.com/Neargye/magic_enum \
+  Code has been **copied** into my source tree. \
+  See Headers/External/MagicEnum.
+* https://github.com/boostorg/fiber/tree/develop/examples/asio \
+  Boost fiber has no official asio support (or asio has no fiber support,
+  whatever you prefer). \
+  Thus, I've **copied** the asio code from the fiber documentation and adapted
+  it a bit to make it work. \
+  See Headers/boost.
