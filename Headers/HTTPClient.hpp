@@ -41,6 +41,7 @@ namespace SteamBot
         };
 
         typedef std::unique_ptr<Response> ResponseType;
-        boost::fibers::future<ResponseType> query(std::string_view);
+        boost::fibers::future<ResponseType> query(std::string);
+        boost::fibers::future<ResponseType> post(std::string, std::string);
     }
 }
