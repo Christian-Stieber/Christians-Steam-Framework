@@ -71,3 +71,12 @@ In addition to libraries, the framework includes some other 3rd party code:
   Thus, I've **copied** the asio code from the fiber documentation and adapted
   it a bit to make it work. \
   See Headers/boost.
+
+# INSPIRATIONS
+
+"Inspirations" on how the Steam stuff works was taken from \
+   https://github.com/SteamRE/SteamKit \
+   https://github.com/JustArchiNET/ArchiSteamFarm
+
+SteamKit in particular has also provided me with lists of
+enum values to copy-paste.
