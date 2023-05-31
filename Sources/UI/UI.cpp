@@ -49,8 +49,8 @@ namespace
 
 /************************************************************************/
 
-SteamBot::UI::UIWaiterBase::UIWaiterBase(SteamBot::Waiter& waiter_)
-    : ItemBase(waiter_)
+SteamBot::UI::UIWaiterBase::UIWaiterBase(std::shared_ptr<SteamBot::Waiter> waiter_)
+    : ItemBase(std::move(waiter_))
 {
 }
 
@@ -117,8 +117,8 @@ void SteamBot::UI::GetSteamguardCode::execute()
 
 /************************************************************************/
 
-SteamBot::UI::GetSteamguardCode::GetSteamguardCode(SteamBot::Waiter& waiter_)
-    : UIWaiterBase(waiter_)
+SteamBot::UI::GetSteamguardCode::GetSteamguardCode(std::shared_ptr<SteamBot::Waiter> waiter_)
+    : UIWaiterBase(std::move(waiter_))
 {
     assert(!params);
     params=std::make_shared<Params>();
@@ -137,9 +137,9 @@ SteamBot::UI::GetSteamguardCode::~GetSteamguardCode()
 
 /************************************************************************/
 
-std::shared_ptr<SteamBot::UI::GetSteamguardCode> SteamBot::UI::GetSteamguardCode::create(SteamBot::Waiter& waiter)
+std::shared_ptr<SteamBot::UI::GetSteamguardCode> SteamBot::UI::GetSteamguardCode::create(std::shared_ptr<SteamBot::Waiter> waiter)
 {
-    auto item=waiter.createWaiter<GetSteamguardCode>();
+    auto item=waiter->createWaiter<GetSteamguardCode>();
     item->execute();
     return item;
 }

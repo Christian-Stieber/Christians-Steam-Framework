@@ -94,15 +94,15 @@ std::any UnifiedMessageBase::deserialize(const SteamBot::JobID& jobId, SteamBot:
 
 std::shared_ptr<const ServiceMethodResponseMessage> UnifiedMessageBase::waitForResponse() const
 {
-    SteamBot::Waiter waiter;
-    auto cancellation=SteamBot::Client::getClient().cancel.registerObject(waiter);
+    auto waiter=SteamBot::Waiter::create();
+    auto cancellation=SteamBot::Client::getClient().cancel.registerObject(*waiter);
 
     std::shared_ptr<SteamBot::Messageboard::Waiter<ServiceMethodResponseMessage>> serviceMethodResponseMessage;
-    serviceMethodResponseMessage=waiter.createWaiter<decltype(serviceMethodResponseMessage)::element_type>(SteamBot::Client::getClient().messageboard);
+    serviceMethodResponseMessage=waiter->createWaiter<decltype(serviceMethodResponseMessage)::element_type>(SteamBot::Client::getClient().messageboard);
 
     while (true)
     {
-        waiter.wait();
+        waiter->wait();
         auto message=serviceMethodResponseMessage->fetch();
         if (message->header.proto.jobid_target()==jobId.getValue())
         {

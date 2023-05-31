@@ -50,7 +50,7 @@ namespace
     class LoginModule : public SteamBot::Client::Module
     {
     private:
-        SteamBot::Waiter waiter;
+        std::shared_ptr<SteamBot::Waiter> waiter=SteamBot::Waiter::create();
         struct Waiters
         {
             std::shared_ptr<SteamBot::Whiteboard::Waiter<ConnectionStatus>> connectionStatus;
@@ -254,14 +254,14 @@ void LoginModule::run()
 {
     setStatus(LoginStatus::LoggedOut);
     getClient().launchFiber("LoginModule::run", [this](){
-        waiters.setup(waiter);
-        auto cancellation=getClient().cancel.registerObject(waiter);
+        waiters.setup(*waiter);
+        auto cancellation=getClient().cancel.registerObject(*waiter);
         while (true)
         {
             try
             {
                 progress();
-                waiter.wait();
+                waiter->wait();
             }
             catch(const ResetException&)
             {

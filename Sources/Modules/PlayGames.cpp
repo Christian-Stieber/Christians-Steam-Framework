@@ -85,15 +85,15 @@ void PlayGamesModule::playGame(std::shared_ptr<const PlayGame> message)
 void PlayGamesModule::run()
 {
     getClient().launchFiber("PlayGames::run", [this](){
-        SteamBot::Waiter waiter;
-        auto cancellation=getClient().cancel.registerObject(waiter);
+        auto waiter=SteamBot::Waiter::create();
+        auto cancellation=getClient().cancel.registerObject(*waiter);
 
         std::shared_ptr<SteamBot::Messageboard::Waiter<PlayGame>> playGameQueue;
-        playGameQueue=waiter.createWaiter<decltype(playGameQueue)::element_type>(getClient().messageboard);
+        playGameQueue=waiter->createWaiter<decltype(playGameQueue)::element_type>(getClient().messageboard);
 
         while (true)
         {
-            waiter.wait();
+            waiter->wait();
             {
                 auto message=playGameQueue->fetch();
                 if (message)

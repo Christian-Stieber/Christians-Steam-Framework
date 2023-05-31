@@ -33,8 +33,8 @@ SteamBot::Messageboard::~Messageboard()
 
 /************************************************************************/
 
-SteamBot::Messageboard::WaiterBase::WaiterBase(SteamBot::Waiter& waiter_, SteamBot::Messageboard& messageboard_)
-    : ItemBase(waiter_), messageboard(messageboard_)
+SteamBot::Messageboard::WaiterBase::WaiterBase(std::shared_ptr<SteamBot::Waiter> waiter_, SteamBot::Messageboard& messageboard_)
+    : ItemBase(std::move(waiter_)), messageboard(messageboard_)
 {
 }
 

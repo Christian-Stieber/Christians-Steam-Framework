@@ -228,14 +228,14 @@ void ConnectionModule::run()
     getClient().launchFiber("ConnectionModule::run", [this](){
         ConnectionStatusSetter connectionStatus;
 
-        SteamBot::Waiter waiter;
+        auto waiter=SteamBot::Waiter::create();
 
         {
             typedef SteamBot::Modules::SteamGuard::Whiteboard::SteamGuardCode SteamGuardCode;
-            auto steamGuardWaiter=waiter.createWaiter<SteamBot::Whiteboard::Waiter<SteamGuardCode>>(getClient().whiteboard);
+            auto steamGuardWaiter=waiter->createWaiter<SteamBot::Whiteboard::Waiter<SteamGuardCode>>(getClient().whiteboard);
             do
             {
-                waiter.wait();
+                waiter->wait();
             }
             while (!steamGuardWaiter->has());
         }
@@ -245,13 +245,13 @@ void ConnectionModule::run()
         connectionStatus(ConnectionStatus::Connected, &connection);
         readPackets();
 
-        auto readPacketErrorWaiter=waiter.createWaiter<SteamBot::Messageboard::Waiter<ReadPacketErrorMessage>>(getClient().messageboard);
-        auto sendMessageWaiter=waiter.createWaiter<SteamBot::Messageboard::Waiter<SendSteamMessage>>(getClient().messageboard);
+        auto readPacketErrorWaiter=waiter->createWaiter<SteamBot::Messageboard::Waiter<ReadPacketErrorMessage>>(getClient().messageboard);
+        auto sendMessageWaiter=waiter->createWaiter<SteamBot::Messageboard::Waiter<SendSteamMessage>>(getClient().messageboard);
         try
         {
             while (true)
             {
-                waiter.wait();
+                waiter->wait();
 
                 {
                     auto message=readPacketErrorWaiter->fetch();

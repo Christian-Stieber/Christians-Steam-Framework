@@ -76,7 +76,7 @@ class SteamBot::Messageboard::WaiterBase : public SteamBot::Waiter::ItemBase
 protected:
     Messageboard& messageboard;
 
-    WaiterBase(SteamBot::Waiter&, Messageboard&);
+    WaiterBase(std::shared_ptr<SteamBot::Waiter>, Messageboard&);
 
 public:
     virtual ~WaiterBase();
@@ -103,8 +103,8 @@ public:
     }
 
 public:
-    Waiter(SteamBot::Waiter& waiter_, Messageboard& messageboard_)
-        : WaiterBase(waiter_, messageboard_)
+    Waiter(std::shared_ptr<SteamBot::Waiter> waiter_, Messageboard& messageboard_)
+        : WaiterBase(std::move(waiter_), messageboard_)
     {
     }
 

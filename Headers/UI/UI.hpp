@@ -42,7 +42,7 @@ namespace SteamBot
             std::weak_ptr<UIWaiterBase> self;
 
         public:
-            UIWaiterBase(SteamBot::Waiter&);
+            UIWaiterBase(std::shared_ptr<SteamBot::Waiter>);
             virtual ~UIWaiterBase();
 
             virtual void install(std::shared_ptr<ItemBase>) override;
@@ -74,7 +74,7 @@ namespace SteamBot
             void execute();
 
         public:
-            GetSteamguardCode(SteamBot::Waiter&);
+            GetSteamguardCode(std::shared_ptr<SteamBot::Waiter>);
             virtual ~GetSteamguardCode();
 
         public:
@@ -84,7 +84,7 @@ namespace SteamBot
             std::string fetch();
 
         public:
-            static std::shared_ptr<GetSteamguardCode> create(SteamBot::Waiter&);
+            static std::shared_ptr<GetSteamguardCode> create(std::shared_ptr<SteamBot::Waiter>);
         };
     }
 }

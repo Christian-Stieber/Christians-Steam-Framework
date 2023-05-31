@@ -43,8 +43,8 @@ namespace
 void HeartbeatModule::run()
 {
     getClient().launchFiber("HeartbeatModule::run", [this](){
-        SteamBot::Waiter waiter;
-        auto cancellation=getClient().cancel.registerObject(waiter);
+        auto waiter=SteamBot::Waiter::create();
+        auto cancellation=getClient().cancel.registerObject(*waiter);
 
         typedef SteamBot::Modules::Login::Whiteboard::LoginStatus LoginStatus;
         std::shared_ptr<SteamBot::Whiteboard::Waiter<LoginStatus>> loginStatus;
@@ -54,8 +54,8 @@ void HeartbeatModule::run()
 
         {
             auto& whiteboard=SteamBot::Client::getClient().whiteboard;
-            loginStatus=waiter.createWaiter<decltype(loginStatus)::element_type>(whiteboard);
-            lastMessageSent=waiter.createWaiter<decltype(lastMessageSent)::element_type>(whiteboard);
+            loginStatus=waiter->createWaiter<decltype(loginStatus)::element_type>(whiteboard);
+            lastMessageSent=waiter->createWaiter<decltype(lastMessageSent)::element_type>(whiteboard);
         }
 
         while (true)
@@ -65,11 +65,11 @@ void HeartbeatModule::run()
                 auto delay=getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::HeartbeatInterval>();
                 if (delay!=nullptr)
                 {
-                    timeout=!waiter.wait(*delay);
+                    timeout=!waiter->wait(*delay);
                 }
                 else
                 {
-                    waiter.wait();
+                    waiter->wait();
                 }
             }
 

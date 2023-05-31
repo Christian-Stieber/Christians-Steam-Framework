@@ -73,12 +73,12 @@ void SteamGuardModule::run()
         std::string code;
         if (isFlagged())
         {
-            SteamBot::Waiter waiter;
-            auto cancellation=getClient().cancel.registerObject(waiter);
+            auto waiter=SteamBot::Waiter::create();
+            auto cancellation=getClient().cancel.registerObject(*waiter);
 
             auto steamGuardCode=SteamBot::UI::GetSteamguardCode::create(waiter);
 
-            waiter.wait();
+            waiter->wait();
             code=steamGuardCode->fetch();
         }
         typedef SteamBot::Modules::SteamGuard::Whiteboard::SteamGuardCode SteamGuardCode;

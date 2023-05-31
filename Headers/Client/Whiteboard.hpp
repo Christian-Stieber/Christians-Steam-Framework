@@ -129,7 +129,7 @@ private:
 protected:
     Whiteboard& whiteboard;
 
-    WaiterBase(SteamBot::Waiter&, Whiteboard&);
+    WaiterBase(std::shared_ptr<SteamBot::Waiter>, Whiteboard&);
 
     void resetChanged()
     {
@@ -154,8 +154,8 @@ public:
     }
 
 public:
-    Waiter(SteamBot::Waiter& waiter_, Whiteboard& whiteboard_)
-        : WaiterBase(waiter_, whiteboard_)
+    Waiter(std::shared_ptr<SteamBot::Waiter> waiter_, Whiteboard& whiteboard_)
+        : WaiterBase(std::move(waiter_), whiteboard_)
     {
     }
 

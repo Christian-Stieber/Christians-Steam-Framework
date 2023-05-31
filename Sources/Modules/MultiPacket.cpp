@@ -105,16 +105,16 @@ void MultiPacketModule::handle(std::shared_ptr<const Steam::CMsgMultiMessageType
 void MultiPacketModule::run()
 {
     getClient().launchFiber("MultiPacketModule::run", [this](){
-        SteamBot::Waiter waiter;
+        auto waiter=SteamBot::Waiter::create();
 
         std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgMultiMessageType>> multiMessageWaiter;
-        multiMessageWaiter=waiter.createWaiter<decltype(multiMessageWaiter)::element_type>(getClient().messageboard);
+        multiMessageWaiter=waiter->createWaiter<decltype(multiMessageWaiter)::element_type>(getClient().messageboard);
 
-        auto cancellation=getClient().cancel.registerObject(waiter);
+        auto cancellation=getClient().cancel.registerObject(*waiter);
 
         while (true)
         {
-            waiter.wait();
+            waiter->wait();
             auto message=multiMessageWaiter->fetch();
             if (message)
             {

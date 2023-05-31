@@ -24,23 +24,13 @@
 /************************************************************************/
 
 SteamBot::Waiter::Waiter() =default;
+SteamBot::Waiter::~Waiter() =default;
 
 /************************************************************************/
 
-SteamBot::Waiter::~Waiter()
+std::shared_ptr<SteamBot::Waiter> SteamBot::Waiter::create()
 {
-    SteamBot::erase(items, [](std::weak_ptr<ItemBase>& item){
-        auto locked=item.lock();
-        if (locked)
-        {
-            locked->waiter=nullptr;
-            return false;
-        }
-        else
-        {
-            return true;
-        }
-    });
+    return std::shared_ptr<SteamBot::Waiter>(new Waiter);
 }
 
 /************************************************************************/

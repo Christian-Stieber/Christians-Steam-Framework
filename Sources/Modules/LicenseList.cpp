@@ -105,15 +105,15 @@ void LicenseListModule::handleMessage(std::shared_ptr<const Steam::CMsgClientLic
 void LicenseListModule::run()
 {
     getClient().launchFiber("OwnedGamesModule::run", [this](){
-        SteamBot::Waiter waiter;
-        auto cancellation=getClient().cancel.registerObject(waiter);
+        auto waiter=SteamBot::Waiter::create();
+        auto cancellation=getClient().cancel.registerObject(*waiter);
 
         std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgClientLicenseListMessageType>> cmsgClientLicenseList;
-        cmsgClientLicenseList=waiter.createWaiter<decltype(cmsgClientLicenseList)::element_type>(getClient().messageboard);
+        cmsgClientLicenseList=waiter->createWaiter<decltype(cmsgClientLicenseList)::element_type>(getClient().messageboard);
 
         while (true)
         {
-            waiter.wait();
+            waiter->wait();
             handleMessage(cmsgClientLicenseList->fetch());
             BOOST_LOG_TRIVIAL(info) << "license list: " << *(getClient().whiteboard.has<Licenses>());
         }

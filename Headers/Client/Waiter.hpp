@@ -48,7 +48,7 @@
 
 namespace SteamBot
 {
-    class Waiter
+    class Waiter : public std::enable_shared_from_this<Waiter>
     {
     public:
         class ItemBase
@@ -56,11 +56,11 @@ namespace SteamBot
             friend class Waiter;
 
         private:
-            Waiter* waiter;
+            std::weak_ptr<Waiter> waiter;
 
         public:
-            ItemBase(Waiter& waiter_)
-                : waiter(&waiter_)
+            ItemBase(std::shared_ptr<Waiter> waiter_)
+                : waiter(std::move(waiter_))
             {
             }
 
@@ -70,9 +70,10 @@ namespace SteamBot
             // Note: this should be thread-safe
             void wakeup()
             {
-                if (waiter!=nullptr)
+                auto locked=waiter.lock();
+                if (locked)
                 {
-                    waiter->wakeup();
+                    locked->wakeup();
                 }
             }
 
@@ -90,16 +91,21 @@ namespace SteamBot
 
     private:
         bool isWoken();
-    
+
     public:
         void wakeup();
         void wait();
         bool wait(std::chrono::milliseconds);
         void cancel();
 
-    public:
+    protected:
         Waiter();
+
+    public:
         ~Waiter();
+
+    public:
+        static std::shared_ptr<Waiter> create();
 
     private:
         // https://stackoverflow.com/questions/47443922/calling-a-member-function-if-it-exists-falling-back-to-a-free-function-and-vice
@@ -109,7 +115,7 @@ namespace SteamBot
     public:
         template <typename T, typename... ARGS> requires std::is_base_of_v<ItemBase, T> std::shared_ptr<T> createWaiter(ARGS&&... args)
         {
-            auto item=std::make_shared<T>(*this, std::forward<ARGS>(args)...);
+            auto item=std::make_shared<T>(shared_from_this(), std::forward<ARGS>(args)...);
             items.push_back(item);	// we could do this in ItemBase, but lets play it safe in case it's not forwarded from the derived class
 
             if constexpr (HasStaticCreatedWaiter<T>::value)

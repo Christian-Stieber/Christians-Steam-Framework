@@ -97,15 +97,15 @@ namespace
 void UnifiedMessageServerModule::run()
 {
     getClient().launchFiber("UnifiedMessageServerModule::run", [this](){
-        SteamBot::Waiter waiter;
-        auto cancellation=getClient().cancel.registerObject(waiter);
+        auto waiter=SteamBot::Waiter::create();
+        auto cancellation=getClient().cancel.registerObject(*waiter);
 
         std::shared_ptr<SteamBot::Messageboard::Waiter<ServiceMethodMessage>> serviceMethodMessage;
-        serviceMethodMessage=waiter.createWaiter<decltype(serviceMethodMessage)::element_type>(getClient().messageboard);
+        serviceMethodMessage=waiter->createWaiter<decltype(serviceMethodMessage)::element_type>(getClient().messageboard);
 
         while (true)
         {
-            waiter.wait();
+            waiter->wait();
             serviceMethodMessage->fetch();
         }
     });

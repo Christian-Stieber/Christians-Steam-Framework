@@ -52,16 +52,16 @@ namespace
 void IdleGameModule::run()
 {
     getClient().launchFiber("IdleGameModule::run", [this](){
-        SteamBot::Waiter waiter;
-        auto cancellation=getClient().cancel.registerObject(waiter);
+        auto waiter=SteamBot::Waiter::create();
+        auto cancellation=getClient().cancel.registerObject(*waiter);
 
         typedef SteamBot::Modules::Login::Whiteboard::LoginStatus LoginStatus;
         std::shared_ptr<SteamBot::Whiteboard::Waiter<LoginStatus>> loginStatus;
-        loginStatus=waiter.createWaiter<decltype(loginStatus)::element_type>(getClient().whiteboard);
+        loginStatus=waiter->createWaiter<decltype(loginStatus)::element_type>(getClient().whiteboard);
 
         while (true)
         {
-            waiter.wait();
+            waiter->wait();
             if (loginStatus->get(LoginStatus::LoggedOut)==LoginStatus::LoggedIn)
             {
                 SteamBot::Modules::PlayGames::Messageboard::PlayGame::play(appId);
