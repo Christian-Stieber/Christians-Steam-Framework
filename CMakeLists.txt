@@ -84,6 +84,7 @@ list(APPEND SRCS OpenSSL/Exception OpenSSL/SHA1 OpenSSL/RSA OpenSSL/AESBase Open
 list(APPEND SRCS Steam/OSType Steam/KeyValue)
 list(APPEND SRCS Steam/MachineInfo Steam/MachineInfo/Linux)
 list(APPEND SRCS Web/URLEncode)
+list(APPEND SRCS Web/Cookies)
 list(APPEND SRCS Modules/Connection)
 list(APPEND SRCS Modules/MultiPacket)
 list(APPEND SRCS Modules/Heartbeat)

@@ -230,9 +230,7 @@ boost::fibers::future<SteamBot::HTTPClient::ResponseType> HTTPClient::query(Stea
     auto params=std::make_shared<Params>();
     params->request=std::move(request);
 
-    BOOST_LOG_TRIVIAL(debug) << "request 1 " << params->request->url;
     HTTPClient::get().ioContext.post([params]() {
-        BOOST_LOG_TRIVIAL(debug) << "request 2 " << params->request->url;
         try
         {
             params->promise.set_value(HTTPClient::get().performQuery(*params));

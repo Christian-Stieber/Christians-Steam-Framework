@@ -1,3 +1,22 @@
+/*
+ * This file is part of "Christians-Steam-Framework"
+ * Copyright (C) 2023- Christian Stieber
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 3, or (at
+ * your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; see the file LICENSE.  If not see
+ * <http://www.gnu.org/licenses/>.
+ */
+
 #include "Client/Module.hpp"
 #include "ResultCode.hpp"
 #include "OpenSSL/Random.hpp"
@@ -6,11 +25,14 @@
 #include "Modules/Connection.hpp"
 #include "Modules/Login.hpp"
 #include "Web/URLEncode.hpp"
+#include "Web/Cookies.hpp"
 #include "HTTPClient.hpp"
+#include "Base64.hpp"
 
 #include "Steam/ProtoBuf/steammessages_clientserver_login.hpp"
 
 #include <boost/url/parse.hpp>
+#include <boost/exception/diagnostic_information.hpp>
 
 /************************************************************************/
 /*
@@ -35,19 +57,24 @@ namespace
         enum class Status {
             None,
             RequestedNonce,
+            Failed,
             Ready
         };
 
         Status status=Status::None;
 
     private:
-        std::string nonce;
+        std::chrono::steady_clock::time_point timestamp;
+        std::string cookies;
 
     private:
-        void performUserAuth();
+        static std::string createAuthBody(std::string);
+        static SteamBot::HTTPClient::ResponseType performAuthUserRequest(std::string);
+        static std::string createCookies(SteamBot::HTTPClient::ResponseType);
+
         void requestNonce();
 
-        bool handle(std::shared_ptr<const Steam::CMsgClientRequestWebAPIAuthenticateUserNonceResponseMessageType>);
+        void handle(std::shared_ptr<const Steam::CMsgClientRequestWebAPIAuthenticateUserNonceResponseMessageType>);
 
     public:
         WebSessionModule() =default;
@@ -57,29 +84,6 @@ namespace
     };
 
     WebSessionModule::Init<WebSessionModule> init;
-}
-
-/************************************************************************/
-
-bool WebSessionModule::handle(std::shared_ptr<const Steam::CMsgClientRequestWebAPIAuthenticateUserNonceResponseMessageType> message)
-{
-    if (message)
-    {
-        nonce.clear();
-        if (message->content.has_eresult())
-        {
-            const auto resultCode=static_cast<SteamBot::ResultCode>(message->content.eresult());
-            if (resultCode==decltype(resultCode)::OK)
-            {
-                if (message->content.has_webapi_authenticate_user_nonce())
-                {
-                    nonce=message->content.webapi_authenticate_user_nonce();
-                }
-            }
-        }
-        return true;
-    }
-    return false;
 }
 
 /************************************************************************/
@@ -96,10 +100,10 @@ void WebSessionModule::requestNonce()
 
 /************************************************************************/
 /*
- * Call the ISteamUserAuth->AuthenticateUser
+ * Create the data for the ISteamUserAuth/AuthenticateUser request
  */
 
-void WebSessionModule::performUserAuth()
+std::string WebSessionModule::createAuthBody(std::string nonce)
 {
     // Generate a random 32-byte session key
 	std::array<std::byte, 32> sessionKey;
@@ -133,20 +137,82 @@ void WebSessionModule::performUserAuth()
     SteamBot::Web::formUrlencode(body, "encrypted_loginkey", encryptedLoginKey);
     SteamBot::Web::formUrlencode(body, "sessionkey", encryptedSessionKey);
     SteamBot::Web::formUrlencode(body, "steamid", sessionInfo->steamId->getValue());
-    BOOST_LOG_TRIVIAL(debug) << "WebSession authentication body: \"" << body << "\"";
 
-    // Finally, send the thing
+    return body;
+}
+
+/************************************************************************/
+/*
+ * Performs the ISteamUserAuth/AuthenticateUser with the data, and
+ * returns the response. This will block.
+ */
+
+SteamBot::HTTPClient::ResponseType WebSessionModule::performAuthUserRequest(std::string body)
+{
+    static const auto url=boost::urls::parse_absolute_uri("https://api.steampowered.com/ISteamUserAuth/AuthenticateUser/v1/").value();
+
+    auto request=std::make_shared<SteamBot::HTTPClient::Request>(boost::beast::http::verb::post, url);
+    request->body=std::move(body);
+    request->contentType="application/x-www-form-urlencoded";
+
+    return SteamBot::HTTPClient::query(std::move(request)).get();
+}
+
+/************************************************************************/
+
+std::string WebSessionModule::createCookies(SteamBot::HTTPClient::ResponseType response)
+{
+    std::string cookies;
+
+    auto json=SteamBot::HTTPClient::parseJson(std::move(response));
+
+    boost::json::object& authenticateuser=json.as_object().at("authenticateuser").as_object();
+    SteamBot::Web::setCookie(cookies, "steamLogin", authenticateuser.at("token").as_string());
+    SteamBot::Web::setCookie(cookies, "steamLoginSecure", authenticateuser.at("tokensecure").as_string());
+
     {
-        static const auto url=boost::urls::parse_absolute_uri("https://api.steampowered.com/ISteamUserAuth/AuthenticateUser/v1/").value();
-        auto request=std::make_shared<SteamBot::HTTPClient::Request>(boost::beast::http::verb::post, url);
-        request->body=std::move(body);
-        request->contentType="application/x-www-form-urlencoded";
+        auto* sessionInfo=getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::SessionInfo>();
+        assert(sessionInfo!=nullptr);
+        assert(sessionInfo->steamId);
 
-        auto response=SteamBot::HTTPClient::query(std::move(request)).get();
-        BOOST_LOG_TRIVIAL(debug) << "WebSession authentication response: " << SteamBot::HTTPClient::parseString(std::move(response));
+        auto steamId=std::to_string(sessionInfo->steamId->getValue());
+        static auto bytes=static_cast<const std::byte*>(static_cast<const void*>(steamId.data()));
+        SteamBot::Web::setCookie(cookies, "sessionid", SteamBot::Base64::encode(std::span<const std::byte>(bytes, steamId.size())));
     }
 
-    status=Status::Ready;
+    BOOST_LOG_TRIVIAL(debug) << "new cookie string: \"" << cookies << "\"";
+    return cookies;
+}
+
+/************************************************************************/
+
+void WebSessionModule::handle(std::shared_ptr<const Steam::CMsgClientRequestWebAPIAuthenticateUserNonceResponseMessageType> message)
+{
+    try
+    {
+        timestamp=decltype(timestamp)::clock::now();
+        cookies.clear();
+
+        if (message->content.has_eresult())
+        {
+            const auto resultCode=static_cast<SteamBot::ResultCode>(message->content.eresult());
+            if (resultCode==decltype(resultCode)::OK)
+            {
+                if (message->content.has_webapi_authenticate_user_nonce())
+                {
+                    cookies=createCookies(performAuthUserRequest(createAuthBody(message->content.webapi_authenticate_user_nonce())));
+                    status=Status::Ready;
+                    return;
+                }
+            }
+        }
+        BOOST_LOG_TRIVIAL(error) << "Bad ClientRequestWebAPIAuthenticateUserNonceResponse message";
+    }
+    catch(...)
+    {
+        BOOST_LOG_TRIVIAL(error) << "WebSessionModule got an exception: " << boost::current_exception_diagnostic_information();
+    }
+    status=Status::Failed;
 }
 
 /************************************************************************/
@@ -171,8 +237,15 @@ void WebSessionModule::run()
         {
             waiter->wait();
 
-            while (handle(cmsgClientRequestWebAPIAuthenticateUserNonceResponse->fetch()))
-                ;
+            while (true)
+            {
+                auto message=cmsgClientRequestWebAPIAuthenticateUserNonceResponse->fetch();
+                if (!message)
+                {
+                    break;
+                }
+                handle(message);
+            }
 
             if (loginStatus->get(LoginStatus::LoggedOut)==LoginStatus::LoggedIn)
             {
@@ -188,10 +261,6 @@ void WebSessionModule::run()
                 break;
 
             case Status::RequestedNonce:
-                if (!nonce.empty())
-                {
-                    performUserAuth();
-                }
                 break;
 
             case Status::Ready:
