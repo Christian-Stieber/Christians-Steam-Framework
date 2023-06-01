@@ -32,6 +32,7 @@
 #include <boost/fiber/future/promise.hpp>
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <boost/json/stream_parser.hpp>
 
 #include <boost/log/trivial.hpp>
 
@@ -264,3 +265,33 @@ SteamBot::HTTPClient::Request::Request(boost::beast::http::verb method_, const b
 /************************************************************************/
 
 SteamBot::HTTPClient::Request::~Request() =default;
+
+/************************************************************************/
+
+boost::json::value SteamBot::HTTPClient::parseJson(SteamBot::HTTPClient::ResponseType response)
+{
+    boost::json::stream_parser parser;
+    const auto buffers=response->response.body().cdata();
+    for (auto iterator=boost::asio::buffer_sequence_begin(buffers); iterator!=boost::asio::buffer_sequence_end(buffers); ++iterator)
+    {
+        parser.write(static_cast<const char*>((*iterator).data()), (*iterator).size());
+    }
+    parser.finish();
+    boost::json::value result=parser.release();
+    BOOST_LOG_TRIVIAL(debug) << "response JSON body: " << result;
+    return result;
+}
+
+/************************************************************************/
+
+std::string SteamBot::HTTPClient::parseString(SteamBot::HTTPClient::ResponseType response)
+{
+    std::string result;
+    const auto buffers=response->response.body().cdata();
+    for (auto iterator=boost::asio::buffer_sequence_begin(buffers); iterator!=boost::asio::buffer_sequence_end(buffers); ++iterator)
+    {
+        result.append(std::string_view{static_cast<const char*>((*iterator).data()), (*iterator).size()});
+    }
+    BOOST_LOG_TRIVIAL(debug) << "response string body: " << result;
+    return result;
+}

@@ -25,6 +25,7 @@
 #include <boost/beast/http/dynamic_body.hpp>
 #include <boost/fiber/future/future.hpp>
 #include <boost/url/url_view_base.hpp>
+#include <boost/json/value.hpp>
 
 /************************************************************************/
 
@@ -59,5 +60,20 @@ namespace SteamBot
         typedef std::shared_ptr<Request> RequestType;
 
         boost::fibers::future<ResponseType> query(RequestType);
+    }
+}
+
+/************************************************************************/
+/*
+ * Given a response from an HTTPCliebnt query, return the body as
+ * "something useful".
+ */
+
+namespace SteamBot
+{
+    namespace HTTPClient
+    {
+        boost::json::value parseJson(ResponseType);
+        std::string parseString(ResponseType);
     }
 }
