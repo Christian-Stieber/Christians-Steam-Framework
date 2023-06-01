@@ -71,6 +71,7 @@ namespace
         static std::string createAuthBody(std::string);
         static SteamBot::HTTPClient::ResponseType performAuthUserRequest(std::string);
         static std::string createCookies(SteamBot::HTTPClient::ResponseType);
+        static void setTimezoneCookie(std::string&);
 
         void requestNonce();
 
@@ -182,6 +183,43 @@ std::string WebSessionModule::createCookies(SteamBot::HTTPClient::ResponseType r
 
     BOOST_LOG_TRIVIAL(debug) << "new cookie string: \"" << cookies << "\"";
     return cookies;
+}
+
+/************************************************************************/
+/*
+ * Report proper time when doing timezone-based calculations, see
+ * setTimezoneCookies() from
+ * https://steamcommunity-a.akamaihd.net/public/shared/javascript/shared_global.js
+ *
+ * I'm not entirely sure whether ASF really does the same as the
+ * above, though...
+ */
+
+#undef CHRISTIAN_USE_TIMEZONE
+#if defined __GNUC__ && __GNUC__ < 13
+#else
+#define CHRISTIAN_USE_TIMEZONE
+#endif
+
+void WebSessionModule::setTimezoneCookie(std::string& cookies)
+{
+    auto timepoint=std::chrono::system_clock::now();
+
+#ifdef CHRISTIAN_USE_TIMEZONE
+    // This is untested, for now
+    auto info=std::chrono::time_zone::get_info(timepoint);
+    auto offset=info.offset.count();
+#else
+    auto timestamp=std::chrono::system_clock::to_time_t(timepoint);
+    struct tm timedata;
+    localtime_r(&timestamp, &timedata);
+    auto offset=timedata.tm_gmtoff;
+#endif
+
+    std::string value(std::to_string(offset));
+    value.append(",0");
+
+    SteamBot::Web::setCookie(cookies, "timezoneOffset", value);
 }
 
 /************************************************************************/
