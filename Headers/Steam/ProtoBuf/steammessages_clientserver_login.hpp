@@ -60,3 +60,21 @@ namespace Steam
                                                    SteamBot::Connection::Message::Header::ProtoBuf,
                                                    CMsgClientHeartBeat> CMsgClientHeartBeatMessageType;
 }
+
+/************************************************************************/
+
+namespace Steam
+{
+	typedef SteamBot::Connection::Message::Message<SteamBot::Connection::Message::Type::ClientRequestWebAPIAuthenticateUserNonce,
+                                                   SteamBot::Connection::Message::Header::ProtoBuf,
+                                                   CMsgClientRequestWebAPIAuthenticateUserNonce> CMsgClientRequestWebAPIAuthenticateUserNonceMessageType;
+}
+
+/************************************************************************/
+
+namespace Steam
+{
+	typedef SteamBot::Connection::Message::Message<SteamBot::Connection::Message::Type::ClientRequestWebAPIAuthenticateUserNonceResponse,
+                                                   SteamBot::Connection::Message::Header::ProtoBuf,
+                                                   CMsgClientRequestWebAPIAuthenticateUserNonceResponse> CMsgClientRequestWebAPIAuthenticateUserNonceResponseMessageType;
+}

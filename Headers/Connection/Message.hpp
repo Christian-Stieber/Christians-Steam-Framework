@@ -94,6 +94,9 @@ namespace SteamBot
                 ClientUpdateMachineAuth = 5537,
                 ClientUpdateMachineAuthResponse = 5538,
                 ClientFriendsGroupsList = 5553,
+
+                ClientRequestWebAPIAuthenticateUserNonce = 5585,
+                ClientRequestWebAPIAuthenticateUserNonceResponse = 5586,
                 ClientPlayerNicknameList = 5587,
 
                 ClientFSOfflineMessageNotification = 7523,
