@@ -93,7 +93,8 @@ void SteamBot::WebAPI::Request::set(std::string_view key, const std::vector<std:
 
 boost::json::value SteamBot::WebAPI::Request::send() const
 {
-    const auto response=SteamBot::HTTPClient::query(url.buffer()).get();
+    auto request=std::make_shared<SteamBot::HTTPClient::Request>(boost::beast::http::verb::get, url);
+    const auto response=SteamBot::HTTPClient::query(std::move(request)).get();
 
     boost::json::stream_parser parser;
     const auto buffers=response->response.body().cdata();

@@ -68,20 +68,12 @@ namespace
     class HTTPClient
     {
     private:
+        // ToDo: move the "promise" into the RequestType, so we can
+        // access it from the user side to cancel a wait?
         struct Params
         {
             boost::fibers::promise<SteamBot::HTTPClient::ResponseType> promise;
-            boost::beast::http::verb method;
-            std::string urlString;
-            boost::urls::url_view url;
-            std::string body;
-
-            Params(boost::beast::http::verb method_, std::string&& urlString_, std::string&& body_)
-                : method(method_), urlString(std::move(urlString_)), body(std::move(body_))
-            {
-                url=boost::urls::parse_absolute_uri(urlString).value();
-                assert(url.scheme_id()==boost::urls::scheme::https);
-            }
+            SteamBot::HTTPClient::RequestType request;
         };
 
     private:
@@ -102,7 +94,7 @@ namespace
         static HTTPClient& get();
 
     public:
-        static boost::fibers::future<SteamBot::HTTPClient::ResponseType> query(boost::beast::http::verb, std::string&&, std::string&&);
+        static boost::fibers::future<SteamBot::HTTPClient::ResponseType> query(SteamBot::HTTPClient::RequestType);
     };
 }
 
@@ -112,9 +104,9 @@ std::unique_ptr<SteamBot::HTTPClient::Response> HTTPClient::performQuery(HTTPCli
 {
     try
     {
-        const std::string host=params.url.host();	// we need 0-termination for SSL_set_tlsext_host_name()
+        const std::string host=params.request->url.host();	// we need 0-termination for SSL_set_tlsext_host_name()
 
-        std::string_view port=params.url.port();
+        std::string_view port=params.request->url.port();
         if (port.empty()) port="443";
 
         // Look up the host name
@@ -151,8 +143,16 @@ std::unique_ptr<SteamBot::HTTPClient::Response> HTTPClient::performQuery(HTTPCli
 
         {
             // Set up an HTTP request message
-            boost::beast::http::request<boost::beast::http::string_body> request{params.method, params.url.encoded_target(), 11};
-            request.body()=std::move(params.body);
+            boost::beast::http::request<boost::beast::http::string_body> request{params.request->method, params.request->url.encoded_target(), 11};
+            if (!params.request->contentType.empty())
+            {
+                request.base().set("Content-Type", params.request->contentType);
+            }
+            if (!params.request->body.empty())
+            {
+                request.body()=std::move(params.request->body);
+                request.content_length(request.body().size());
+            }
             request.set(boost::beast::http::field::host, host);
             request.set(boost::beast::http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
@@ -177,7 +177,7 @@ std::unique_ptr<SteamBot::HTTPClient::Response> HTTPClient::performQuery(HTTPCli
         }
 #endif
 
-        BOOST_LOG_TRIVIAL(info) << "HTTPClient: performQuery for \"" << params.url
+        BOOST_LOG_TRIVIAL(info) << "HTTPClient: performQuery for \"" << params.request->url
                                 << "\" has received a " << response->response.body().size()
                                 << " byte response with code " << response->response.result();
         return response;
@@ -187,7 +187,7 @@ std::unique_ptr<SteamBot::HTTPClient::Response> HTTPClient::performQuery(HTTPCli
         /* ToDo: add some logging */
     }
 
-    BOOST_LOG_TRIVIAL(info) << "HTTPClient: performQuery for \"" << params.url << " has produced an error";
+    BOOST_LOG_TRIVIAL(info) << "HTTPClient: performQuery for \"" << params.request->url << "\" has produced an error";
     throw SteamBot::HTTPClient::Exception();
 }
 
@@ -222,11 +222,16 @@ HTTPClient& HTTPClient::get()
 
 /************************************************************************/
 
-boost::fibers::future<SteamBot::HTTPClient::ResponseType> HTTPClient::query(boost::beast::http::verb method, std::string&& url, std::string&& body)
+boost::fibers::future<SteamBot::HTTPClient::ResponseType> HTTPClient::query(SteamBot::HTTPClient::RequestType request)
 {
-    auto params=std::make_shared<Params>(method, std::move(url), std::move(body));
+    assert(request->url.scheme_id()==boost::urls::scheme::https);
 
+    auto params=std::make_shared<Params>();
+    params->request=std::move(request);
+
+    BOOST_LOG_TRIVIAL(debug) << "request 1 " << params->request->url;
     HTTPClient::get().ioContext.post([params]() {
+        BOOST_LOG_TRIVIAL(debug) << "request 2 " << params->request->url;
         try
         {
             params->promise.set_value(HTTPClient::get().performQuery(*params));
@@ -240,25 +245,22 @@ boost::fibers::future<SteamBot::HTTPClient::ResponseType> HTTPClient::query(boos
 }
 
 /************************************************************************/
-/*
- * Performs a https "get" query.
- *
- * Returns a response, or throws.
- */
 
-boost::fibers::future<SteamBot::HTTPClient::ResponseType> SteamBot::HTTPClient::query(std::string url)
+boost::fibers::future<SteamBot::HTTPClient::ResponseType> SteamBot::HTTPClient::query(SteamBot::HTTPClient::RequestType request)
 {
-    return ::HTTPClient::query(boost::beast::http::verb::get, std::move(url), std::string{});
+    return ::HTTPClient::query(std::move(request));
 }
 
 /************************************************************************/
 /*
- * Performs a https "put" query.
- *
- * Returns a response, or throws.
+ * Note: be careful with the url_view_base being non-owning!
  */
 
-boost::fibers::future<SteamBot::HTTPClient::ResponseType> SteamBot::HTTPClient::post(std::string url, std::string body)
+SteamBot::HTTPClient::Request::Request(boost::beast::http::verb method_, const boost::urls::url_view_base& url_)
+    : method(method_), url(url_)
 {
-    return ::HTTPClient::query(boost::beast::http::verb::post, std::move(url), std::move(body));
 }
+
+/************************************************************************/
+
+SteamBot::HTTPClient::Request::~Request() =default;

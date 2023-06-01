@@ -24,6 +24,7 @@
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/dynamic_body.hpp>
 #include <boost/fiber/future/future.hpp>
+#include <boost/url/url_view_base.hpp>
 
 /************************************************************************/
 
@@ -41,7 +42,22 @@ namespace SteamBot
         };
 
         typedef std::unique_ptr<Response> ResponseType;
-        boost::fibers::future<ResponseType> query(std::string);
-        boost::fibers::future<ResponseType> post(std::string, std::string);
+
+        class Request
+        {
+        public:
+            boost::beast::http::verb method;
+            const boost::urls::url_view_base& url;
+            std::string body;
+            std::string contentType;
+
+        public:
+            Request(boost::beast::http::verb, const boost::urls::url_view_base&);
+            virtual ~Request();
+        };
+
+        typedef std::shared_ptr<Request> RequestType;
+
+        boost::fibers::future<ResponseType> query(RequestType);
     }
 }
