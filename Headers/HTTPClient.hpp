@@ -20,6 +20,9 @@
 #pragma once
 
 #include <memory>
+#include <utility>
+#include <vector>
+
 #include <boost/beast/core/flat_buffer.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/dynamic_body.hpp>
@@ -51,6 +54,7 @@ namespace SteamBot
             const boost::urls::url_view_base& url;
             std::string body;
             std::string contentType;
+            std::vector<std::pair<std::string, std::string>> headers;
 
         public:
             Request(boost::beast::http::verb, const boost::urls::url_view_base&);

@@ -145,6 +145,10 @@ std::unique_ptr<SteamBot::HTTPClient::Response> HTTPClient::performQuery(HTTPCli
         {
             // Set up an HTTP request message
             boost::beast::http::request<boost::beast::http::string_body> request{params.request->method, params.request->url.encoded_target(), 11};
+            for (const auto& header : params.request->headers)
+            {
+                request.base().set(header.first, header.second);
+            }
             if (!params.request->contentType.empty())
             {
                 request.base().set("Content-Type", params.request->contentType);
