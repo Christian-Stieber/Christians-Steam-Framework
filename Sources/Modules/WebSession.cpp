@@ -24,6 +24,7 @@
 #include "OpenSSL/AES.hpp"
 #include "Modules/Connection.hpp"
 #include "Modules/Login.hpp"
+#include "Modules/WebSession.hpp"
 #include "Web/URLEncode.hpp"
 #include "Web/Cookies.hpp"
 #include "HTTPClient.hpp"
@@ -33,6 +34,7 @@
 
 #include <boost/url/parse.hpp>
 #include <boost/exception/diagnostic_information.hpp>
+#include <queue>
 
 /************************************************************************/
 /*
@@ -46,6 +48,11 @@
 /*
  * https://partner.steamgames.com/doc/webapi/ISteamUserAuth#AuthenticateUser
  */
+
+/************************************************************************/
+
+typedef Steam::CMsgClientRequestWebAPIAuthenticateUserNonceResponseMessageType NonceMessage;
+typedef SteamBot::Modules::WebSession::Messageboard::GetURL GetURL;
 
 /************************************************************************/
 
@@ -63,6 +70,8 @@ namespace
 
         Status status=Status::None;
 
+        std::queue<std::shared_ptr<const GetURL>> requests;
+
     private:
         std::chrono::steady_clock::time_point timestamp;
         std::string cookies;
@@ -74,8 +83,11 @@ namespace
         static void setTimezoneCookie(std::string&);
 
         void requestNonce();
+        void handleRequests();
 
-        void handle(std::shared_ptr<const Steam::CMsgClientRequestWebAPIAuthenticateUserNonceResponseMessageType>);
+    public:
+        void handle(std::shared_ptr<const NonceMessage>);
+        void handle(std::shared_ptr<const GetURL>);
 
     public:
         WebSessionModule() =default;
@@ -91,7 +103,7 @@ namespace
 
 void WebSessionModule::requestNonce()
 {
-    if (status==Status::None)
+    if (status==Status::None && !requests.empty())
     {
         auto message=std::make_unique<Steam::CMsgClientRequestWebAPIAuthenticateUserNonceMessageType>();
         SteamBot::Modules::Connection::Messageboard::SendSteamMessage::send(std::move(message));
@@ -191,7 +203,7 @@ std::string WebSessionModule::createCookies(SteamBot::HTTPClient::ResponseType r
  * setTimezoneCookies() from
  * https://steamcommunity-a.akamaihd.net/public/shared/javascript/shared_global.js
  *
- * I'm not entirely sure whether ASF really does the same as the
+ * Note: I'm not entirely sure whether ASF really does the same as the
  * above, though...
  */
 
@@ -255,16 +267,49 @@ void WebSessionModule::handle(std::shared_ptr<const Steam::CMsgClientRequestWebA
 
 /************************************************************************/
 
+void WebSessionModule::handle(std::shared_ptr<const GetURL> message)
+{
+    requests.push(std::move(message));
+}
+
+/************************************************************************/
+
+void WebSessionModule::handleRequests()
+{
+    while (status==Status::Ready && !requests.empty())
+    {
+        auto& front=requests.front();
+
+        auto request=std::make_shared<SteamBot::HTTPClient::Request>(boost::beast::http::verb::get, front->url);
+        {
+            std::string myCookies=cookies;
+            setTimezoneCookie(myCookies);
+            request->headers.emplace_back("Cookie", std::move(myCookies));
+        }
+        auto response=SteamBot::HTTPClient::query(std::move(request)).get();
+
+        auto reply=std::make_shared<SteamBot::Modules::WebSession::Messageboard::GotURL>();
+        reply->initiator=std::move(front);
+        reply->response=std::move(response);
+        requests.pop();
+        getClient().messageboard.send(std::move(reply));
+    }
+}
+
+/************************************************************************/
+
 void WebSessionModule::run()
 {
     getClient().launchFiber("WebSessionModule::run", [this](){
         auto waiter=SteamBot::Waiter::create();
         auto cancellation=getClient().cancel.registerObject(*waiter);
 
-        std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgClientRequestWebAPIAuthenticateUserNonceResponseMessageType>> cmsgClientRequestWebAPIAuthenticateUserNonceResponse;
+        std::shared_ptr<SteamBot::Messageboard::Waiter<NonceMessage>> nonceMessage;
+        std::shared_ptr<SteamBot::Messageboard::Waiter<GetURL>> getUrl;
         {
             auto& messageboard=getClient().messageboard;
-            cmsgClientRequestWebAPIAuthenticateUserNonceResponse=waiter->createWaiter<decltype(cmsgClientRequestWebAPIAuthenticateUserNonceResponse)::element_type>(messageboard);
+            nonceMessage=waiter->createWaiter<decltype(nonceMessage)::element_type>(messageboard);
+            getUrl=waiter->createWaiter<decltype(getUrl)::element_type>(messageboard);
         }
 
         typedef SteamBot::Modules::Login::Whiteboard::LoginStatus LoginStatus;
@@ -275,34 +320,14 @@ void WebSessionModule::run()
         {
             waiter->wait();
 
-            while (true)
-            {
-                auto message=cmsgClientRequestWebAPIAuthenticateUserNonceResponse->fetch();
-                if (!message)
-                {
-                    break;
-                }
-                handle(message);
-            }
+            nonceMessage->handle(this);
+            getUrl->handle(this);
+
+            handleRequests();
 
             if (loginStatus->get(LoginStatus::LoggedOut)==LoginStatus::LoggedIn)
             {
-                if (status==Status::None)
-                {
-                    requestNonce();
-                }
-            }
-
-            switch(status)
-            {
-            case Status::None:
-                break;
-
-            case Status::RequestedNonce:
-                break;
-
-            case Status::Ready:
-                break;
+                requestNonce();
             }
         }
     });
