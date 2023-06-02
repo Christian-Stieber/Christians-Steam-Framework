@@ -71,6 +71,22 @@ namespace SteamBot
 
 /************************************************************************/
 
+namespace SteamBot
+{
+    // https://stackoverflow.com/a/61034367
+
+    // Note: when declaring a "concept", we use a "requires
+    // expressions" which only needs to be "language correct", or
+    // something along those lines.
+    template <typename HANDLER, typename MESSAGE> concept MessageHandler =
+        requires(HANDLER& handler)
+        {
+            handler.handle(std::declval<std::shared_ptr<const MESSAGE>>());
+        };
+}
+
+/************************************************************************/
+
 class SteamBot::Messageboard::WaiterBase : public SteamBot::Waiter::ItemBase
 {
 protected:
@@ -139,6 +155,21 @@ public:
             messages.pop();
         }
         return message;
+    }
+
+public:
+    template <MessageHandler<T> HANDLER> unsigned int handle(HANDLER* handler, bool one=false)
+    {
+        unsigned int count=0;
+        do
+        {
+            auto message=fetch();
+            if (!message) break;
+            handler->handle(message);
+            count++;
+        }
+        while (!one);
+        return count;
     }
 };
 
