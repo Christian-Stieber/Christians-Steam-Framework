@@ -94,5 +94,5 @@ boost::json::value SteamBot::WebAPI::Request::send() const
 {
     auto request=std::make_shared<SteamBot::HTTPClient::Request>(boost::beast::http::verb::get, url);
     auto response=SteamBot::HTTPClient::query(std::move(request)).get();
-    return SteamBot::HTTPClient::parseJson(std::move(response));
+    return SteamBot::HTTPClient::parseJson(*response);
 }

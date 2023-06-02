@@ -165,7 +165,7 @@ std::string WebSessionModule::createCookies(SteamBot::HTTPClient::ResponseType r
 {
     std::string cookies;
 
-    auto json=SteamBot::HTTPClient::parseJson(std::move(response));
+    auto json=SteamBot::HTTPClient::parseJson(*response);
 
     boost::json::object& authenticateuser=json.as_object().at("authenticateuser").as_object();
     SteamBot::Web::setCookie(cookies, "steamLogin", authenticateuser.at("token").as_string());

@@ -266,10 +266,10 @@ SteamBot::HTTPClient::Request::~Request() =default;
 
 /************************************************************************/
 
-boost::json::value SteamBot::HTTPClient::parseJson(SteamBot::HTTPClient::ResponseType response)
+boost::json::value SteamBot::HTTPClient::parseJson(const SteamBot::HTTPClient::Response& response)
 {
     boost::json::stream_parser parser;
-    const auto buffers=response->response.body().cdata();
+    const auto buffers=response.response.body().cdata();
     for (auto iterator=boost::asio::buffer_sequence_begin(buffers); iterator!=boost::asio::buffer_sequence_end(buffers); ++iterator)
     {
         parser.write(static_cast<const char*>((*iterator).data()), (*iterator).size());
@@ -282,10 +282,10 @@ boost::json::value SteamBot::HTTPClient::parseJson(SteamBot::HTTPClient::Respons
 
 /************************************************************************/
 
-std::string SteamBot::HTTPClient::parseString(SteamBot::HTTPClient::ResponseType response)
+std::string SteamBot::HTTPClient::parseString(const SteamBot::HTTPClient::Response& response)
 {
     std::string result;
-    const auto buffers=response->response.body().cdata();
+    const auto buffers=response.response.body().cdata();
     for (auto iterator=boost::asio::buffer_sequence_begin(buffers); iterator!=boost::asio::buffer_sequence_end(buffers); ++iterator)
     {
         result.append(std::string_view{static_cast<const char*>((*iterator).data()), (*iterator).size()});

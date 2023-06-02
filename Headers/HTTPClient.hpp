@@ -73,7 +73,7 @@ namespace SteamBot
 {
     namespace HTTPClient
     {
-        boost::json::value parseJson(ResponseType);
-        std::string parseString(ResponseType);
+        boost::json::value parseJson(const Response&);
+        std::string parseString(const Response&);
     }
 }
