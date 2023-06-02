@@ -31,6 +31,7 @@ it when something interesting happens :-)
 * runs a single client instance
 * supports SteamGuard codes for login
 * unconditionally runs a single hardcoded game
+* can do authenticated web-queries (like steam community pages with login)
 
 As I said, it's work in progress -- and the above is certainly useful
 progress towards the final goal.
