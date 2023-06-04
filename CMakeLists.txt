@@ -108,7 +108,7 @@ list(APPEND SRCS Modules/Login/Login Modules/Login/ClientLogonMessage Modules/Lo
 list(APPEND SRCS WebAPI/WebAPI WebAPI/ISteamDirectory/GetCMList)
 
 include_directories("Headers")
-include_directories("json/include")
+include_directories("Christians-HTML-Parser/Headers")
 
 ######################################################################
 

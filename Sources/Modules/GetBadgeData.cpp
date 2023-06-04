@@ -22,6 +22,8 @@
 #include "Modules/Login.hpp"
 #include "Helpers/URLs.hpp"
 
+#include "HTMLParser/Parser.hpp"
+
 /************************************************************************/
 
 typedef SteamBot::Modules::WebSession::Messageboard::GetURL GetURL;
@@ -51,7 +53,8 @@ namespace
 void GetBadgeDataModule::handle(std::shared_ptr<const GotURL> message)
 {
     auto text=SteamBot::HTTPClient::parseString(*(message->response));
-    BOOST_LOG_TRIVIAL(debug) << "badgePage response: " << text;
+    HTMLParser::Parser parser(text);
+    BOOST_LOG_TRIVIAL(debug) << "badgePage parsed";
 }
 
 /************************************************************************/

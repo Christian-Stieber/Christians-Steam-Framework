@@ -294,6 +294,6 @@ std::string SteamBot::HTTPClient::parseString(const SteamBot::HTTPClient::Respon
     {
         result.append(std::string_view{static_cast<const char*>((*iterator).data()), (*iterator).size()});
     }
-    BOOST_LOG_TRIVIAL(debug) << "response string body: " << result;
+    BOOST_LOG_TRIVIAL(debug) << "response string body has " << result.size() << " bytes";
     return result;
 }
