@@ -1,3 +1,6 @@
 [submodule "steamdatabase/protobufs"]
 	path = steamdatabase/protobufs
 	url = https://github.com/steamdatabase/protobufs.git
+[submodule "Christians-HTML-Parser"]
+	path = Christians-HTML-Parser
+	url = git@github.com:Christian-Stieber/Christians-HTML-Parser.git
