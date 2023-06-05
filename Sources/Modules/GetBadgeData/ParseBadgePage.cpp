@@ -47,12 +47,12 @@ namespace
         virtual ~BadgePageParser() =default;
 
     private:
-        bool handle_badge_row_overlay(const HTMLParser::Tree::Element&);
+        bool handleStart_badge_row_overlay(const HTMLParser::Tree::Element&);
 
     private:
-        virtual void gotElement(const HTMLParser::Tree::Element& element) override
+        virtual void startElement(const HTMLParser::Tree::Element& element) override
         {
-            if (handle_badge_row_overlay(element))
+            if (handleStart_badge_row_overlay(element))
             {
             }
         }
@@ -61,7 +61,7 @@ namespace
 
 /************************************************************************/
 
-bool BadgePageParser::handle_badge_row_overlay(const HTMLParser::Tree::Element& element)
+bool BadgePageParser::handleStart_badge_row_overlay(const HTMLParser::Tree::Element& element)
 {
     // <a class="badge_row_overlay" href="https://steamcommunity.com/profiles/<SteamID>/gamecards/<AppID>/"></a>
 
