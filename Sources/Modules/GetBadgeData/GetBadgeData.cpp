@@ -20,9 +20,8 @@
 #include "Client/Module.hpp"
 #include "Modules/WebSession.hpp"
 #include "Modules/Login.hpp"
+#include "Modules/GetBadgeData.hpp"
 #include "Helpers/URLs.hpp"
-
-#include "HTMLParser/Parser.hpp"
 
 /************************************************************************/
 
@@ -50,61 +49,10 @@ namespace
 
 /************************************************************************/
 
-namespace
-{
-    class BadgePageDocument : public HTMLParser::Tree::Document
-    {
-    private:
-        class MyParser : public HTMLParser::Parser
-        {
-        private:
-            BadgePageDocument& document;
-
-        public:
-            MyParser(std::string_view html, BadgePageDocument& document_)
-                : Parser(html), document(document_)
-            {
-            }
-
-            virtual ~MyParser() =default;
-
-        public:
-            virtual void gotElement(const HTMLParser::Tree::Element& element)
-            {
-                if (element.name=="div")
-                {
-                    if (auto classAttribute=element.getAttribute("class"))
-                    {
-                        if (*classAttribute=="badge_title_stats")
-                        {
-                            document.badge_title_stats.push_back(&element);
-                        }
-                    }
-                }
-            }
-        };
-
-    public:
-        // the <div class="badge_title_stats"> elements found on the page
-        std::vector<const HTMLParser::Tree::Element*> badge_title_stats;
-
-    public:
-        BadgePageDocument(std::string_view html)
-        {
-            MyParser parser(html, *this);
-            static_cast<HTMLParser::Tree::Document&>(*this)=parser.parse();
-        }
-
-        ~BadgePageDocument() =default;
-    };
-}
-
-/************************************************************************/
-
 void GetBadgeDataModule::handle(std::shared_ptr<const GotURL> message)
 {
-    BadgePageDocument document(SteamBot::HTTPClient::parseString(*(message->response)));
-    BOOST_LOG_TRIVIAL(debug) << "page has " << document.badge_title_stats.size() << " badge_title_stats elements";
+    typedef SteamBot::Modules::GetPageData::Whiteboard::BadgePageData BadgePageData;
+    BadgePageData data(SteamBot::HTTPClient::parseString(*(message->response)));
 }
 
 /************************************************************************/
