@@ -28,3 +28,20 @@ namespace SteamBot
         bool checkClass(const HTMLParser::Tree::Element&, const char*);
     }
 }
+
+/************************************************************************/
+/*
+ * Get "clean text" from an element.
+ *
+ * This does the following things:
+ *   - recursively collect and concatenate all text nodes
+ *   - cleanup whitespace
+ */
+
+namespace SteamBot
+{
+    namespace HTML
+    {
+        std::string getCleanText(const HTMLParser::Tree::Element&);
+    }
+}
