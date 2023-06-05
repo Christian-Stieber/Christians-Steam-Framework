@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MiscIDs.hpp"
+#include "Printable.hpp"
 
 #include <unordered_map>
 #include <optional>
@@ -16,29 +17,30 @@ namespace SteamBot
         {
             namespace Whiteboard
             {
-                class BadgePageData
+                class BadgePageData : public Printable
                 {
                 public:
-                    class BadgeInfo
+                    class BadgeInfo : public Printable
                     {
                     public:
                         std::optional<unsigned int> level;
                         std::optional<unsigned int> cardsReceived;
                         std::optional<unsigned int> cardsRemaining;
+
+                    public:
+                        virtual ~BadgeInfo();
+
+                        virtual boost::json::value toJson() const override;
                     };
 
-                private:
+                public:
                     std::unordered_map<AppID, BadgeInfo> badges;
 
                 public:
                     BadgePageData(std::string_view);
-                    ~BadgePageData();
+                    virtual ~BadgePageData();
 
-                public:
-                    const decltype(badges)& getBadges() const
-                    {
-                        return badges;
-                    }
+                    virtual boost::json::value toJson() const override;
                 };
             }
         }

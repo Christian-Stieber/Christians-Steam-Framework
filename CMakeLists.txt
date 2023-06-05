@@ -102,7 +102,7 @@ list(APPEND SRCS Modules/PlayGames)
 list(APPEND SRCS Modules/IdleGame)
 list(APPEND SRCS UI/UI)
 list(APPEND SRCS Modules/Login/Login Modules/Login/ClientLogonMessage Modules/Login/SteamGuard)
-list(APPEND SRCS Modules/GetBadgeData/ParseBadgePage Modules/GetBadgeData/GetBadgeData)
+list(APPEND SRCS Modules/GetBadgeData/ParseBadgePage Modules/GetBadgeData/GetBadgeData Modules/GetBadgeData/Printable)
 
 # list(APPEND SRCS Tests/Asio Tests/Whiteboard Tests/Messageboard Tests/HTTPClient Tests/GetCMList)
 

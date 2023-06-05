@@ -22,8 +22,12 @@ namespace
     private:
         BadgePageData& data;
 
-        /* https://steamcommunity.com/profiles/<SteamID>/gamecards/ */
+        // https://steamcommunity.com/profiles/<SteamID>/gamecards/
         std::string cardsPrefix;
+
+        // The root elements for the badge-boxes on the page
+        // Basically, we just walk up from lower elements until we find a match
+        std::unordered_map<HTMLParser::Tree::Element*, SteamBot::AppID> badge_row;
 
     private:
         void setCardsPrefix()
@@ -81,7 +85,14 @@ bool BadgePageParser::handleStart_badge_row_overlay(const HTMLParser::Tree::Elem
                     {
                         if (*result.ptr=='\0' || *result.ptr=='/')
                         {
-                            BOOST_LOG_TRIVIAL(debug) << "Found app ID: " << value;
+                            auto& parent=*(element.parent);
+                            if (parent.name=="div" && SteamBot::HTML::checkClass(parent, "badge_row"))
+                            {
+                                data.badges.try_emplace(static_cast<SteamBot::AppID>(value));
+
+                                auto result=badge_row.emplace(&parent, static_cast<SteamBot::AppID>(value));
+                                assert(result.second);
+                            }
                         }
                     }
                 }
