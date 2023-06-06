@@ -21,6 +21,7 @@
 
 #include "Connection/Message.hpp"
 #include "Modules/Connection.hpp"
+#include "Modules/Login.hpp"
 #include "JobID.hpp"
 
 #include <any>
@@ -44,7 +45,8 @@ namespace SteamBot
     {
         namespace UnifiedMessageClient
         {
-            template <typename RESPONSE, typename REQUEST> std::shared_ptr<RESPONSE> execute(std::string_view, REQUEST&&);
+            template <typename RESPONSE, SteamBot::Connection::Message::Type TYPE=SteamBot::Connection::Message::Type::ServiceMethodCallFromClient, typename REQUEST>
+            std::shared_ptr<RESPONSE> execute(std::string_view, REQUEST&&);
         }
     }
 }
@@ -118,7 +120,7 @@ namespace SteamBot
             {
                 class ServiceMethodResponseMessage;
                 class UnifiedMessageBase;
-                template <typename REQUEST, typename RESPONSE> class UnifiedMessage;
+                template <typename REQUEST, typename RESPONSE, SteamBot::Connection::Message::Type TYPE> class UnifiedMessage;
             }
         }
     }
@@ -202,13 +204,11 @@ public:
 
 /************************************************************************/
 
-template <typename REQUEST, typename RESPONSE> class SteamBot::Modules::UnifiedMessageClient::Internal::UnifiedMessage
+template <typename REQUEST, typename RESPONSE, SteamBot::Connection::Message::Type TYPE> class SteamBot::Modules::UnifiedMessageClient::Internal::UnifiedMessage
     : public SteamBot::Modules::UnifiedMessageClient::Internal::UnifiedMessageBase
 {
 public:
-    typedef SteamBot::Connection::Message::Message<SteamBot::Connection::Message::Type::ServiceMethodCallFromClient,
-                                                   SteamBot::Connection::Message::Header::ProtoBuf,
-                                                   REQUEST> RequestMessageType;
+    typedef SteamBot::Connection::Message::Message<TYPE, SteamBot::Connection::Message::Header::ProtoBuf, REQUEST> RequestMessageType;
 
 public:
     UnifiedMessage() =default;
@@ -240,8 +240,9 @@ private:
 
 /************************************************************************/
 
-template <typename RESPONSE, typename REQUEST> std::shared_ptr<RESPONSE> SteamBot::Modules::UnifiedMessageClient::execute(std::string_view method, REQUEST&& body)
+template <typename RESPONSE, SteamBot::Connection::Message::Type TYPE, typename REQUEST>
+std::shared_ptr<RESPONSE> SteamBot::Modules::UnifiedMessageClient::execute(std::string_view method, REQUEST&& body)
 {
-    SteamBot::Modules::UnifiedMessageClient::Internal::UnifiedMessage<REQUEST,RESPONSE> message;
+    SteamBot::Modules::UnifiedMessageClient::Internal::UnifiedMessage<REQUEST,RESPONSE,TYPE> message;
     return message.execute(method, std::move(body));
 }

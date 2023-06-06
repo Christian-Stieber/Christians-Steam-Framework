@@ -52,6 +52,8 @@ namespace SteamBot
 
                 Multi = 1,
 
+                DestJobFailed = 113,
+
                 ServiceMethod = 146,
                 ServiceMethodResponse = 147,
                 ServiceMethodCallFromClient = 151,
@@ -103,6 +105,9 @@ namespace SteamBot
 
                 ClientConcurrentSessionsBase = 9600,
                 ClientPlayingSessionState = 9600,
+
+                ServiceMethodCallFromClientNonAuthed = 9804,
+                ClientHello = 9805
 			};
 		}
 	}

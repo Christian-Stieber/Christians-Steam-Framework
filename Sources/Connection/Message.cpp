@@ -211,5 +211,30 @@ void SteamBot::Connection::Message::Base::send(Connection::Base& connection) con
 {
     BOOST_LOG_TRIVIAL(info) << "writing message: " << boost::typeindex::type_id_runtime(*this).pretty_name();
 	auto bytes=Serializeable::serialize();
+
+#if 0
+    {
+        struct ToHex
+        {
+            static char convert(int number)
+            {
+                if (number>=0 && number<=9) return '0'+number;
+                if (number>=10 && number<=15) return 'a'-10+number;
+                return '?';
+            }
+        };
+
+        std::string dump;
+        for (std::byte c : bytes)
+        {
+            if (!dump.empty()) dump.push_back(' ');
+            dump.append("0x");
+            dump.push_back(ToHex::convert((static_cast<unsigned char>(c)) >> 4));
+            dump.push_back(ToHex::convert((static_cast<unsigned char>(c)) & 0x0f));
+        }
+        BOOST_LOG_TRIVIAL(debug) << "serialized message: " << dump;
+    }
+#endif
+
 	connection.writePacket(bytes);
 }

@@ -29,9 +29,27 @@
 
 namespace Steam
 {
+	typedef SteamBot::Connection::Message::Message<SteamBot::Connection::Message::Type::ClientHello,
+                                                   SteamBot::Connection::Message::Header::ProtoBuf,
+                                                   CMsgClientHello> CMsgClientHelloMessageType;
+}
+
+/************************************************************************/
+
+namespace Steam
+{
 	typedef SteamBot::Connection::Message::Message<SteamBot::Connection::Message::Type::ClientLogon,
                                                    SteamBot::Connection::Message::Header::ProtoBuf,
                                                    CMsgClientLogon> CMsgClientLogonMessageType;
+}
+
+/************************************************************************/
+
+namespace Steam
+{
+	typedef SteamBot::Connection::Message::Message<SteamBot::Connection::Message::Type::ClientLoggedOff,
+                                                   SteamBot::Connection::Message::Header::ProtoBuf,
+                                                   CMsgClientLoggedOff> CMsgClientLoggedOffMessageType;
 }
 
 /************************************************************************/
