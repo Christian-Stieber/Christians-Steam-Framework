@@ -26,13 +26,12 @@
 
 static std::atomic<SteamBot::JobID::valueType> sequence{0};
 
-typedef std::chrono::system_clock SystemClock;
-static const auto startTime=SystemClock::to_time_t(SystemClock::now());
+static const auto startTime=SteamBot::GlobalID::Clock::now();
 
 /************************************************************************/
 
 SteamBot::JobID::JobID()
 {
-	setSequentialCount(sequence++);
+	setSequentialCount(++sequence);
 	setStartTime(startTime);
 }

@@ -22,6 +22,7 @@
 #include "BitField.hpp"
 
 #include <ctime>
+#include <chrono>
 
 /************************************************************************/
 
@@ -36,22 +37,25 @@ namespace SteamBot
 		STEAM_BITFIELD_MAKE_ACCESSORS(uint8_t, ProcessID, 50, 4);
 		STEAM_BITFIELD_MAKE_ACCESSORS(uint16_t, BoxID, 54, 10);
 
+    public:
+        typedef std::chrono::system_clock Clock;
+
 	public:
 		/* C++ doesn't have a timegm(), as far as I can tell, so let's just
 		 * assume our epoch is as expected and hardcode the result of running
 		 *    date -u -d "2005-01-01 00:00:00" +"%s"
 		 */
 
-		inline static constexpr std::time_t timeOffset=1104537600;
+		inline static const Clock::time_point epoch2005=Clock::from_time_t(1104537600);
 
-		void setStartTime(std::time_t time)
+		void setStartTime(Clock::time_point time)
 		{
-			setStartTimeSeconds(time-timeOffset);
+			setStartTimeSeconds(std::chrono::duration_cast<std::chrono::seconds>(time-epoch2005).count());
 		}
 
-		std::time_t getStartTime() const
+        Clock::time_point getStartTime() const
 		{
-			return getStartTimeSeconds()+timeOffset;
+            return epoch2005+std::chrono::seconds(getStartTimeSeconds());
 		}
 	};
 }
