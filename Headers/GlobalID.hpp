@@ -34,7 +34,7 @@ namespace SteamBot
 		STEAM_BITFIELD_MAKE_ACCESSORS(uint32_t, SequentialCount, 0, 20);
 		STEAM_BITFIELD_MAKE_ACCESSORS(uint32_t, StartTimeSeconds, 20, 30);
 		STEAM_BITFIELD_MAKE_ACCESSORS(uint8_t, ProcessID, 50, 4);
-		STEAM_BITFIELD_MAKE_ACCESSORS(uint16_t, BoxID, 54, 11);
+		STEAM_BITFIELD_MAKE_ACCESSORS(uint16_t, BoxID, 54, 10);
 
 	public:
 		/* C++ doesn't have a timegm(), as far as I can tell, so let's just
