@@ -19,38 +19,40 @@
 
 #pragma once
 
-#include "Universe.hpp"
+#include "./Exception.hpp"
 
-#include <openssl/evp.h>
-#include <vector>
-#include <span>
-#include <string>
-#include <openssl/rsa.h>
+#include <openssl/param_build.h>
 
 /************************************************************************/
-/*
- * SteamKit2, CryptoHelper.cs, RSACrypto
- */
 
 namespace SteamBot
 {
     namespace OpenSSL
     {
-        class RSACrypto
+        class OSSLParams
         {
         private:
-            EVP_PKEY* pkey=nullptr;
-            EVP_PKEY_CTX* ctx=nullptr;
-            int padding=RSA_PKCS1_OAEP_PADDING;
+            OSSL_PARAM_BLD* build=Exception::throwMaybe(OSSL_PARAM_BLD_new());
+            OSSL_PARAM* params=nullptr;
 
         public:
-            RSACrypto(const std::string&, const std::string&, int _=RSA_PKCS1_PADDING);
-            RSACrypto(const Universe&);
+            template <typename FUNC> OSSLParams(FUNC populate)
+            {
+                populate(build);
+                params=OSSL_PARAM_BLD_to_param(build);
+            }
 
-            ~RSACrypto();
+            ~OSSLParams()
+            {
+                OSSL_PARAM_free(params);
+                OSSL_PARAM_BLD_free(build);
+            }
 
         public:
-            std::vector<std::byte> encrypt(const std::span<const std::byte>&);
+            operator OSSL_PARAM*() const
+            {
+                return params;
+            }
         };
     }
 }

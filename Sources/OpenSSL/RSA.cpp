@@ -18,15 +18,42 @@
  */
 
 #include "OpenSSL/RSA.hpp"
-#include "OpenSSL/Exception.hpp"
+#include "OpenSSL/OSSLParams.hpp"
+#include "OpenSSL/BigNum.hpp"
 
 #include <openssl/x509.h>
-#include <openssl/rsa.h>
 #include <cassert>
 
 /************************************************************************/
 
 typedef SteamBot::OpenSSL::RSACrypto RSACrypto;
+
+/************************************************************************/
+
+RSACrypto::RSACrypto(const std::string& modulusString, const std::string& exponentString, int padding_)
+    : padding(padding_)
+{
+    // https://stackoverflow.com/questions/68465716/how-to-properly-create-an-rsa-key-from-raw-data-in-openssl-3-0-in-c-language
+
+    ctx=Exception::throwMaybe(EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL));
+
+    {
+        const BigNum modulus(modulusString);
+        const BigNum exponent(exponentString);
+
+        OSSLParams ossl([&modulus, &exponent](OSSL_PARAM_BLD* build) {
+            Exception::throwMaybe(OSSL_PARAM_BLD_push_BN(build, "n", modulus));
+            Exception::throwMaybe(OSSL_PARAM_BLD_push_BN(build, "e", exponent));
+        });
+
+        Exception::throwMaybe(EVP_PKEY_fromdata_init(ctx));
+        Exception::throwMaybe(EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, ossl));
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+    ctx=nullptr;
+    ctx=Exception::throwMaybe(EVP_PKEY_CTX_new(pkey, nullptr));
+}
 
 /************************************************************************/
 
@@ -41,9 +68,7 @@ RSACrypto::RSACrypto(const SteamBot::Universe& universe)
 	}
 
 	/* create the context */
-	{
-		ctx=Exception::throwMaybe(EVP_PKEY_CTX_new(pkey, nullptr));
-	}
+    ctx=Exception::throwMaybe(EVP_PKEY_CTX_new(pkey, nullptr));
 }
 
 /************************************************************************/
@@ -59,7 +84,7 @@ RSACrypto::~RSACrypto()
 std::vector<std::byte> RSACrypto::encrypt(const std::span<const std::byte>& buffer)
 {
 	Exception::throwMaybe(EVP_PKEY_encrypt_init(ctx));
-	Exception::throwMaybe(EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING));
+    Exception::throwMaybe(EVP_PKEY_CTX_set_rsa_padding(ctx, padding));
 
     const uint8_t* const bufferData=static_cast<const uint8_t*>(static_cast<const void*>(buffer.data()));
 

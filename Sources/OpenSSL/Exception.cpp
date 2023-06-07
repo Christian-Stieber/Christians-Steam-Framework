@@ -37,20 +37,21 @@ static void logErrors()
         return true;
     }();
 
-    assert(ERR_peek_error()!=0);
-
-	BIO* bio=BIO_new(BIO_s_mem());
-	ERR_print_errors(bio);
+    if (ERR_peek_error()!=0)
     {
-        const auto written=BIO_write(bio, "", 1);
-        assert(written==1);
+        BIO* bio=BIO_new(BIO_s_mem());
+        ERR_print_errors(bio);
+        {
+            const auto written=BIO_write(bio, "", 1);
+            assert(written==1);
+        }
+        char* data;
+        const auto size=BIO_get_mem_data(bio, &data);
+
+        BOOST_LOG_TRIVIAL(error) << "OpenSSL error: " << std::string_view(data, size);
+
+        BIO_free(bio);
     }
-    char* data;
-    const auto size=BIO_get_mem_data(bio, &data);
-
-    BOOST_LOG_TRIVIAL(error) << "OpenSSL error: " << std::string_view(data, size);
-
-    BIO_free(bio);
 }
 
 /************************************************************************/
