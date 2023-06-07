@@ -167,9 +167,21 @@ void LoginModule::beginAuthSession(const LoginModule::PublicKey& publicKey)
         }
     }
 
-    using SteamBot::Connection::Message::Type::ServiceMethodCallFromClientNonAuthed;
-    typedef BeginAuthSessionViaCredentialsInfo::ResultType ResultType;
-    auto response=UnifiedMessageClient::execute<ResultType, ServiceMethodCallFromClientNonAuthed>("Authentication.BeginAuthSessionViaCredentials#1", std::move(request));
+    std::shared_ptr<BeginAuthSessionViaCredentialsInfo::ResultType> response;
+    try
+    {
+        using SteamBot::Connection::Message::Type::ServiceMethodCallFromClientNonAuthed;
+        typedef BeginAuthSessionViaCredentialsInfo::ResultType ResultType;
+        response=UnifiedMessageClient::execute<ResultType, ServiceMethodCallFromClientNonAuthed>("Authentication.BeginAuthSessionViaCredentials#1", std::move(request));
+    }
+    catch(const SteamBot::Modules::UnifiedMessageClient::Error& error)
+    {
+        if (error!=SteamBot::ResultCode::InvalidPassword)
+        {
+            throw;
+        }
+        BOOST_LOG_TRIVIAL(info) << "got an \"invalid password\" response";
+    }
 }
 
 /************************************************************************/
