@@ -131,8 +131,9 @@ const std::string& Steam::MachineInfo::Provider::getMachineName()
 		std::string result=boost::asio::ip::host_name(error);
 		if (error)
 		{
-			result="SteamBot";
+			result="unknown";
 		}
+        result+=" (CSF)";
 		BOOST_LOG_TRIVIAL(debug) << "machine name is \"" << result << "\"";
 		return result;
 	}();
