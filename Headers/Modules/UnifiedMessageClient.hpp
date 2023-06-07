@@ -180,7 +180,7 @@ public:
     std::any content;	// std::shared_ptr<RESPONSE>
 
 public:
-    template <typename RESPONSE> std::shared_ptr<RESPONSE> getResponse() const
+    template <typename RESPONSE> std::shared_ptr<RESPONSE> getContent() const
     {
         return std::any_cast<std::shared_ptr<RESPONSE>>(content);
     }
@@ -268,7 +268,7 @@ template <typename RESPONSE, SteamBot::Connection::Message::Type TYPE, typename 
 std::shared_ptr<RESPONSE>
 SteamBot::Modules::UnifiedMessageClient::execute(std::string_view method, REQUEST&& body)
 {
-    return executeFull<RESPONSE, TYPE, REQUEST>(method, std::move(body))->template getResponse<RESPONSE>();
+    return executeFull<RESPONSE, TYPE, REQUEST>(method, std::move(body))->template getContent<RESPONSE>();
 }
 
 /************************************************************************/
@@ -288,15 +288,5 @@ public:
     operator SteamBot::ResultCode() const
     {
         return static_cast<SteamBot::ResultCode>(message->header.proto.eresult());
-    }
-
-    const ServiceMethodResponseMessage& operator*() const
-    {
-        return *message;
-    }
-
-    const ServiceMethodResponseMessage* operator->() const
-    {
-        return message.get();
     }
 };
