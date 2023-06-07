@@ -24,11 +24,24 @@
 #include "Modules/Connection.hpp"
 #include "Modules/UnifiedMessageClient.hpp"
 #include "Steam/MsgClientLogon.hpp"
+#include "OpenSSL/RSA.hpp"
+#include "Base64.hpp"
+#include "Steam/MachineInfo.hpp"
+#include "Steam/OSType.hpp"
 
 #include "steamdatabase/protobufs/steam/steammessages_auth.steamclient.pb.h"
 #include "Steam/ProtoBuf/steammessages_clientserver_login.hpp"
 
 #include <boost/log/trivial.hpp>
+
+/************************************************************************/
+/*
+ * SteamKit says:
+ * Known values are "Unknown", "Client", "Mobile", "Website", "Store", "Community", "Partner", "SteamStats".
+ */
+static constexpr std::string websiteId{"Client"};
+
+static constexpr auto platformType=EAuthTokenPlatformType::k_EAuthTokenPlatformType_SteamClient;
 
 /************************************************************************/
 
@@ -97,28 +110,72 @@ namespace
         }
 
     private:
-        void sendHello();
-
-    private:
         class PublicKey
         {
         public:
             std::string modulus;
             std::string exponent;
             uint64_t timestamp;
+
+        public:
+            std::string encrypt(const std::string&) const;
         };
 
+    private:
+        static void sendHello();
         PublicKey getPublicKey();
+        void beginAuthSession(const LoginModule::PublicKey&);
     };
 
     LoginModule::Init<LoginModule> init;
 }
 
 /************************************************************************/
+/*
+ * Returns a base64 string
+ *
+ * Note: SteamKit uses "RSAEncryptionPadding.Pkcs1", while our
+ * RSACrypto specifies RSA_PKCS1_OAEP_PADDING.
+ * Is this the same thing? We do have a RSA_PKCS1_PADDING as well...
+ */
+
+std::string LoginModule::PublicKey::encrypt(const std::string& plainText) const
+{
+    SteamBot::OpenSSL::RSACrypto rsa(modulus, exponent);
+    std::span<const std::byte> plainBytes{static_cast<const std::byte*>(static_cast<const void*>(plainText.data())), plainText.size()};
+    auto cipherBytes=rsa.encrypt(plainBytes);
+    return SteamBot::Base64::encode(cipherBytes);
+}
+
+/************************************************************************/
+
+void LoginModule::beginAuthSession(const LoginModule::PublicKey& publicKey)
+{
+    BeginAuthSessionViaCredentialsInfo::RequestType request;
+    {
+        request.set_account_name(SteamBot::Config::SteamAccount::get().user);
+        request.set_persistence(ESessionPersistence::k_ESessionPersistence_Persistent);
+        request.set_website_id(websiteId);
+        // guard_data = details.GuardData,
+        request.set_encrypted_password(publicKey.encrypt(SteamBot::Config::SteamAccount::get().password));
+        request.set_encryption_timestamp(publicKey.timestamp);
+        {
+            auto deviceDetails=request.mutable_device_details();
+            deviceDetails->set_device_friendly_name(Steam::MachineInfo::Provider::getMachineName());
+            deviceDetails->set_platform_type(platformType);
+            deviceDetails->set_os_type(static_cast<std::underlying_type_t<Steam::OSType>>(Steam::getOSType()));
+        }
+    }
+
+    using SteamBot::Connection::Message::Type::ServiceMethodCallFromClientNonAuthed;
+    typedef BeginAuthSessionViaCredentialsInfo::ResultType ResultType;
+    auto response=UnifiedMessageClient::execute<ResultType, ServiceMethodCallFromClientNonAuthed>("Authentication.BeginAuthSessionViaCredentials#1", std::move(request));
+}
+
+/************************************************************************/
 
 LoginModule::PublicKey LoginModule::getPublicKey()
 {
-
     GetPasswordRSAPublicKeyInfo::RequestType request;
     request.set_account_name(SteamBot::Config::SteamAccount::get().user);
 
@@ -167,7 +224,8 @@ void LoginModule::run()
             if (connectionStatus->get(ConnectionStatus::Disconnected)==ConnectionStatus::Connected)
             {
                 sendHello();
-                auto publicKey=getPublicKey();
+                const auto publicKey=getPublicKey();
+                beginAuthSession(publicKey);
             }
         }
     });
