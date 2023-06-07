@@ -26,7 +26,7 @@
 /************************************************************************/
 
 typedef SteamBot::Modules::UnifiedMessageClient::Internal::UnifiedMessageBase UnifiedMessageBase;
-typedef SteamBot::Modules::UnifiedMessageClient::Internal::ServiceMethodResponseMessage ServiceMethodResponseMessage;
+typedef SteamBot::Modules::UnifiedMessageClient::ServiceMethodResponseMessage ServiceMethodResponseMessage;
 
 /************************************************************************/
 
@@ -106,6 +106,10 @@ std::shared_ptr<const ServiceMethodResponseMessage> UnifiedMessageBase::waitForR
         auto message=serviceMethodResponseMessage->fetch();
         if (message->header.proto.jobid_target()==jobId.getValue())
         {
+            if (static_cast<SteamBot::ResultCode>(message->header.proto.eresult())!=SteamBot::ResultCode::OK)
+            {
+                throw Error(std::move(message));
+            }
             return message;
         }
     }

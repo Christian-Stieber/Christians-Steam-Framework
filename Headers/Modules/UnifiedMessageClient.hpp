@@ -23,6 +23,7 @@
 #include "Modules/Connection.hpp"
 #include "Modules/Login.hpp"
 #include "JobID.hpp"
+#include "ResultCode.hpp"
 
 #include <any>
 #include <any>
@@ -37,6 +38,8 @@
  *
  * Note that the method name looks like this:
  * "<Service>.<Method>#<Version>", example: "Player.GetGameBadgeLevels#1".
+ *
+ * An Error is thrown when the response as an eresult other than "OK".
  */
 
 namespace SteamBot
@@ -45,6 +48,10 @@ namespace SteamBot
     {
         namespace UnifiedMessageClient
         {
+            class ServiceMethodResponseMessage;
+
+            class Error;
+
             template <typename RESPONSE, SteamBot::Connection::Message::Type TYPE=SteamBot::Connection::Message::Type::ServiceMethodCallFromClient, typename REQUEST>
             std::shared_ptr<RESPONSE> execute(std::string_view, REQUEST&&);
         }
@@ -118,7 +125,6 @@ namespace SteamBot
         {
             namespace Internal
             {
-                class ServiceMethodResponseMessage;
                 class UnifiedMessageBase;
                 template <typename REQUEST, typename RESPONSE, SteamBot::Connection::Message::Type TYPE> class UnifiedMessage;
             }
@@ -159,7 +165,7 @@ protected:
  * can use to find the job -- which knows the expected response type.
  */
 
-class SteamBot::Modules::UnifiedMessageClient::Internal::ServiceMethodResponseMessage : public SteamBot::Connection::Message::Base
+class SteamBot::Modules::UnifiedMessageClient::ServiceMethodResponseMessage : public SteamBot::Connection::Message::Base
 {
 public:
     typedef SteamBot::Connection::Message::Header::ProtoBuf headerType;
@@ -184,7 +190,7 @@ public:
     {
         header.deserialize(deserializer);
         const SteamBot::JobID jobId(header.proto.jobid_target());
-        content=UnifiedMessageBase::deserialize(jobId, deserializer);
+        content=Internal::UnifiedMessageBase::deserialize(jobId, deserializer);
     }
 
     virtual size_t serialize(SteamBot::Connection::Serializer&) const override
@@ -246,3 +252,33 @@ std::shared_ptr<RESPONSE> SteamBot::Modules::UnifiedMessageClient::execute(std::
     SteamBot::Modules::UnifiedMessageClient::Internal::UnifiedMessage<REQUEST,RESPONSE,TYPE> message;
     return message.execute(method, std::move(body));
 }
+
+/************************************************************************/
+
+class SteamBot::Modules::UnifiedMessageClient::Error
+{
+public:
+    std::shared_ptr<const ServiceMethodResponseMessage> message;
+
+public:
+    Error(std::shared_ptr<const ServiceMethodResponseMessage>&& message_)
+        : message(std::move(message_))
+    {
+    }
+
+public:
+    operator SteamBot::ResultCode() const
+    {
+        return static_cast<SteamBot::ResultCode>(message->header.proto.eresult());
+    }
+
+    const ServiceMethodResponseMessage& operator*() const
+    {
+        return *message;
+    }
+
+    const ServiceMethodResponseMessage* operator->() const
+    {
+        return message.get();
+    }
+};
