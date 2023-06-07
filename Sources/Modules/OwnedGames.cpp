@@ -85,12 +85,9 @@ void OwnedGamesModule::getOwnedGames()
     std::shared_ptr<GetOwnedGamesInfo::ResultType> response;
     {
         GetOwnedGamesInfo::RequestType request;
+        if (auto steamId=getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::SteamID>())
         {
-            auto sessionInfo=getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::SessionInfo>();
-            if (sessionInfo)
-            {
-                request.set_steamid(sessionInfo->steamId->getValue());
-            }
+            request.set_steamid(steamId->getValue());
         }
         request.set_include_appinfo(true);
         request.set_include_played_free_games(true);

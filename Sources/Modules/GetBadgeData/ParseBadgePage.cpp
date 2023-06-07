@@ -32,12 +32,11 @@ namespace
     private:
         void setCardsPrefix()
         {
-            auto* sessionInfo=SteamBot::Client::getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::SessionInfo>();
-            assert(sessionInfo!=nullptr);
-            assert(sessionInfo->steamId);
+            auto steamId=SteamBot::Client::getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::SteamID>();
+            assert(steamId!=nullptr);
 
             cardsPrefix="https://steamcommunity.com/profiles/";
-            cardsPrefix.append(std::to_string(sessionInfo->steamId->getValue()));
+            cardsPrefix.append(std::to_string(steamId->getValue()));
             cardsPrefix.append("/gamecards/");
         }
 

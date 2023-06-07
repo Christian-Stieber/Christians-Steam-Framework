@@ -41,13 +41,9 @@ namespace SteamBot
                     LoggedIn
                 };
 
-                class SessionInfo
-                {
-                public:
-                    std::optional<SteamBot::SteamID> steamId;
-                    std::optional<int32_t> sessionId;
-                    std::optional<uint32_t> cellId;
-                };
+                enum class ClientSessionID : int32_t { };
+                enum class ClientID : uint64_t { };
+                typedef SteamBot::SteamID SteamID;
 
                 class HeartbeatInterval : public std::chrono::milliseconds
                 {

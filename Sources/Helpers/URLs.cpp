@@ -22,10 +22,6 @@
 #include "Client/Client.hpp"
 
 /************************************************************************/
-
-typedef SteamBot::Modules::Login::Whiteboard::SessionInfo SessionInfo;
-
-/************************************************************************/
 /*
  * Get a steam-community URL with the SteamID.
  *
@@ -34,13 +30,10 @@ typedef SteamBot::Modules::Login::Whiteboard::SessionInfo SessionInfo;
 
 boost::urls::url SteamBot::URLs::getClientCommunityURL()
 {
-    auto sessionInfo=SteamBot::Client::getClient().whiteboard.has<SessionInfo>();
-    if (sessionInfo && sessionInfo->steamId)
+    if (auto steamId=SteamBot::Client::getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::SteamID>())
     {
         boost::urls::url url("https://steamcommunity.com/profiles");
-
-        url.segments().push_back(std::to_string(sessionInfo->steamId->getValue()));
-
+        url.segments().push_back(std::to_string(steamId->getValue()));
         return url;
     }
     throw NoURLException();

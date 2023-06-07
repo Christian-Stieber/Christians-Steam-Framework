@@ -141,15 +141,14 @@ std::string WebSessionModule::createAuthBody(std::string nonce)
     }
 
     // Get the SteamID
-    auto* sessionInfo=getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::SessionInfo>();
-    assert(sessionInfo!=nullptr);
-    assert(sessionInfo->steamId);
+    auto steamId=getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::SteamID>();
+    assert(steamId!=nullptr);
 
     // Create the body string
     std::string body;
     SteamBot::Web::formUrlencode(body, "encrypted_loginkey", encryptedLoginKey);
     SteamBot::Web::formUrlencode(body, "sessionkey", encryptedSessionKey);
-    SteamBot::Web::formUrlencode(body, "steamid", sessionInfo->steamId->getValue());
+    SteamBot::Web::formUrlencode(body, "steamid", steamId->getValue());
 
     return body;
 }
@@ -184,13 +183,12 @@ std::string WebSessionModule::createCookies(SteamBot::HTTPClient::ResponseType r
     SteamBot::Web::setCookie(cookies, "steamLoginSecure", authenticateuser.at("tokensecure").as_string());
 
     {
-        auto* sessionInfo=getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::SessionInfo>();
-        assert(sessionInfo!=nullptr);
-        assert(sessionInfo->steamId);
+        auto steamId=getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::SteamID>();
+        assert(steamId!=nullptr);
 
-        auto steamId=std::to_string(sessionInfo->steamId->getValue());
-        static auto bytes=static_cast<const std::byte*>(static_cast<const void*>(steamId.data()));
-        SteamBot::Web::setCookie(cookies, "sessionid", SteamBot::Base64::encode(std::span<const std::byte>(bytes, steamId.size())));
+        auto steamIdString=std::to_string(steamId->getValue());
+        static auto bytes=static_cast<const std::byte*>(static_cast<const void*>(steamIdString.data()));
+        SteamBot::Web::setCookie(cookies, "sessionid", SteamBot::Base64::encode(std::span<const std::byte>(bytes, steamIdString.size())));
     }
 
     BOOST_LOG_TRIVIAL(debug) << "new cookie string: \"" << cookies << "\"";
