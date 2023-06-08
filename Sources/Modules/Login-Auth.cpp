@@ -29,11 +29,13 @@
 #include "Steam/MachineInfo.hpp"
 #include "Steam/OSType.hpp"
 #include "UI/UI.hpp"
+#include "Client/Sleep.hpp"
 
 #include "steamdatabase/protobufs/steam/steammessages_auth.steamclient.pb.h"
 #include "Steam/ProtoBuf/steammessages_clientserver_login.hpp"
 
 #include <boost/log/trivial.hpp>
+#include <cmath>
 
 /************************************************************************/
 /*
@@ -70,6 +72,7 @@ using SteamBot::Connection::Message::Type::ServiceMethodCallFromClientNonAuthed;
 /************************************************************************/
 
 class UnsupportedConfirmationsException { };
+class AuthenticationFailedException { };
 
 /************************************************************************/
 
@@ -188,9 +191,10 @@ namespace
     private:
         void doLogon();
         void requestCode();
-        void getPollAuthSessionStatus();
+        void doPollAuthSessionStatus();
+        void queryPollAuthSessionStatus();
         void sendGuardCode(std::string);
-        void handleEMailCode();
+        void handleGuardCodeEntry();
         void getConfirmationType(const BeginAuthSessionViaCredentialsInfo::ResultType&);
         std::shared_ptr<BeginAuthSessionViaCredentialsInfo::ResultType> execute(BeginAuthSessionViaCredentialsInfo::RequestType&&);
         static BeginAuthSessionViaCredentialsInfo::RequestType makeBeginAuthRequest(const LoginModule::PublicKey&);
@@ -356,7 +360,23 @@ void LoginModule::sendGuardCode(std::string code)
     }
     catch(const SteamBot::Modules::UnifiedMessageClient::Error& error)
     {
-        if (error!=SteamBot::ResultCode::InvalidLoginAuthCode)
+        bool wrongCode=false;
+
+        switch(confirmation.type)
+        {
+        case EAuthSessionGuardType::k_EAuthSessionGuardType_EmailCode:
+            wrongCode=(error==SteamBot::ResultCode::InvalidLoginAuthCode);
+            break;
+
+        case EAuthSessionGuardType::k_EAuthSessionGuardType_DeviceCode:
+            wrongCode=(error==SteamBot::ResultCode::TwoFactorCodeMismatch);
+            break;
+
+        default:
+            assert(false);
+        }
+
+        if (!wrongCode)
         {
             throw;
         }
@@ -364,7 +384,7 @@ void LoginModule::sendGuardCode(std::string code)
 
     if (response)
     {
-        getPollAuthSessionStatus();
+        doPollAuthSessionStatus();
     }
     else
     {
@@ -374,7 +394,7 @@ void LoginModule::sendGuardCode(std::string code)
 
 /************************************************************************/
 
-void LoginModule::handleEMailCode()
+void LoginModule::handleGuardCodeEntry()
 {
     if (steamguardCodeWaiter && steamguardCodeWaiter->isWoken())
     {
@@ -390,20 +410,22 @@ void LoginModule::requestCode()
     switch(confirmation.type)
     {
     case EAuthSessionGuardType::k_EAuthSessionGuardType_None:
-        getPollAuthSessionStatus();
+        doPollAuthSessionStatus();
         break;
 
     case EAuthSessionGuardType::k_EAuthSessionGuardType_DeviceConfirmation:
-        assert(false);
+        BOOST_LOG_TRIVIAL(info) << "waiting for user to confirm on device...";
+        doPollAuthSessionStatus();
         break;
 
     case EAuthSessionGuardType::k_EAuthSessionGuardType_DeviceCode:
-        assert(false);
-        break;
-
     case EAuthSessionGuardType::k_EAuthSessionGuardType_EmailCode:
+        assert(!steamguardCodeWaiter);
         steamguardCodeWaiter=SteamBot::UI::GetSteamguardCode::create(waiter);
         break;
+
+    default:
+        assert(false);
     }
 }
 
@@ -435,12 +457,8 @@ LoginModule::PublicKey LoginModule::getPublicKey()
 }
 
 /************************************************************************/
-/*
- * ToDo: this has "poll" in the name, beginAuthSession gets a
- * poll-interval...  so, why/how are we supposed to poll?
- */
 
-void LoginModule::getPollAuthSessionStatus()
+void LoginModule::queryPollAuthSessionStatus()
 {
     PollAuthSessionStatusInfo::RequestType request;
     request.set_client_id(authSessionData.clientId);
@@ -448,6 +466,11 @@ void LoginModule::getPollAuthSessionStatus()
 
     typedef PollAuthSessionStatusInfo::ResultType ResultType;
     auto response=UnifiedMessageClient::execute<ResultType, ServiceMethodCallFromClientNonAuthed>("Authentication.PollAuthSessionStatus#1", std::move(request));
+
+    if (response->has_new_client_id())
+    {
+        authSessionData.clientId=response->new_client_id();
+    }
 
     if (response->has_new_guard_data())
     {
@@ -465,7 +488,30 @@ void LoginModule::getPollAuthSessionStatus()
     {
         accessToken=response->access_token();
     }
+}
 
+/************************************************************************/
+
+void LoginModule::doPollAuthSessionStatus()
+{
+    while (queryPollAuthSessionStatus(), refreshToken.empty())
+    {
+        switch(confirmation.type)
+        {
+        case EAuthSessionGuardType::k_EAuthSessionGuardType_None:
+        case EAuthSessionGuardType::k_EAuthSessionGuardType_DeviceCode:
+        case EAuthSessionGuardType::k_EAuthSessionGuardType_EmailCode:
+            throw AuthenticationFailedException();
+            break;
+
+        case EAuthSessionGuardType::k_EAuthSessionGuardType_DeviceConfirmation:
+            {
+                auto interval=lround(authSessionData.interval*1000);
+                SteamBot::sleep(std::chrono::milliseconds(interval));
+            }
+            break;
+        }
+    }
     doLogon();
 }
 
@@ -603,7 +649,7 @@ void LoginModule::run()
 
             cmsgClientLogonResponse->handle(this);
 
-            handleEMailCode();
+            handleGuardCodeEntry();
 
             if (connectionStatus->get(ConnectionStatus::Disconnected)==ConnectionStatus::Connected)
             {
