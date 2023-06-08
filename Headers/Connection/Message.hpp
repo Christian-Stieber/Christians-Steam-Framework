@@ -74,6 +74,8 @@ namespace SteamBot
                 ClientVACBanStatus = 782,
                 ClientUpdateGuestPassesList = 798,
 
+                ClientClanState = 822,
+
                 ChannelEncryptRequest = 1303,
                 ChannelEncryptResponse = 1304,
                 ChannelEncryptResult = 1305,

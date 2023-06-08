@@ -78,6 +78,21 @@ namespace
         };
 
     private:
+        struct RedirectedURL
+        {
+            std::string buffer;
+            boost::urls::url_view url;
+
+            RedirectedURL() =default;
+
+            RedirectedURL(std::string_view location)
+                : buffer(location),
+                  url(boost::urls::parse_absolute_uri(buffer).value())
+            {
+            }
+        };
+
+    private:
         std::thread thread;
         boost::asio::io_context ioContext;
         boost::asio::ip::tcp::resolver resolver{ioContext};
@@ -86,7 +101,7 @@ namespace
         boost::asio::ssl::context sslContext{makeSslContext()};
 
     private:
-        std::unique_ptr<SteamBot::HTTPClient::Response> performQuery(Params&);
+        std::unique_ptr<SteamBot::HTTPClient::Response> performQuery(Params&, const RedirectedURL&);
 
     private:
         HTTPClient();
@@ -101,13 +116,14 @@ namespace
 
 /************************************************************************/
 
-std::unique_ptr<SteamBot::HTTPClient::Response> HTTPClient::performQuery(HTTPClient::Params& params)
+std::unique_ptr<SteamBot::HTTPClient::Response> HTTPClient::performQuery(HTTPClient::Params& params, const RedirectedURL& redirectedUrl)
 {
+    const boost::urls::url_view& url=redirectedUrl.url.empty() ? params.request->url : redirectedUrl.url;
     try
     {
-        const std::string host=params.request->url.host();	// we need 0-termination for SSL_set_tlsext_host_name()
+        const std::string host=url.host();	// we need 0-termination for SSL_set_tlsext_host_name()
 
-        std::string_view port=params.request->url.port();
+        std::string_view port=url.port();
         if (port.empty()) port="443";
 
         // Look up the host name
@@ -144,7 +160,7 @@ std::unique_ptr<SteamBot::HTTPClient::Response> HTTPClient::performQuery(HTTPCli
 
         {
             // Set up an HTTP request message
-            boost::beast::http::request<boost::beast::http::string_body> request{params.request->method, params.request->url.encoded_target(), 11};
+            boost::beast::http::request<boost::beast::http::string_body> request{params.request->method, url.encoded_target(), 11};
             for (const auto& header : params.request->headers)
             {
                 request.base().set(header.first, header.second);
@@ -182,7 +198,7 @@ std::unique_ptr<SteamBot::HTTPClient::Response> HTTPClient::performQuery(HTTPCli
         }
 #endif
 
-        BOOST_LOG_TRIVIAL(info) << "HTTPClient: performQuery for \"" << params.request->url
+        BOOST_LOG_TRIVIAL(info) << "HTTPClient: performQuery for \"" << url
                                 << "\" has received a " << response->response.body().size()
                                 << " byte response with code " << response->response.result();
         return response;
@@ -192,7 +208,7 @@ std::unique_ptr<SteamBot::HTTPClient::Response> HTTPClient::performQuery(HTTPCli
         /* ToDo: add some logging */
     }
 
-    BOOST_LOG_TRIVIAL(info) << "HTTPClient: performQuery for \"" << params.request->url << "\" has produced an error";
+    BOOST_LOG_TRIVIAL(info) << "HTTPClient: performQuery for \"" << url << "\" has produced an error";
     throw SteamBot::HTTPClient::Exception();
 }
 
@@ -237,7 +253,28 @@ boost::fibers::future<SteamBot::HTTPClient::ResponseType> HTTPClient::query(Stea
     HTTPClient::get().ioContext.post([params]() {
         try
         {
-            params->promise.set_value(HTTPClient::get().performQuery(*params));
+            RedirectedURL redirectedUrl;
+            while (true)
+            {
+                auto result=HTTPClient::get().performQuery(*params, redirectedUrl);
+                const auto code=result->response.result();
+                if (code==boost::beast::http::status::moved_permanently || code==boost::beast::http::status::found)
+                {
+                    const auto& location=result->response.base()["Location"];
+                    if (!location.empty())
+                    {
+                        if (code==boost::beast::http::status::moved_permanently)
+                        {
+                            BOOST_LOG_TRIVIAL(error) << "URL should be \"" << location << "\"";
+                            assert(false);
+                        }
+                        redirectedUrl=RedirectedURL(location);
+                        continue;
+                    }
+                }
+                params->promise.set_value(std::move(result));
+                return;
+            }
         }
         catch(...)
         {
