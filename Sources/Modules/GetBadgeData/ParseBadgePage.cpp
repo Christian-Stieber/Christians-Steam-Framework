@@ -22,29 +22,17 @@ namespace
     private:
         BadgePageData& data;
 
-        // https://steamcommunity.com/profiles/<SteamID>/gamecards/
-        std::string cardsPrefix;
-
         // The root elements for the badge-boxes on the page
         // Basically, we just walk up from lower elements until we find a match
         std::unordered_map<const HTMLParser::Tree::Element*, SteamBot::AppID> badge_row;
 
     private:
-        void setCardsPrefix()
-        {
-            auto steamId=SteamBot::Client::getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::SteamID>();
-            assert(steamId!=nullptr);
-
-            cardsPrefix="https://steamcommunity.com/profiles/";
-            cardsPrefix.append(std::to_string(steamId->getValue()));
-            cardsPrefix.append("/gamecards/");
-        }
+        bool stripCardPrefix(std::string_view&);
 
     public:
         BadgePageParser(std::string_view html, BadgePageData& data_)
             : Parser(html), data(data_)
         {
-            setCardsPrefix();
         }
 
         virtual ~BadgePageParser() =default;
@@ -72,6 +60,51 @@ namespace
 }
 
 /************************************************************************/
+/*
+ * Card links look like this:
+ *   https://steamcommunity.com/profiles/<SteamID>/gamecards/<AppID>/
+ *   https://steamcommunity.com/id/<CustomName>/gamecards/<AppID>/
+ *
+ * This removes the text up to the "<AppID>/"
+ */
+
+bool BadgePageParser::stripCardPrefix(std::string_view& url)
+{
+    struct Helper
+    {
+        static bool removePrefix(std::string_view& string, const std::string_view prefix)
+        {
+            if (string.starts_with(prefix))
+            {
+                string.remove_prefix(prefix.size());
+                return true;
+            }
+            return false;
+        }
+
+        static bool removeUntil(std::string_view& string, char c)
+        {
+            while (!string.empty())
+            {
+                const char x=string.front();
+                string.remove_prefix(1);
+                if (c==x)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+    };
+
+    return
+        Helper::removePrefix(url, "https://steamcommunity.com/") &&
+        (Helper::removePrefix(url, "profiles/") || Helper::removePrefix(url, "id/")) &&
+        Helper::removeUntil(url, '/') &&
+        Helper::removePrefix(url, "gamecards/");
+}
+
+/************************************************************************/
 
 bool BadgePageParser::handleStart_badge_row_overlay(const HTMLParser::Tree::Element& element)
 {
@@ -81,12 +114,13 @@ bool BadgePageParser::handleStart_badge_row_overlay(const HTMLParser::Tree::Elem
     {
         if (auto href=element.getAttribute("href"))
         {
-            if (href->starts_with(cardsPrefix))
+            std::string_view string(*href);
+            if (stripCardPrefix(string))
             {
                 std::underlying_type_t<SteamBot::AppID> value;
-                const char* last=href->data()+href->size();
+                const char* last=string.data()+string.size();
                 assert(*last=='\0');
-                auto result=std::from_chars(href->data()+cardsPrefix.size(), last, value);
+                auto result=std::from_chars(string.data(), last, value);
                 if (result.ec==std::errc())
                 {
                     if (*result.ptr=='\0' || *result.ptr=='/')
