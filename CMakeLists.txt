@@ -105,7 +105,6 @@ list(APPEND SRCS Modules/Login-Auth)
 list(APPEND SRCS UI/UI)
 list(APPEND SRCS Modules/GetBadgeData/ParseBadgePage Modules/GetBadgeData/GetBadgeData Modules/GetBadgeData/Printable)
 
-# list(APPEND SRCS Modules/Login/Login Modules/Login/ClientLogonMessage Modules/Login/SteamGuard)
 # list(APPEND SRCS Tests/Asio Tests/Whiteboard Tests/Messageboard Tests/HTTPClient Tests/GetCMList)
 
 list(APPEND SRCS WebAPI/WebAPI WebAPI/ISteamDirectory/GetCMList)
