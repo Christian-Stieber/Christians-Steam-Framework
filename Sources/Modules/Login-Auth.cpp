@@ -45,6 +45,13 @@ static constexpr std::string websiteId{"Client"};
 static constexpr auto platformType=EAuthTokenPlatformType::k_EAuthTokenPlatformType_SteamClient;
 
 /************************************************************************/
+/*
+ * For the DataFie
+ */
+
+static const std::string guardDataKey="Guard.Data";
+
+/************************************************************************/
 
 typedef SteamBot::Modules::Connection::Whiteboard::ConnectionStatus ConnectionStatus;
 typedef SteamBot::Modules::Connection::Whiteboard::LocalEndpoint LocalEndpoint;
@@ -63,6 +70,16 @@ using SteamBot::Connection::Message::Type::ServiceMethodCallFromClientNonAuthed;
 /************************************************************************/
 
 class UnsupportedConfirmationsException { };
+
+/************************************************************************/
+
+namespace
+{
+    template <typename T> std::underlying_type_t<T> toInteger(T value) requires (std::is_enum_v<T>)
+    {
+        return static_cast<std::underlying_type_t<T>>(value);
+    }
+}
 
 /************************************************************************/
 
@@ -93,6 +110,18 @@ namespace
             BOOST_LOG_TRIVIAL(info) << "result: " << SteamBot::enumToStringAlways(result);
 		}
 	};
+}
+
+/************************************************************************/
+
+namespace
+{
+    enum class AccountInstance {
+        All=0,
+        Desktop=1,
+        Console=2,
+        Web=4
+    };
 }
 
 /************************************************************************/
@@ -131,21 +160,35 @@ namespace
         };
 
     private:
-        std::string requestId;
+        struct
+        {
+            uint64_t clientId=0;
+            uint64_t steamId=0;
+            float interval=0;
+            int32_t clientSessionId=0;
+            std::string requestId;
+        } authSessionData;
+
+        std::string refreshToken;
+        std::string accessToken;
 
         struct
         {
-            EAuthSessionGuardType type=EAuthSessionGuardType::k_EAuthSessionGuardType_None;
+            EAuthSessionGuardType type=EAuthSessionGuardType::k_EAuthSessionGuardType_Unknown;
             std::string message;
         } confirmation;
+
+    public:
+        void handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMessageType>);
 
     private:
         std::shared_ptr<SteamBot::Waiter> const waiter=SteamBot::Waiter::create();
         std::shared_ptr<SteamBot::UI::GetSteamguardCode> steamguardCodeWaiter;
 
     private:
+        void doLogon();
         void requestCode();
-        void getPollAuthSessionStatus() const;
+        void getPollAuthSessionStatus();
         void sendGuardCode(std::string);
         void handleEMailCode();
         void getConfirmationType(const BeginAuthSessionViaCredentialsInfo::ResultType&);
@@ -184,21 +227,29 @@ BeginAuthSessionViaCredentialsInfo::RequestType LoginModule::makeBeginAuthReques
     request.set_account_name(SteamBot::Config::SteamAccount::get().user);
     request.set_persistence(ESessionPersistence::k_ESessionPersistence_Persistent);
     request.set_website_id(websiteId);
-    // guard_data = details.GuardData,
+    {
+        const auto string=getClient().dataFile.examine([](const boost::property_tree::ptree& tree) {
+            return tree.get_optional<std::string>(guardDataKey);
+        });
+        if (string)
+        {
+            request.set_guard_data(*string);
+        }
+	}
     request.set_encrypted_password(publicKey.encrypt(SteamBot::Config::SteamAccount::get().password));
     request.set_encryption_timestamp(publicKey.timestamp);
     {
         auto deviceDetails=request.mutable_device_details();
         deviceDetails->set_device_friendly_name(Steam::MachineInfo::Provider::getMachineName());
         deviceDetails->set_platform_type(platformType);
-        deviceDetails->set_os_type(static_cast<std::underlying_type_t<Steam::OSType>>(Steam::getOSType()));
+        deviceDetails->set_os_type(toInteger(Steam::getOSType()));
     }
     return request;
 }
 
 /************************************************************************/
 /*
- * On a successful response, also sets basic values for the session.
+ * On a successful response, also sets initial values for the session.
  *
  * On incorrect password, returns an empty ptr.
  */
@@ -223,26 +274,20 @@ std::shared_ptr<BeginAuthSessionViaCredentialsInfo::ResultType> LoginModule::exe
     }
     content=response->getContent<BeginAuthSessionViaCredentialsInfo::ResultType>();
 
-    if (content->has_request_id())
-    {
-        requestId=content->request_id();
-    }
+    assert(response->header.proto.has_client_sessionid());
+    authSessionData.clientSessionId=response->header.proto.client_sessionid();
 
-    {
-        auto& whiteboard=getClient().whiteboard;
-        if (response->header.proto.has_client_sessionid())
-        {
-            whiteboard.set(static_cast<SteamBot::Modules::Login::Whiteboard::ClientSessionID>(response->header.proto.client_sessionid()));
-        }
-        if (content->has_steamid())
-        {
-            whiteboard.set<SteamBot::Modules::Login::Whiteboard::SteamID>(content->steamid());
-        }
-        if (content->has_client_id())
-        {
-            whiteboard.set(static_cast<SteamBot::Modules::Login::Whiteboard::ClientID>(content->client_id()));
-        }
-    }
+    assert(content->has_request_id());
+    authSessionData.requestId=content->request_id();
+
+    assert(content->has_steamid());
+    authSessionData.steamId=content->steamid();
+
+    assert(content->has_client_id());
+    authSessionData.clientId=content->client_id();
+
+    assert(content->has_interval());
+    authSessionData.interval=content->interval();
 
     return content;
 }
@@ -256,6 +301,7 @@ void LoginModule::getConfirmationType(const BeginAuthSessionViaCredentialsInfo::
 {
     // Most preferred on top
     static constexpr EAuthSessionGuardType preferred[]={
+        EAuthSessionGuardType::k_EAuthSessionGuardType_None,
         EAuthSessionGuardType::k_EAuthSessionGuardType_DeviceConfirmation,
         EAuthSessionGuardType::k_EAuthSessionGuardType_DeviceCode,
         EAuthSessionGuardType::k_EAuthSessionGuardType_EmailCode
@@ -283,7 +329,7 @@ void LoginModule::getConfirmationType(const BeginAuthSessionViaCredentialsInfo::
         }
     }
 
-    if (confirmation.type==k_EAuthSessionGuardType_None)
+    if (confirmation.type==k_EAuthSessionGuardType_Unknown)
     {
         throw UnsupportedConfirmationsException();
     }
@@ -298,14 +344,8 @@ void LoginModule::sendGuardCode(std::string code)
     request.set_code(std::move(code));
     {
         auto& whiteboard=getClient().whiteboard;
-        if (auto steamId=whiteboard.has<SteamBot::Modules::Login::Whiteboard::SteamID>())
-        {
-            request.set_steamid(steamId->getValue());
-        }
-        if (auto clientId=whiteboard.has<SteamBot::Modules::Login::Whiteboard::ClientID>())
-        {
-            request.set_client_id(static_cast<std::underlying_type_t<SteamBot::Modules::Login::Whiteboard::ClientID>>(*clientId));
-        }
+        request.set_steamid(authSessionData.steamId);
+        request.set_client_id(authSessionData.clientId);
     }
 
     typedef UpdateAuthSessionWithSteamGuardCodeInfo::ResultType ResultType;
@@ -349,6 +389,10 @@ void LoginModule::requestCode()
 {
     switch(confirmation.type)
     {
+    case EAuthSessionGuardType::k_EAuthSessionGuardType_None:
+        getPollAuthSessionStatus();
+        break;
+
     case EAuthSessionGuardType::k_EAuthSessionGuardType_DeviceConfirmation:
         assert(false);
         break;
@@ -396,21 +440,33 @@ LoginModule::PublicKey LoginModule::getPublicKey()
  * poll-interval...  so, why/how are we supposed to poll?
  */
 
-void LoginModule::getPollAuthSessionStatus() const
+void LoginModule::getPollAuthSessionStatus()
 {
     PollAuthSessionStatusInfo::RequestType request;
-    if (auto clientId=getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::ClientID>())
-    {
-        request.set_client_id(static_cast<std::underlying_type_t<SteamBot::Modules::Login::Whiteboard::ClientID>>(*clientId));
-    }
-    if (!requestId.empty())
-    {
-        request.set_request_id(requestId);
-    }
+    request.set_client_id(authSessionData.clientId);
+    request.set_request_id(authSessionData.requestId);
 
     typedef PollAuthSessionStatusInfo::ResultType ResultType;
     auto response=UnifiedMessageClient::execute<ResultType, ServiceMethodCallFromClientNonAuthed>("Authentication.PollAuthSessionStatus#1", std::move(request));
 
+    if (response->has_new_guard_data())
+    {
+        auto data=response->new_guard_data();
+        getClient().dataFile.update([&data](boost::property_tree::ptree& tree) mutable {
+            tree.put(guardDataKey, std::move(data));
+        });
+    }
+
+    if (response->has_refresh_token())
+    {
+        refreshToken=response->refresh_token();
+    }
+    if (response->has_access_token())
+    {
+        accessToken=response->access_token();
+    }
+
+    doLogon();
 }
 
 /************************************************************************/
@@ -420,6 +476,105 @@ void LoginModule::sendHello()
     auto message=std::make_unique<Steam::CMsgClientHelloMessageType>();
     message->content.set_protocol_version(Steam::MsgClientLogon::CurrentProtocol);
     SteamBot::Modules::Connection::Messageboard::SendSteamMessage::send(std::move(message));
+}
+
+/************************************************************************/
+
+void LoginModule::doLogon()
+{
+    auto message=std::make_unique<Steam::CMsgClientLogonMessageType>();
+
+    message->header.proto.set_client_sessionid(0);
+    {
+        SteamBot::SteamID steamID;
+        steamID.setAccountId(0);
+        steamID.setAccountInstance(toInteger(AccountInstance::Desktop));
+        steamID.setUniverseType(SteamBot::Client::getClient().universe.type);
+        steamID.setAccountType(Steam::AccountType::Individual);
+        message->header.proto.set_steamid(steamID.getValue());
+    }
+
+    message->content.set_protocol_version(Steam::MsgClientLogon::CurrentProtocol);
+	message->content.set_cell_id(0);
+	message->content.set_client_package_version(1771);
+	message->content.set_client_language("english");
+	message->content.set_client_os_type(toInteger(Steam::getOSType()));
+    {
+        const auto& machineId=Steam::MachineInfo::MachineID::getSerialized();
+        message->content.set_machine_id(machineId.data(), machineId.size());
+	}
+    message->content.set_account_name(SteamBot::Config::SteamAccount::get().user);
+    message->content.set_eresult_sentryfile(toInteger(SteamBot::ResultCode::FileNotFound));
+    message->content.set_steam2_ticket_request(false);
+	message->content.set_machine_name(Steam::MachineInfo::Provider::getMachineName());
+    message->content.set_supports_rate_limit_response(true);	// ???
+    if (!refreshToken.empty()) message->content.set_access_token(refreshToken);
+
+    // All this is very weird
+	{
+		uint32_t ipv4=0;
+		{
+            typedef SteamBot::Modules::Connection::Whiteboard::LocalEndpoint LocalEndpoint;
+            if (auto endpoint=getClient().whiteboard.has<LocalEndpoint>())
+            {
+                if (endpoint->address.is_v4())
+                {
+                    static constexpr uint32_t obfuscationMask=0xBAADF00D;
+                    const uint32_t address=endpoint->address.to_v4().to_uint();
+                    ipv4=address^obfuscationMask;
+                }
+			}
+		}
+		if (ipv4!=0)
+		{
+			message->content.mutable_obfuscated_private_ip()->set_v4(ipv4);
+			message->content.set_deprecated_obfustucated_private_ip(ipv4);
+		}
+	}
+
+    SteamBot::Modules::Connection::Messageboard::SendSteamMessage::send(std::move(message));
+}
+
+/************************************************************************/
+
+void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMessageType> message)
+{
+    if (message->content.has_eresult())
+    {
+        switch(static_cast<SteamBot::ResultCode>(message->content.eresult()))
+        {
+        case SteamBot::ResultCode::OK:
+            {
+                auto& whiteboard=getClient().whiteboard;
+                if (message->header.proto.has_steamid())
+                {
+                    whiteboard.set<SteamBot::Modules::Login::Whiteboard::SteamID>(message->header.proto.steamid());
+                }
+                if (message->header.proto.has_client_sessionid())
+                {
+                    whiteboard.set(static_cast<SteamBot::Modules::Login::Whiteboard::ClientSessionID>(message->header.proto.steamid()));
+                }
+                if (message->content.has_cell_id())
+                {
+                    whiteboard.set(static_cast<SteamBot::Modules::Login::Whiteboard::CellID>(message->content.cell_id()));
+                }
+
+                if (message->content.has_legacy_out_of_game_heartbeat_seconds())
+                {
+                    const auto seconds=message->content.legacy_out_of_game_heartbeat_seconds();
+                    assert(seconds>0);
+                    typedef SteamBot::Modules::Login::Whiteboard::HeartbeatInterval HeartbeatInterval;
+                    whiteboard.set<HeartbeatInterval>(std::chrono::seconds(seconds));
+                }
+
+                setStatus(LoginStatus::LoggedIn);
+            }
+            break;
+
+        case SteamBot::ResultCode::TryAnotherCM:
+            break;
+        }
+    }
 }
 
 /************************************************************************/
@@ -446,8 +601,7 @@ void LoginModule::run()
             while (cmsgClientLoggedOffMessage->fetch())
                 ;
 
-            while (cmsgClientLogonResponse->fetch())
-                ;
+            cmsgClientLogonResponse->handle(this);
 
             handleEMailCode();
 

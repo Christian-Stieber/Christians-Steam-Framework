@@ -162,19 +162,16 @@ SteamBot::Connection::Message::Header::ProtoBuf::~ProtoBuf() =default;
 
 void SteamBot::Connection::Message::Header::ProtoBuf::addSessionInfo()
 {
-    if (msgType!=Type::ServiceMethodCallFromClientNonAuthed)
+    auto& whiteboard=SteamBot::Client::getClient().whiteboard;
+
+    if (auto steamId=whiteboard.has<SteamBot::Modules::Login::Whiteboard::SteamID>())
     {
-        auto& whiteboard=SteamBot::Client::getClient().whiteboard;
+        proto.set_steamid(steamId->getValue());
+    }
 
-        if (auto steamId=whiteboard.has<SteamBot::Modules::Login::Whiteboard::SteamID>())
-        {
-            proto.set_steamid(steamId->getValue());
-        }
-
-        if (auto sessionId=whiteboard.has<SteamBot::Modules::Login::Whiteboard::ClientSessionID>())
-        {
-            proto.set_client_sessionid(static_cast<std::underlying_type_t<SteamBot::Modules::Login::Whiteboard::ClientSessionID>>(*sessionId));
-        }
+    if (auto sessionId=whiteboard.has<SteamBot::Modules::Login::Whiteboard::ClientSessionID>())
+    {
+        proto.set_client_sessionid(static_cast<std::underlying_type_t<SteamBot::Modules::Login::Whiteboard::ClientSessionID>>(*sessionId));
     }
 }
 

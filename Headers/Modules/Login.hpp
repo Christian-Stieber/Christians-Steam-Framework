@@ -42,7 +42,7 @@ namespace SteamBot
                 };
 
                 enum class ClientSessionID : int32_t { };
-                enum class ClientID : uint64_t { };
+                enum class CellID : uint32_t { };
                 typedef SteamBot::SteamID SteamID;
 
                 class HeartbeatInterval : public std::chrono::milliseconds
