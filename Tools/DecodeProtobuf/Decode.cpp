@@ -48,7 +48,7 @@ static uint64_t getVARINT()
     int offset=0;
     while (offset<10)
     {
-        auto c=getByte();
+        uint64_t c=getByte();
         result|=(c&0x7f)<<(7*offset);
         if (!(c&0x80))
         {
@@ -67,7 +67,7 @@ static uint64_t getFixed(int size)
     uint64_t result=0;
     for (int offset=0; offset<size; offset++)
     {
-        auto c=getByte();
+        uint64_t c=getByte();
         result|=c<<(8*offset);
     }
     return result;
