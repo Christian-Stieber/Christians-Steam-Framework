@@ -56,6 +56,7 @@ namespace Message=SteamBot::Connection::Message;
 typedef UnifiedMessageClient::ProtobufService::Info<decltype(&::Authentication::GetPasswordRSAPublicKey)> GetPasswordRSAPublicKeyInfo;
 typedef UnifiedMessageClient::ProtobufService::Info<decltype(&::Authentication::BeginAuthSessionViaCredentials)> BeginAuthSessionViaCredentialsInfo;
 typedef UnifiedMessageClient::ProtobufService::Info<decltype(&::Authentication::UpdateAuthSessionWithSteamGuardCode)> UpdateAuthSessionWithSteamGuardCodeInfo;
+typedef UnifiedMessageClient::ProtobufService::Info<decltype(&::Authentication::PollAuthSessionStatus)> PollAuthSessionStatusInfo;
 
 using SteamBot::Connection::Message::Type::ServiceMethodCallFromClientNonAuthed;
 
@@ -130,6 +131,8 @@ namespace
         };
 
     private:
+        std::string requestId;
+
         struct
         {
             EAuthSessionGuardType type=EAuthSessionGuardType::k_EAuthSessionGuardType_None;
@@ -141,10 +144,12 @@ namespace
         std::shared_ptr<SteamBot::UI::GetSteamguardCode> steamguardCodeWaiter;
 
     private:
-        void sendGuardCode(std::string) const;
+        void requestCode();
+        void getPollAuthSessionStatus() const;
+        void sendGuardCode(std::string);
         void handleEMailCode();
         void getConfirmationType(const BeginAuthSessionViaCredentialsInfo::ResultType&);
-        static std::shared_ptr<BeginAuthSessionViaCredentialsInfo::ResultType> execute(BeginAuthSessionViaCredentialsInfo::RequestType&&);
+        std::shared_ptr<BeginAuthSessionViaCredentialsInfo::ResultType> execute(BeginAuthSessionViaCredentialsInfo::RequestType&&);
         static BeginAuthSessionViaCredentialsInfo::RequestType makeBeginAuthRequest(const LoginModule::PublicKey&);
         static void sendHello();
         PublicKey getPublicKey();
@@ -193,8 +198,7 @@ BeginAuthSessionViaCredentialsInfo::RequestType LoginModule::makeBeginAuthReques
 
 /************************************************************************/
 /*
- * On a successful response, also sets basic whiteboard values for the
- * session.
+ * On a successful response, also sets basic values for the session.
  *
  * On incorrect password, returns an empty ptr.
  */
@@ -218,6 +222,11 @@ std::shared_ptr<BeginAuthSessionViaCredentialsInfo::ResultType> LoginModule::exe
         return content;
     }
     content=response->getContent<BeginAuthSessionViaCredentialsInfo::ResultType>();
+
+    if (content->has_request_id())
+    {
+        requestId=content->request_id();
+    }
 
     {
         auto& whiteboard=getClient().whiteboard;
@@ -282,7 +291,7 @@ void LoginModule::getConfirmationType(const BeginAuthSessionViaCredentialsInfo::
 
 /************************************************************************/
 
-void LoginModule::sendGuardCode(std::string code) const
+void LoginModule::sendGuardCode(std::string code)
 {
     UpdateAuthSessionWithSteamGuardCodeInfo::RequestType request;
     request.set_code_type(confirmation.type);
@@ -300,7 +309,27 @@ void LoginModule::sendGuardCode(std::string code) const
     }
 
     typedef UpdateAuthSessionWithSteamGuardCodeInfo::ResultType ResultType;
-    auto response=UnifiedMessageClient::execute<ResultType, ServiceMethodCallFromClientNonAuthed>("Authentication.UpdateAuthSessionWithSteamGuardCode#1", std::move(request));
+    std::shared_ptr<ResultType> response;
+    try
+    {
+        response=UnifiedMessageClient::execute<ResultType, ServiceMethodCallFromClientNonAuthed>("Authentication.UpdateAuthSessionWithSteamGuardCode#1", std::move(request));
+    }
+    catch(const SteamBot::Modules::UnifiedMessageClient::Error& error)
+    {
+        if (error!=SteamBot::ResultCode::InvalidLoginAuthCode)
+        {
+            throw;
+        }
+    }
+
+    if (response)
+    {
+        getPollAuthSessionStatus();
+    }
+    else
+    {
+        requestCode();
+    }
 }
 
 /************************************************************************/
@@ -316,11 +345,8 @@ void LoginModule::handleEMailCode()
 
 /************************************************************************/
 
-void LoginModule::beginAuthSession(const LoginModule::PublicKey& publicKey)
+void LoginModule::requestCode()
 {
-    auto result=execute(makeBeginAuthRequest(publicKey));
-    getConfirmationType(*result);
-
     switch(confirmation.type)
     {
     case EAuthSessionGuardType::k_EAuthSessionGuardType_DeviceConfirmation:
@@ -339,6 +365,16 @@ void LoginModule::beginAuthSession(const LoginModule::PublicKey& publicKey)
 
 /************************************************************************/
 
+void LoginModule::beginAuthSession(const LoginModule::PublicKey& publicKey)
+{
+    auto result=execute(makeBeginAuthRequest(publicKey));
+    getConfirmationType(*result);
+
+    requestCode();
+}
+
+/************************************************************************/
+
 LoginModule::PublicKey LoginModule::getPublicKey()
 {
     GetPasswordRSAPublicKeyInfo::RequestType request;
@@ -352,6 +388,29 @@ LoginModule::PublicKey LoginModule::getPublicKey()
     if (response->has_publickey_exp()) result.exponent=std::move(*(response->mutable_publickey_exp()));
     if (response->has_timestamp()) result.timestamp=response->timestamp();
     return result;
+}
+
+/************************************************************************/
+/*
+ * ToDo: this has "poll" in the name, beginAuthSession gets a
+ * poll-interval...  so, why/how are we supposed to poll?
+ */
+
+void LoginModule::getPollAuthSessionStatus() const
+{
+    PollAuthSessionStatusInfo::RequestType request;
+    if (auto clientId=getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::ClientID>())
+    {
+        request.set_client_id(static_cast<std::underlying_type_t<SteamBot::Modules::Login::Whiteboard::ClientID>>(*clientId));
+    }
+    if (!requestId.empty())
+    {
+        request.set_request_id(requestId);
+    }
+
+    typedef PollAuthSessionStatusInfo::ResultType ResultType;
+    auto response=UnifiedMessageClient::execute<ResultType, ServiceMethodCallFromClientNonAuthed>("Authentication.PollAuthSessionStatus#1", std::move(request));
+
 }
 
 /************************************************************************/
