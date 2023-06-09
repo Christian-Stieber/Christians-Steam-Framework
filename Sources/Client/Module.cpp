@@ -51,7 +51,7 @@ SteamBot::Client::Module::InitBase::~InitBase()
  * your callback.
  */
 
-void SteamBot::Client::Module::createAll(std::function<void(std::unique_ptr<SteamBot::Client::Module>)> callback)
+void SteamBot::Client::Module::createAll(std::function<void(std::shared_ptr<SteamBot::Client::Module>)> callback)
 {
     for (const InitBase* init=modulesInit; init!=nullptr; init=init->next)
     {

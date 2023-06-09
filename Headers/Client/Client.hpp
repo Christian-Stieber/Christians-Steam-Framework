@@ -79,7 +79,7 @@ namespace SteamBot
 
 	private:
 		std::shared_ptr<boost::asio::io_context> ioContext;
-        std::unordered_map<std::type_index, std::unique_ptr<Module>> modules;
+        std::unordered_map<std::type_index, std::shared_ptr<Module>> modules;
         FiberCounter fiberCounter{*this};
 
     private:

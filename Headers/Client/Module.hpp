@@ -47,7 +47,7 @@ namespace SteamBot
 {
     template<typename T> concept ClientModule=std::is_base_of_v<Client::Module, T>;
 
-    class Client::Module
+    class Client::Module : public std::enable_shared_from_this<Client::Module>
     {
     public:
         class InitBase;
@@ -58,7 +58,7 @@ namespace SteamBot
 
     public:
         virtual ~Module();
-        static void createAll(std::function<void(std::unique_ptr<Client::Module>)>);
+        static void createAll(std::function<void(std::shared_ptr<Client::Module>)>);
 
     public:
         static SteamBot::Client& getClient() { return SteamBot::Client::getClient(); }
@@ -79,7 +79,7 @@ protected:
     virtual ~InitBase();
 
 public:
-    virtual std::unique_ptr<Client::Module> create() const =0;
+    virtual std::shared_ptr<Client::Module> create() const =0;
 };
 
 /************************************************************************/
@@ -90,8 +90,8 @@ public:
     Init() =default;
     virtual ~Init() =default;
 
-    virtual std::unique_ptr<Client::Module> create() const override
+    virtual std::shared_ptr<Client::Module> create() const override
     {
-        return std::make_unique<T>();
+        return std::make_shared<T>();
     }
 };

@@ -100,7 +100,7 @@ void SteamBot::Client::quit(bool restart)
 
 void SteamBot::Client::initModules()
 {
-    Module::createAll([this](std::unique_ptr<Client::Module> module){
+    Module::createAll([this](std::shared_ptr<Client::Module> module){
         bool success=modules.try_emplace(std::type_index(typeid(*module)), std::move(module)).second;
         assert(success);	// only one module per type
     });
