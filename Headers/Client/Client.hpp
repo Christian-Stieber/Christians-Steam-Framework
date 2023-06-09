@@ -46,17 +46,6 @@ namespace SteamBot
         class Module;
 
     public:
-        /*
-         * Put this into the whiteboard before quitting the client, to
-         * restart the client.
-         *
-         * Note: I tried to restart it on the same thread, but the
-         * fiber/asio stuff seems to be a bit flaky. So, at least for
-         * now, you're getting a new thread.
-         */
-        class RestartClient {};
-
-    public:
         Cancel cancel;
         Whiteboard whiteboard;
         Messageboard messageboard;
@@ -73,13 +62,16 @@ namespace SteamBot
         boost::asio::io_context& getIoContext() { return *ioContext; }
 
 		void launchFiber(std::string, std::function<void()>);
-        void quit();
+        void quit(bool restart=false);
 
 	private:
 		std::shared_ptr<boost::asio::io_context> ioContext;
         std::unordered_map<std::type_index, std::unique_ptr<Module>> modules;
 		unsigned int fiberCount=0;
-        bool quitting=false;
+
+    private:
+        enum class QuitMode : uint8_t { None, Restart, Quit };
+        QuitMode quitMode=QuitMode::None;
 
 	private:
 		void main();

@@ -22,6 +22,7 @@
 #include "Universe.hpp"
 #include "Config.hpp"
 #include "Exceptions.hpp"
+#include "EnumString.hpp"
 
 #include <thread>
 #include <condition_variable>
@@ -92,12 +93,12 @@ SteamBot::Client::~Client()
 
 /************************************************************************/
 
-void SteamBot::Client::quit()
+void SteamBot::Client::quit(bool restart)
 {
-    if (!quitting)
+    if (quitMode==QuitMode::None)
     {
-        BOOST_LOG_TRIVIAL(debug) << "initiating client quit";
-        quitting=true;
+        quitMode=restart ? QuitMode::Restart : QuitMode::Quit;
+        BOOST_LOG_TRIVIAL(debug) << "initiating client quit with mode \"" << SteamBot::enumToStringAlways(quitMode) << "\"";
         cancel.cancel();
     }
 }
@@ -137,10 +138,10 @@ void SteamBot::Client::main()
         }
         catch(...)
         {
-            if (!quitting)
+            if (quitMode==QuitMode::None)
             {
                 BOOST_LOG_TRIVIAL(error) << "unhandled client exception: " << boost::current_exception_diagnostic_information();
-                quit();
+                quit(false);
                 boost::this_fiber::yield();		// ToDo: why do we need this?
             }
         }
@@ -171,10 +172,19 @@ void SteamBot::Client::launch()
         {
             BOOST_LOG_TRIVIAL(error) << "unhandled client exception: " << boost::current_exception_diagnostic_information();
         }
-        if (client->whiteboard.has<RestartClient>())
+
+        BOOST_LOG_TRIVIAL(info) << "client quit with mode \"" << SteamBot::enumToStringAlways(client->quitMode) << "\"";
+        switch(client->quitMode)
         {
+        case QuitMode::None:
+        case QuitMode::Quit:
+            break;
+
+        case QuitMode::Restart:
             client.reset();
+            sleep(15);
             launch();
+            break;
         }
         ThreadCount::decrease();
     }).detach();

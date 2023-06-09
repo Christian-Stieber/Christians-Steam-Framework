@@ -277,7 +277,7 @@ void ConnectionModule::run()
             if (exception.code()==boost::asio::error::eof)
             {
                 BOOST_LOG_TRIVIAL(info) << "got EOF from socket";
-                SteamBot::Client::getClient().whiteboard.set(SteamBot::Client::RestartClient());
+                SteamBot::Client::getClient().quit(true);
             }
             throw;
         }
