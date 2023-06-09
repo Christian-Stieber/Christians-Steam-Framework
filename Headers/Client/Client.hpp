@@ -23,6 +23,7 @@
 #include "Client/Whiteboard.hpp"
 #include "Client/Messageboard.hpp"
 #include "Client/DataFile.hpp"
+#include "Client/Counter.hpp"
 
 #include <boost/asio/io_context.hpp>
 
@@ -64,10 +65,22 @@ namespace SteamBot
 		void launchFiber(std::string, std::function<void()>);
         void quit(bool restart=false);
 
+    private:
+        class FiberCounter : public Counter
+        {
+        private:
+            Client& client;
+
+        public:
+            FiberCounter(Client&);
+            virtual ~FiberCounter();
+            virtual void onEmpty() override;
+        };
+
 	private:
 		std::shared_ptr<boost::asio::io_context> ioContext;
         std::unordered_map<std::type_index, std::unique_ptr<Module>> modules;
-		unsigned int fiberCount=0;
+        FiberCounter fiberCounter{*this};
 
     private:
         enum class QuitMode : uint8_t { None, Restart, Quit };

@@ -41,37 +41,30 @@ thread_local boost::fibers::asio::yield_t boost::fibers::asio::yield{};
 
 /************************************************************************/
 
-class ThreadCount
+static SteamBot::Counter threadCounter;
+
+/************************************************************************/
+
+SteamBot::Client::FiberCounter::FiberCounter(SteamBot::Client& client_)
+    : client(client_)
 {
-private:
-	static inline std::mutex mutex;
-	static inline std::condition_variable condition;
-	static inline int count=0;
+}
 
-public:
-	static void increase()
-	{
-		std::lock_guard<std::mutex> lock(mutex);
-		count+=1;
-	}
+/************************************************************************/
 
-	static void decrease()
-	{
-		{
-			std::lock_guard<std::mutex> lock(mutex);
-			assert(count>0);
-			count-=1;
-		}
-		condition.notify_one();
-	}
+SteamBot::Client::FiberCounter::~FiberCounter() =default;
 
-public:
-	static void wait()
-	{
-		std::unique_lock<std::mutex> lock(mutex);
-		condition.wait(lock, [](){ return count==0; });
-	}
-};
+/************************************************************************/
+
+void SteamBot::Client::FiberCounter::onEmpty()
+{
+#if 0
+    // why does this not end the io_context->run()?
+    boost::asio::use_service<boost::fibers::asio::round_robin::service>(*ioContext).shutdown_service();
+#else
+    client.ioContext->stop();
+#endif
+}
 
 /************************************************************************/
 
@@ -147,7 +140,7 @@ void SteamBot::Client::main()
         }
     }
 
-    assert(fiberCount==0);
+    assert(fiberCounter.getCount()==0);
     assert(cancel.empty());
 }
 
@@ -160,8 +153,7 @@ void SteamBot::Client::launch()
 {
     BOOST_LOG_TRIVIAL(debug) << "Client::launch()";
 
-    ThreadCount::increase();
-	std::thread([](){
+	std::thread([counter=threadCounter()](){
         std::unique_ptr<Client> client;
         client.reset(new Client);
         try
@@ -186,7 +178,6 @@ void SteamBot::Client::launch()
             launch();
             break;
         }
-        ThreadCount::decrease();
     }).detach();
 }
 
@@ -197,7 +188,8 @@ void SteamBot::Client::launch()
 
 void SteamBot::Client::waitAll()
 {
-    ThreadCount::wait();
+    threadCounter.wait();
+    BOOST_LOG_TRIVIAL(info) << "all clients have quit";
 }
 
 /************************************************************************/
@@ -212,8 +204,7 @@ SteamBot::Client& SteamBot::Client::getClient()
 
 void SteamBot::Client::launchFiber(std::string name, std::function<void()> body)
 {
-	fiberCount++;
-	boost::fibers::fiber([this, name=std::move(name), body=std::move(body)](){
+	boost::fibers::fiber([this, name=std::move(name), body=std::move(body), counter=fiberCounter()](){
         std::string fiberName;
         {
             std::stringstream stream;
@@ -237,16 +228,7 @@ void SteamBot::Client::launchFiber(std::string name, std::function<void()> body)
                 std::rethrow_exception(exception);
             });
         }
-		fiberCount--;
-        BOOST_LOG_TRIVIAL(debug) << "fiber " << fiberName << " ended; fiberCount is now " << fiberCount;
-        if (fiberCount==0)
-        {
-#if 0
-            // why does this not end the io_context->run()?
-            boost::asio::use_service<boost::fibers::asio::round_robin::service>(*ioContext).shutdown_service();
-#else
-            ioContext->stop();
-#endif
-        }
+
+        BOOST_LOG_TRIVIAL(debug) << "fiber " << fiberName << " ending; fiber count is currently at " << fiberCounter.getCount();
 	}).detach();
 }
