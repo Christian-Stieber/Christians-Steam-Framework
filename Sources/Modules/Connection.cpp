@@ -172,15 +172,11 @@ static Endpoint getEndpoint(const std::shared_ptr<const GetCMList>& cmList)
 ConnectionModule::ConnectionModule()
     : connection(std::make_unique<SteamBot::Connection::TCP>())
 {
-    BOOST_LOG_TRIVIAL(debug) << "ConnectionModule::ConnectionModule " << this;
 }
 
 /************************************************************************/
 
-ConnectionModule::~ConnectionModule()
-{
-    BOOST_LOG_TRIVIAL(debug) << "ConnectionModule::~ConnectionModule " << this;
-}
+ConnectionModule::~ConnectionModule() =default;
 
 /************************************************************************/
 
@@ -204,7 +200,8 @@ void ConnectionModule::handlePacket(std::span<const std::byte> bytes) const
 
 void ConnectionModule::readPackets()
 {
-    getClient().launchFiber("ConnectionModule::readPackets", [this](){
+    getClient().launchFiber("ConnectionModule::readPackets", [this, module=shared_from_this()](){
+        auto cancellation=getClient().cancel.registerObject(connection);
         try
         {
             while (true)
@@ -229,6 +226,7 @@ void ConnectionModule::run()
         ConnectionStatusSetter connectionStatus;
 
         auto waiter=SteamBot::Waiter::create();
+        auto cancellation=getClient().cancel.registerObject(*waiter);
 
         {
             typedef SteamBot::Modules::SteamGuard::Whiteboard::SteamGuardCode SteamGuardCode;
