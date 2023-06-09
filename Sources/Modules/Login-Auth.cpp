@@ -206,7 +206,7 @@ namespace
         static BeginAuthSessionViaCredentialsInfo::RequestType makeBeginAuthRequest(const LoginModule::PublicKey&);
         static void sendHello();
         PublicKey getPublicKey();
-        void beginAuthSession(const LoginModule::PublicKey&);
+        void startAuthSession();
     };
 
     LoginModule::Init<LoginModule> init;
@@ -436,9 +436,9 @@ void LoginModule::requestCode()
 
 /************************************************************************/
 
-void LoginModule::beginAuthSession(const LoginModule::PublicKey& publicKey)
+void LoginModule::startAuthSession()
 {
-    auto result=execute(makeBeginAuthRequest(publicKey));
+    auto result=execute(makeBeginAuthRequest(getPublicKey()));
     getConfirmationType(*result);
 
     requestCode();
@@ -488,6 +488,10 @@ void LoginModule::queryPollAuthSessionStatus()
     if (response->has_refresh_token())
     {
         refreshToken=response->refresh_token();
+        getClient().dataFile.update([this](boost::json::value& json) {
+            auto& item=SteamBot::JSON::createItem(json, Keys::Login, Keys::Data);
+            item.emplace_string()=refreshToken;
+        });
     }
     if (response->has_access_token())
     {
@@ -550,6 +554,7 @@ void LoginModule::doLogon()
 	message->content.set_client_package_version(1771);
 	message->content.set_client_language("english");
 	message->content.set_client_os_type(toInteger(Steam::getOSType()));
+    message->content.set_should_remember_password(true);
     {
         const auto& machineId=Steam::MachineInfo::MachineID::getSerialized();
         message->content.set_machine_id(machineId.data(), machineId.size());
@@ -622,7 +627,16 @@ void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMes
             }
             break;
 
+        case SteamBot::ResultCode::InvalidPassword:
+            // We don't even send passwords, so it must be the refreshToken
+            getClient().dataFile.update([](boost::json::value& json) {
+                SteamBot::JSON::eraseItem(json, Keys::Login, Keys::Data);
+            });
+            getClient().quit(true);
+            break;
+
         case SteamBot::ResultCode::TryAnotherCM:
+            // ToDo: do something great
             break;
         }
     }
@@ -635,6 +649,13 @@ void LoginModule::run()
     setStatus(LoginStatus::LoggedOut);
     getClient().launchFiber("LoginModule::run", [this](){
         auto cancellation=getClient().cancel.registerObject(*waiter);
+
+        getClient().dataFile.examine([this](const boost::json::value& value) mutable {
+            if (auto string=SteamBot::JSON::getItem(value, Keys::Login, Keys::Data))
+            {
+                refreshToken=string->as_string();
+            }
+        });
 
         std::shared_ptr<SteamBot::Whiteboard::Waiter<ConnectionStatus>> connectionStatus;
         connectionStatus=waiter->createWaiter<decltype(connectionStatus)::element_type>(getClient().whiteboard);
@@ -662,8 +683,14 @@ void LoginModule::run()
                 {
                     setStatus(LoginStatus::LoggingIn);
                     sendHello();
-                    const auto publicKey=getPublicKey();
-                    beginAuthSession(publicKey);
+                    if (refreshToken.empty())
+                    {
+                        startAuthSession();
+                    }
+                    else
+                    {
+                        doLogon();
+                    }
                 }
             }
         }
