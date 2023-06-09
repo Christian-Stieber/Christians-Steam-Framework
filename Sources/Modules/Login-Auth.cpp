@@ -279,6 +279,7 @@ std::shared_ptr<BeginAuthSessionViaCredentialsInfo::ResultType> LoginModule::exe
             throw;
         }
         BOOST_LOG_TRIVIAL(info) << "got an \"invalid password\" response";
+        getClient().quit(false);
         return content;
     }
     content=response->getContent<BeginAuthSessionViaCredentialsInfo::ResultType>();
@@ -439,9 +440,11 @@ void LoginModule::requestCode()
 void LoginModule::startAuthSession()
 {
     auto result=execute(makeBeginAuthRequest(getPublicKey()));
-    getConfirmationType(*result);
-
-    requestCode();
+    if (result)
+    {
+        getConfirmationType(*result);
+        requestCode();
+    }
 }
 
 /************************************************************************/
@@ -628,6 +631,7 @@ void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMes
             break;
 
         case SteamBot::ResultCode::InvalidPassword:
+        case SteamBot::ResultCode::InvalidSignature:
             // We don't even send passwords, so it must be the refreshToken
             getClient().dataFile.update([](boost::json::value& json) {
                 SteamBot::JSON::eraseItem(json, Keys::Login, Keys::Data);
