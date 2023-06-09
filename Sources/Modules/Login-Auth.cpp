@@ -30,6 +30,7 @@
 #include "Steam/OSType.hpp"
 #include "UI/UI.hpp"
 #include "Client/Sleep.hpp"
+#include "Helpers/JSON.hpp"
 
 #include "steamdatabase/protobufs/steam/steammessages_auth.steamclient.pb.h"
 #include "Steam/ProtoBuf/steammessages_clientserver_login.hpp"
@@ -51,7 +52,12 @@ static constexpr auto platformType=EAuthTokenPlatformType::k_EAuthTokenPlatformT
  * For the DataFie
  */
 
-static const std::string guardDataKey="Guard.Data";
+struct Keys
+{
+    inline static const std::string_view SteamGuard="SteamGuard";
+    inline static const std::string_view Login="Login";
+    inline static const std::string_view Data="Data";
+};
 
 /************************************************************************/
 
@@ -232,13 +238,12 @@ BeginAuthSessionViaCredentialsInfo::RequestType LoginModule::makeBeginAuthReques
     request.set_persistence(ESessionPersistence::k_ESessionPersistence_Persistent);
     request.set_website_id(websiteId);
     {
-        const auto string=getClient().dataFile.examine([](const boost::property_tree::ptree& tree) {
-            return tree.get_optional<std::string>(guardDataKey);
+        getClient().dataFile.examine([&request](const boost::json::value& value) mutable {
+            if (auto string=SteamBot::JSON::getItem(value, Keys::SteamGuard, Keys::Data))
+            {
+                request.set_guard_data(std::string(string->as_string()));
+            }
         });
-        if (string)
-        {
-            request.set_guard_data(*string);
-        }
 	}
     request.set_encrypted_password(publicKey.encrypt(SteamBot::Config::SteamAccount::get().password));
     request.set_encryption_timestamp(publicKey.timestamp);
@@ -474,9 +479,9 @@ void LoginModule::queryPollAuthSessionStatus()
 
     if (response->has_new_guard_data())
     {
-        auto data=response->new_guard_data();
-        getClient().dataFile.update([&data](boost::property_tree::ptree& tree) mutable {
-            tree.put(guardDataKey, std::move(data));
+        getClient().dataFile.update([&response](boost::json::value& json) {
+            auto& item=SteamBot::JSON::createItem(json, Keys::SteamGuard, Keys::Data);
+            item.emplace_string()=response->new_guard_data();
         });
     }
 

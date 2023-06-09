@@ -20,7 +20,7 @@
 #pragma once
 
 #include <filesystem>
-#include <boost/property_tree/ptree.hpp>
+#include <boost/json.hpp>
 #include <boost/fiber/mutex.hpp>
 
 /************************************************************************/
@@ -28,23 +28,14 @@
  * This maintains the data file for one account.
  *
  * You can use the examine() call to run a function that gets a
- * const reference to the ptree; your result will be returned
+ * const reference to the json; your result will be returned
  * from examine().
  *
  * Updates work in a similar way. If your update function returns
- * normally, the tree will be saved back to disk. If it throws,
- * the tree will be reloaded from disk.
+ * normally, the json will be saved back to disk. If it throws, the
+ * tree will be reloaded from disk.
  *
  * For now(?), loading/saving is not async.
- */
-
-/************************************************************************/
-/*
- * ToDo: when I wrote this for the first time, I was using an older
- * version of boost that didn't have the JSON library yet.
- *
- * I should probably get rid of the rubbish-ish property tree, and
- * just do json instead.
  */
 
 /************************************************************************/
@@ -54,14 +45,11 @@ namespace SteamBot
 	class DataFile
 	{
 	private:
-		static const boost::property_tree::ptree::path_type rootName;
-
-	private:
 		const std::filesystem::path filename;
 		const std::filesystem::path tempFilename;
 
 		mutable boost::fibers::mutex mutex;
-		boost::property_tree::ptree tree;
+        boost::json::value json;
 		bool invalid=false;
 
 	public:
@@ -77,10 +65,10 @@ namespace SteamBot
 		{
             std::lock_guard<decltype(mutex)> lock(mutex);
 			assert(!invalid);
-			return function(tree.get_child(rootName));
+			return function(json);
 		}
 
 	public:
-		void update(std::function<void(decltype(tree)&)>);
+		void update(std::function<void(boost::json::value&)>);
 	};
 }
