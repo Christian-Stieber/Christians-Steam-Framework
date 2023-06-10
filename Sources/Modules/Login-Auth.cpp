@@ -192,7 +192,7 @@ namespace
 
     private:
         std::shared_ptr<SteamBot::Waiter> const waiter=SteamBot::Waiter::create();
-        std::shared_ptr<SteamBot::UI::GetSteamguardCode> steamguardCodeWaiter;
+        SteamBot::UI::Base::ResultParam<std::string> steamguardCodeWaiter;
 
     private:
         void doLogon();
@@ -402,10 +402,13 @@ void LoginModule::sendGuardCode(std::string code)
 
 void LoginModule::handleGuardCodeEntry()
 {
-    if (steamguardCodeWaiter && steamguardCodeWaiter->isWoken())
+    if (steamguardCodeWaiter)
     {
-        sendGuardCode(steamguardCodeWaiter->fetch());
-        steamguardCodeWaiter.reset();
+        if (auto code=steamguardCodeWaiter->getResult())
+        {
+            sendGuardCode(std::move(*code));
+            steamguardCodeWaiter.reset();
+        }
     }
 }
 
@@ -427,7 +430,7 @@ void LoginModule::requestCode()
     case EAuthSessionGuardType::k_EAuthSessionGuardType_DeviceCode:
     case EAuthSessionGuardType::k_EAuthSessionGuardType_EmailCode:
         assert(!steamguardCodeWaiter);
-        steamguardCodeWaiter=SteamBot::UI::GetSteamguardCode::create(waiter);
+        steamguardCodeWaiter=SteamBot::UI::Thread::requestPassword(waiter, SteamBot::UI::Base::PasswordType::SteamGuard_EMail);
         break;
 
     default:

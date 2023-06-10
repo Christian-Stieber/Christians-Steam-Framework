@@ -17,28 +17,17 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "WorkingDir.hpp"
-#include "Client/Client.hpp"
-#include "UI/UI.hpp"
+#pragma once
 
-#include <locale>
-
-/************************************************************************/
-
-std::unique_ptr<SteamBot::UI::Base> SteamBot::UI::create()
-{
-    return createConsole();
-}
+#include <chrono>
+#include <string>
 
 /************************************************************************/
 
-int main(void)
+namespace SteamBot
 {
-	std::locale::global(std::locale::classic());
-	SteamBot::setWorkingDir();
-
-    SteamBot::Client::launch();
-    SteamBot::Client::waitAll();
-
-	return EXIT_SUCCESS;
+    namespace Time
+    {
+        std::string toString(std::chrono::system_clock::time_point, bool utc=false);
+    }
 }

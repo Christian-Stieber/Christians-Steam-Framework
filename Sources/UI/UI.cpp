@@ -18,128 +18,198 @@
  */
 
 #include "UI/UI.hpp"
-#include "AsioThread.hpp"
-#include "Client/Module.hpp"
 #include "Config.hpp"
 
-#include <iostream>
+/************************************************************************/
+
+typedef SteamBot::UI::Thread Thread;
+typedef SteamBot::UI::Base Base;
+typedef SteamBot::UI::WaiterBase WaiterBase;
+template <typename T> using Waiter=SteamBot::UI::Waiter<T>;
 
 /************************************************************************/
 
-namespace
+static thread_local bool isUiThread=false;
+
+/************************************************************************/
+
+Base::Base() =default;
+Base::~Base() =default;
+
+/************************************************************************/
+
+WaiterBase::WaiterBase(std::shared_ptr<SteamBot::Waiter>&& waiter)
+    : ItemBase(std::move(waiter))
 {
-    class UIThread : public SteamBot::AsioThread
+}
+
+WaiterBase::~WaiterBase() =default;
+
+/************************************************************************/
+
+bool WaiterBase::isWoken() const
+{
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    return resultAvailable;
+}
+
+/************************************************************************/
+
+void WaiterBase::completed()
+{
     {
-    public:
-        UIThread()
-        {
-            launch();
-        }
-
-        virtual ~UIThread() =default;
-
-    public:
-        static UIThread& get()
-        {
-            static UIThread* const thread=new UIThread();
-            return *thread;
-        }
-    };
-}
-
-/************************************************************************/
-
-SteamBot::UI::UIWaiterBase::UIWaiterBase(std::shared_ptr<SteamBot::Waiter> waiter_)
-    : ItemBase(std::move(waiter_))
-{
-}
-
-/************************************************************************/
-
-SteamBot::UI::UIWaiterBase::~UIWaiterBase() =default;
-
-/************************************************************************/
-
-void SteamBot::UI::UIWaiterBase::install(std::shared_ptr<SteamBot::Waiter::ItemBase> item)
-{
-    assert(item.get()==this);
-    self=std::dynamic_pointer_cast<UIWaiterBase>(item);
-    this->ItemBase::install(item);
-}
-
-/************************************************************************/
-
-bool SteamBot::UI::GetSteamguardCode::isWoken() const
-{
-    if (params)
-    {
-        std::lock_guard<decltype(params->mutex)> lock(params->mutex);
-        return params->code.length()==5;
+        std::lock_guard<decltype(mutex)> lock(mutex);
+        assert(!resultAvailable);
+        resultAvailable=true;
     }
-    return false;
-}
-
-/************************************************************************/
-
-std::string SteamBot::UI::GetSteamguardCode::fetch()
-{
-    std::string result;
-    if (params)
-    {
-        std::lock_guard<decltype(params->mutex)> lock(params->mutex);
-        result.swap(params->code);
-    }
-    return result;
+    wakeup();
 }
 
 /************************************************************************/
 /*
- * ToDo: we really need to make this more async, so we can abort the
- * operation...
+ * This checks whether you can access the result.
+ *
+ * If we're the UI-thread, we can only access it until we completed().
+ * If we're not the UI-thread, we can access it after completed() has
+ * been called.
  */
 
-void SteamBot::UI::GetSteamguardCode::execute()
+bool WaiterBase::isResultValid() const
 {
-    UIThread::get().ioContext.post([params=params, self=self.lock()](){
+    return isUiThread!=resultAvailable;
+}
+
+/************************************************************************/
+
+decltype(Thread::queue)::value_type Thread::dequeue()
+{
+    std::cout << "dequeue" << std::endl;
+    while (true)
+    {
+        std::unique_lock<decltype(mutex)> lock(mutex);
+        condition.wait(lock, [this]() { return !queue.empty(); });
+        if (!queue.empty())
         {
-            std::string entered;
-            while (!params->abort && entered.length()!=5)
-            {
-                std::cout << "Enter SteamGuard code for account " << params->user << ": ";
-                std::cin >> entered;
-            }
-            std::lock_guard<decltype(params->mutex)> lock(params->mutex);
-            params->code=std::move(entered);
+            auto item=std::move(queue.front());
+            queue.pop();
+            return item;
         }
-        self->wakeup();
+    }
+}
+
+/************************************************************************/
+
+Thread::Thread()
+{
+    std::thread([this]() {
+        std::cout << "Thread running" << std::endl;
+        isUiThread=true;
+        ui=SteamBot::UI::create();
+        while (true)
+        {
+            if (auto item=dequeue())
+            {
+                item();
+            }
+        }
+    }).detach();
+}
+
+Thread::~Thread() =default;
+
+/************************************************************************/
+
+Thread& Thread::get()
+{
+    static Thread& instance=*new Thread();
+    return instance;
+}
+
+/************************************************************************/
+
+void Thread::enqueue(std::function<void()>&& operation)
+{
+    std::cout << "enqueue" << std::endl;
+    {
+        std::lock_guard<decltype(mutex)> lock(mutex);
+        queue.push(std::move(operation));
+    }
+    condition.notify_one();
+}
+
+/************************************************************************/
+
+Base::ClientInfo::ClientInfo()
+    : accountName(SteamBot::Config::SteamAccount::get().user),
+      when(Clock::now())
+{
+}
+
+Base::ClientInfo::~ClientInfo() =default;
+
+/************************************************************************/
+/*
+ * Adds a '\n' at the end, if not already there.
+ */
+
+void Thread::outputText(std::string text)
+{
+    if (!text.ends_with("\n"))
+    {
+        text.push_back('\n');
+    }
+
+    get().enqueue([text=std::move(text), clientInfo=Base::ClientInfo()]() mutable {
+        get().ui->outputText(clientInfo, std::move(text));
     });
 }
 
 /************************************************************************/
 
-SteamBot::UI::GetSteamguardCode::GetSteamguardCode(std::shared_ptr<SteamBot::Waiter> waiter_)
-    : UIWaiterBase(std::move(waiter_))
+static bool SteamGuardValidator(const std::string& code)
 {
-    assert(!params);
-    params=std::make_shared<Params>();
-    params->user=SteamBot::Config::SteamAccount::get().user;
-}
-
-/************************************************************************/
-
-SteamBot::UI::GetSteamguardCode::~GetSteamguardCode()
-{
-    if (params)
+    if (code.size()!=5)
     {
-        params->abort=true;
+        return false;
     }
+    for (char c: code)
+    {
+        if (!((c>='0' && c<='9') || (c>='a' && c<='z') || (c>='A' && c<='Z')))
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 /************************************************************************/
 
-std::shared_ptr<SteamBot::UI::GetSteamguardCode> SteamBot::UI::GetSteamguardCode::create(std::shared_ptr<SteamBot::Waiter> waiter)
+static bool PasswordValidator(const std::string& password)
 {
-    auto item=waiter->createWaiter<GetSteamguardCode>();
-    item->execute();
+    return !password.empty();
+}
+
+/************************************************************************/
+
+Base::ResultParam<std::string> Thread::requestPassword(std::shared_ptr<SteamBot::Waiter> waiter, Base::PasswordType passwordType)
+{
+    bool(*validator)(const std::string&)=nullptr;
+    switch(passwordType)
+    {
+    case Base::PasswordType::AccountPassword:
+        validator=&PasswordValidator;
+        break;
+
+    case Base::PasswordType::SteamGuard_EMail:
+    case Base::PasswordType::SteamGuard_App:
+        validator=&SteamGuardValidator;
+        break;
+    }
+    assert(validator!=nullptr);
+
+    auto item=waiter->createWaiter<Waiter<std::string>>();
+    get().enqueue([passwordType, item, validator, clientInfo=Base::ClientInfo()]() mutable {
+        get().ui->requestPassword(clientInfo, std::move(item), passwordType, validator);
+    });
     return item;
 }

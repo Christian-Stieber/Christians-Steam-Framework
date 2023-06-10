@@ -21,70 +21,168 @@
 
 #include "Client/Waiter.hpp"
 
-/************************************************************************/
-/*
- * For now, I'll ignore the idea of having multiple UIs, or UIs that
- * can be selected at runtime. This will be done later.
- *
- * For now, I'll only implement the console/CLI UI, to get some
- * experience what I actually need.
- */
+#include <mutex>
+#include <condition_variable>
+#include <queue>
+#include <functional>
 
 /************************************************************************/
+/*
+ * YOU must provide this function to create the UI that you want.
+ *
+ * This will be called on the UI thread.
+ *
+ * You'll probably just call one of the factories.
+ */
 
 namespace SteamBot
 {
     namespace UI
     {
-        class UIWaiterBase : public SteamBot::Waiter::ItemBase
+        class Base;
+        std::unique_ptr<Base> create();
+
+        // Factories
+        std::unique_ptr<Base> createConsole();
+    }
+}
+
+/************************************************************************/
+/*
+ * UI input operations return a waiter-item.
+ *
+ * This waiter item is a "one-time" waiter: it will trigger when the
+ * result is available, abd be useless afterwards.
+ */
+
+namespace SteamBot
+{
+    namespace UI
+    {
+        class WaiterBase : public SteamBot::Waiter::ItemBase
         {
         protected:
-            std::weak_ptr<UIWaiterBase> self;
+            mutable std::mutex mutex;
+            bool resultAvailable=false;
 
         public:
-            UIWaiterBase(std::shared_ptr<SteamBot::Waiter>);
-            virtual ~UIWaiterBase();
+            WaiterBase(std::shared_ptr<SteamBot::Waiter>&&);
+            virtual ~WaiterBase();
 
-            virtual void install(std::shared_ptr<ItemBase>) override;
+            void completed();		// call this when done
+
+            virtual bool isWoken() const override;
+
+        protected:
+            bool isResultValid() const;
+        };
+
+        template <typename T> class Waiter : public WaiterBase
+        {
+        private:
+            T result;
+
+        public:
+            Waiter(std::shared_ptr<SteamBot::Waiter> waiter)
+                : WaiterBase(std::move(waiter))
+            {
+            }
+
+            virtual ~Waiter() =default;
+
+        public:
+            T* getResult()
+            {
+                return isResultValid() ? &result : nullptr;
+            }
         };
     }
 }
 
 /************************************************************************/
+/*
+ * This is what all UIs derive from.
+ *
+ * Note: while no implementations other than the console-UI exist,
+ * I do hope that this API is general enough to cover other UIs.
+ *
+ * Note: since the UI runs on a separate thread, you actual interface
+ * is in Thread.
+ */
 
 namespace SteamBot
 {
     namespace UI
     {
-        class GetSteamguardCode : public UIWaiterBase
+        class Base
         {
-        private:
-            class Params
+        public:
+            typedef std::chrono::system_clock Clock;
+            template <typename T> using ResultParam=std::shared_ptr<Waiter<T>>;
+
+        public:
+            class ClientInfo
             {
             public:
-                std::mutex mutex;
-                std::string user;
-                std::string code;
-                volatile bool abort=false;
+                std::string accountName;
+                Clock::time_point when;
+
+            public:
+                ClientInfo();
+                ~ClientInfo();
             };
 
-            std::shared_ptr<Params> params;
+        public:
+            enum class PasswordType {
+                AccountPassword,
+                SteamGuard_EMail,
+                SteamGuard_App
+            };
+
+        protected:
+            Base();
+
+        public:
+            virtual ~Base();
+
+            virtual void outputText(ClientInfo&, std::string) =0;
+            virtual void requestPassword(ClientInfo&, ResultParam<std::string>, PasswordType, bool(*)(const std::string&)) =0;
+        };
+    }
+}
+
+/************************************************************************/
+/*
+ * This operates the thread for the UI.
+ *
+ * This is also where YOU invoke UI functions.
+ */
+
+namespace SteamBot
+{
+    namespace UI
+    {
+        class Thread
+        {
+        private:
+            std::unique_ptr<Base> ui;
+
+            std::mutex mutex;
+            std::condition_variable condition;
+            std::queue<std::function<void()>> queue;
 
         private:
-            void execute();
+            Thread();
+            static Thread& get();
+            decltype(queue)::value_type dequeue();
+            void enqueue(decltype(queue)::value_type&&);
 
         public:
-            GetSteamguardCode(std::shared_ptr<SteamBot::Waiter>);
-            virtual ~GetSteamguardCode();
+            ~Thread();
 
         public:
-            virtual bool isWoken() const;
-
-        public:
-            std::string fetch();
-
-        public:
-            static std::shared_ptr<GetSteamguardCode> create(std::shared_ptr<SteamBot::Waiter>);
+            static void outputText(std::string);
+            static Base::ResultParam<std::string> requestPassword(std::shared_ptr<SteamBot::Waiter>, Base::PasswordType);
         };
     }
 }

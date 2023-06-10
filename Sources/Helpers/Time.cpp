@@ -17,28 +17,26 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "WorkingDir.hpp"
-#include "Client/Client.hpp"
-#include "UI/UI.hpp"
-
-#include <locale>
+#include "Helpers/Time.hpp"
 
 /************************************************************************/
 
-std::unique_ptr<SteamBot::UI::Base> SteamBot::UI::create()
+std::string SteamBot::Time::toString(std::chrono::system_clock::time_point when, bool utc)
 {
-    return createConsole();
-}
+    const time_t timeBuffer=decltype(when)::clock::to_time_t(when);
 
-/************************************************************************/
+    struct tm tmBuffer;
+    if (utc)
+    {
+        gmtime_r(&timeBuffer, &tmBuffer);
+    }
+    else
+    {
+        localtime_r(&timeBuffer, &tmBuffer);
+    }
 
-int main(void)
-{
-	std::locale::global(std::locale::classic());
-	SteamBot::setWorkingDir();
+    char buffer[200];
+    auto size=strftime(buffer, sizeof(buffer), "%F %T %Z", &tmBuffer);
 
-    SteamBot::Client::launch();
-    SteamBot::Client::waitAll();
-
-	return EXIT_SUCCESS;
+    return std::string(buffer, size);
 }

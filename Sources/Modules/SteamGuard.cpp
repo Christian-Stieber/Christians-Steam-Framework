@@ -76,10 +76,10 @@ void SteamGuardModule::run()
             auto waiter=SteamBot::Waiter::create();
             auto cancellation=getClient().cancel.registerObject(*waiter);
 
-            auto steamGuardCode=SteamBot::UI::GetSteamguardCode::create(waiter);
+            auto steamGuardCode=SteamBot::UI::Thread::requestPassword(waiter, SteamBot::UI::Base::PasswordType::SteamGuard_EMail);
 
             waiter->wait();
-            code=steamGuardCode->fetch();
+            code=std::move(*(steamGuardCode->getResult()));
         }
         typedef SteamBot::Modules::SteamGuard::Whiteboard::SteamGuardCode SteamGuardCode;
         getClient().whiteboard.set<SteamGuardCode>(std::move(code));
