@@ -83,7 +83,6 @@ bool WaiterBase::isResultValid() const
 
 decltype(Thread::queue)::value_type Thread::dequeue()
 {
-    std::cout << "dequeue" << std::endl;
     while (true)
     {
         std::unique_lock<decltype(mutex)> lock(mutex);
@@ -102,7 +101,7 @@ decltype(Thread::queue)::value_type Thread::dequeue()
 Thread::Thread()
 {
     std::thread([this]() {
-        std::cout << "Thread running" << std::endl;
+        BOOST_LOG_TRIVIAL(debug) << "UI thread running";
         isUiThread=true;
         ui=SteamBot::UI::create();
         while (true)
@@ -129,7 +128,6 @@ Thread& Thread::get()
 
 void Thread::enqueue(std::function<void()>&& operation)
 {
-    std::cout << "enqueue" << std::endl;
     {
         std::lock_guard<decltype(mutex)> lock(mutex);
         queue.push(std::move(operation));
