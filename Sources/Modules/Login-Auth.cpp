@@ -31,6 +31,7 @@
 #include "UI/UI.hpp"
 #include "Client/Sleep.hpp"
 #include "Helpers/JSON.hpp"
+#include "UI/UI.hpp"
 
 #include "steamdatabase/protobufs/steam/steammessages_auth.steamclient.pb.h"
 #include "Steam/ProtoBuf/steammessages_clientserver_login.hpp"
@@ -233,6 +234,7 @@ std::string LoginModule::PublicKey::encrypt(const std::string& plainText) const
 
 BeginAuthSessionViaCredentialsInfo::RequestType LoginModule::makeBeginAuthRequest(const LoginModule::PublicKey& publicKey)
 {
+    SteamBot::UI::Thread::outputText("obtaining login key");
     BeginAuthSessionViaCredentialsInfo::RequestType request;
     request.set_account_name(SteamBot::Config::SteamAccount::get().user);
     request.set_persistence(ESessionPersistence::k_ESessionPersistence_Persistent);
@@ -543,6 +545,8 @@ void LoginModule::sendHello()
 
 void LoginModule::doLogon()
 {
+    SteamBot::UI::Thread::outputText("starting login with key");
+
     auto message=std::make_unique<Steam::CMsgClientLogonMessageType>();
 
     message->header.proto.set_client_sessionid(0);
@@ -607,6 +611,8 @@ void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMes
         {
         case SteamBot::ResultCode::OK:
             {
+                SteamBot::UI::Thread::outputText("login success");
+
                 auto& whiteboard=getClient().whiteboard;
                 if (message->header.proto.has_steamid())
                 {
@@ -636,6 +642,7 @@ void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMes
         case SteamBot::ResultCode::InvalidPassword:
         case SteamBot::ResultCode::InvalidSignature:
             // We don't even send passwords, so it must be the refreshToken
+            SteamBot::UI::Thread::outputText("login failed; removing login key");
             getClient().dataFile.update([](boost::json::value& json) {
                 SteamBot::JSON::eraseItem(json, Keys::Login, Keys::Data);
             });

@@ -23,6 +23,8 @@
 #include "Config.hpp"
 #include "Exceptions.hpp"
 #include "EnumString.hpp"
+#include "Helpers/Destruct.hpp"
+#include "UI/UI.hpp"
 
 #include <thread>
 #include <condition_variable>
@@ -117,6 +119,11 @@ void SteamBot::Client::main()
 {
     ioContext=std::make_shared<boost::asio::io_context>();
     boost::fibers::use_scheduling_algorithm<boost::fibers::asio::round_robin>(ioContext);
+
+    SteamBot::UI::Thread::outputText("running client");
+    ExecuteOnDestruct atEnd([](){
+        SteamBot::UI::Thread::outputText("exiting client");
+    });
 
     initModules();
 

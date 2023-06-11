@@ -40,6 +40,8 @@ int main(void)
 
     SteamBot::Logging::init();
 
+    SteamBot::UI::Thread::outputText("Welcome to Christian's work-in-progress SteamBot");
+
     SteamBot::Client::launch();
     SteamBot::Client::waitAll();
 
