@@ -161,6 +161,15 @@ void ConsoleMonitor::sendCommand(ConsoleMonitor::Command command_)
 }
 
 /************************************************************************/
+
+volatile bool signalReceived=false;
+
+static void dummyHandler(int)
+{
+    signalReceived=true;
+}
+
+/************************************************************************/
 /*
  * Signal stuff: https://lwn.net/Articles/176911/
  */
@@ -173,11 +182,11 @@ void ConsoleMonitor::body()
     sigset_t blockset;
     sigemptyset(&blockset);
     sigaddset(&blockset, signalNumber);
-    sigprocmask(SIG_BLOCK, &blockset, nullptr);
+    pthread_sigmask(SIG_BLOCK, &blockset, nullptr);
 
     struct sigaction sa;
     sa.sa_sigaction=nullptr;
-    sa.sa_handler=SIG_IGN;
+    sa.sa_handler=&dummyHandler;
     sa.sa_flags=0;
 	sigemptyset(&sa.sa_mask);
     sigaction(signalNumber, &sa, nullptr);
@@ -201,16 +210,31 @@ void ConsoleMonitor::body()
             pfd.fd=fd;
             pfd.events=POLLIN;
 
-            if (ppoll(&pfd, 1, nullptr, &emptyset)<0) throwErrno();
+            if (ppoll(&pfd, 1, nullptr, &emptyset)<0 && errno!=EINTR) throwErrno();
 
-            if ((pfd.revents & (POLLERR | POLLHUP | POLLIN)))
+            if (signalReceived)
+            {
+                signalReceived=false;
+            }
+            else if ((pfd.revents & (POLLERR | POLLHUP | POLLIN)))
             {
                 char c;
-                auto size=read(fd, &c, 1);
-                if (size!=1) throwErrno();		// ToDo: do something better?
-                if (c=='\n' || c=='\t')
+                switch(read(fd, &c, 1))
                 {
-                    commandKey=true;
+                case 0:
+                    throwErrno(0);
+                    break;
+
+                case 1:
+                    if (c=='\n' || c=='\t')
+                    {
+                        commandKey=true;
+                    }
+                    break;
+
+                defaulr:
+                    throwErrno();
+                    break;
                 }
             }
         }

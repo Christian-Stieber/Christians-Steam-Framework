@@ -132,7 +132,7 @@ void ConsoleUI::requestPassword(ClientInfo& clientInfo, ResultParam<std::string>
         do
         {
             std::cout << clientInfo << "Please enter " << passwordTypeString << ": " << std::flush;
-            std::cin >> entered;
+            std::getline(std::cin, entered);
         }
         while (!(*validator)(entered));
 
