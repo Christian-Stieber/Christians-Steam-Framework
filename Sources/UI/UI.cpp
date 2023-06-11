@@ -37,6 +37,16 @@ Base::Base() =default;
 Base::~Base() =default;
 
 /************************************************************************/
+/*
+ * This pushes "function" to the front of the queue.
+ */
+
+void Base::executeOnThread(std::function<void()>&& function)
+{
+    Thread::get().enqueue(std::move(function), true);
+}
+
+/************************************************************************/
 
 WaiterBase::WaiterBase(std::shared_ptr<SteamBot::Waiter>&& waiter)
     : ItemBase(std::move(waiter))
@@ -90,7 +100,7 @@ decltype(Thread::queue)::value_type Thread::dequeue()
         if (!queue.empty())
         {
             auto item=std::move(queue.front());
-            queue.pop();
+            queue.pop_front();
             return item;
         }
     }
@@ -126,11 +136,18 @@ Thread& Thread::get()
 
 /************************************************************************/
 
-void Thread::enqueue(std::function<void()>&& operation)
+void Thread::enqueue(std::function<void()>&& operation, bool front)
 {
     {
         std::lock_guard<decltype(mutex)> lock(mutex);
-        queue.push(std::move(operation));
+        if (front)
+        {
+            queue.push_front(std::move(operation));
+        }
+        else
+        {
+            queue.push_back(std::move(operation));
+        }
     }
     condition.notify_one();
 }

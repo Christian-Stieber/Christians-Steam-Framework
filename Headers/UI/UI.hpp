@@ -23,7 +23,7 @@
 
 #include <mutex>
 #include <condition_variable>
-#include <queue>
+#include <list>
 #include <functional>
 
 /************************************************************************/
@@ -141,6 +141,7 @@ namespace SteamBot
 
         protected:
             Base();
+            static void executeOnThread(std::function<void()>&&);
 
         public:
             virtual ~Base();
@@ -164,18 +165,20 @@ namespace SteamBot
     {
         class Thread
         {
+            friend class Base;
+
         private:
             std::unique_ptr<Base> ui;
 
             std::mutex mutex;
             std::condition_variable condition;
-            std::queue<std::function<void()>> queue;
+            std::list<std::function<void()>> queue;
 
         private:
             Thread();
             static Thread& get();
             decltype(queue)::value_type dequeue();
-            void enqueue(decltype(queue)::value_type&&);
+            void enqueue(decltype(queue)::value_type&&, bool front=false);
 
         public:
             ~Thread();

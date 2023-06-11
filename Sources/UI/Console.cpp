@@ -19,6 +19,7 @@
 
 #include "UI/UI.hpp"
 #include "Helpers/Time.hpp"
+#include "./ConsoleMonitor.hpp"
 
 #include <iostream>
 #include <time.h>
@@ -29,9 +30,15 @@ namespace
 {
     class ConsoleUI : public SteamBot::UI::Base
     {
+    private:
+        std::unique_ptr<SteamBot::UI::ConsoleMonitorBase> monitor;
+
     public:
-        ConsoleUI() =default;
+        ConsoleUI();
         virtual ~ConsoleUI() =default;
+
+    private:
+        void performCli();
 
     private:
         virtual void outputText(ClientInfo&, std::string) override;
@@ -55,6 +62,41 @@ namespace
 
 /************************************************************************/
 
+ConsoleUI::ConsoleUI()
+{
+    monitor=SteamBot::UI::ConsoleMonitorBase::create([this]() {
+        BOOST_LOG_TRIVIAL(debug) << "command key pressed";
+        executeOnThread([this]() { performCli(); });
+    });
+    monitor->enable();
+}
+
+/************************************************************************/
+
+void ConsoleUI::performCli()
+{
+    monitor->disable();
+    {
+        std::cout << "Command line mode is now active." << std::endl;
+        std::cout << "End it by entering an empty line." << std::endl;
+        while (true)
+        {
+            std::cout << "command> " << std::flush;
+            std::string command;
+            std::getline(std::cin, command);
+            if (command.empty())
+            {
+                break;
+            }
+            std::cout << "ToDo: actually execute your command: " << command << std::endl;
+        }
+        std::cout << "Command line mode ended." << std::endl;
+    }
+    monitor->enable();
+}
+
+/************************************************************************/
+
 void ConsoleUI::outputText(ClientInfo& clientInfo, std::string text)
 {
     std::cout << clientInfo << text << std::flush;
@@ -64,33 +106,37 @@ void ConsoleUI::outputText(ClientInfo& clientInfo, std::string text)
 
 void ConsoleUI::requestPassword(ClientInfo& clientInfo, ResultParam<std::string> result, SteamBot::UI::Base::PasswordType passwordType, bool(*validator)(const std::string&))
 {
-    const char* passwordTypeString=nullptr;
-    switch(passwordType)
+    monitor->disable();
     {
-    case PasswordType::AccountPassword:
-        passwordTypeString="account password";
-        break;
+        const char* passwordTypeString=nullptr;
+        switch(passwordType)
+        {
+        case PasswordType::AccountPassword:
+            passwordTypeString="account password";
+            break;
 
-    case PasswordType::SteamGuard_EMail:
-        passwordTypeString="steamguard-code (email)";
-        break;
+        case PasswordType::SteamGuard_EMail:
+            passwordTypeString="steamguard-code (email)";
+            break;
 
-    case PasswordType::SteamGuard_App:
-        passwordTypeString="steamguard-code (mobile app)";
-        break;
+        case PasswordType::SteamGuard_App:
+            passwordTypeString="steamguard-code (mobile app)";
+            break;
+        }
+        assert(passwordTypeString!=nullptr);
+
+        std::string entered;
+        do
+        {
+            std::cout << clientInfo << "Please enter " << passwordTypeString << ": " << std::flush;
+            std::cin >> entered;
+        }
+        while (!(*validator)(entered));
+
+        *(result->getResult())=std::move(entered);
+        result->completed();
     }
-    assert(passwordTypeString!=nullptr);
-
-    std::string entered;
-    do
-    {
-        std::cout << clientInfo << "Please enter " << passwordTypeString << ": " << std::flush;
-        std::cin >> entered;
-    }
-    while (!(*validator)(entered));
-
-    *(result->getResult())=std::move(entered);
-    result->completed();
+    monitor->enable();
 }
 
 /************************************************************************/
