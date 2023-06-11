@@ -18,6 +18,7 @@
  */
 
 #include "UI/UI.hpp"
+#include "Client/Client.hpp"
 #include "Config.hpp"
 
 /************************************************************************/
@@ -155,10 +156,16 @@ void Thread::enqueue(std::function<void()>&& operation, bool front)
 /************************************************************************/
 
 Base::ClientInfo::ClientInfo()
-    : accountName(SteamBot::Config::SteamAccount::get().user),
-      when(Clock::now())
+    :  when(Clock::now())
 {
+    if (auto client=SteamBot::Client::getClientPtr())
+    {
+        // Right now, we don't have multiple clients
+        accountName=SteamBot::Config::SteamAccount::get().user;
+    }
 }
+
+/************************************************************************/
 
 Base::ClientInfo::~ClientInfo() =default;
 

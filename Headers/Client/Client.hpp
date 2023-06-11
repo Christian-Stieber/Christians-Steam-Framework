@@ -58,6 +58,7 @@ namespace SteamBot
 		static void waitAll();
 
 	public:
+		static Client* getClientPtr();
 		static Client& getClient();
 
         boost::asio::io_context& getIoContext() { return *ioContext; }

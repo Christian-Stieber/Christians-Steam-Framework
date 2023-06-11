@@ -194,10 +194,17 @@ void SteamBot::Client::waitAll()
 
 /************************************************************************/
 
+SteamBot::Client* SteamBot::Client::getClientPtr()
+{
+    return currentClient;
+}
+
+/************************************************************************/
+
 SteamBot::Client& SteamBot::Client::getClient()
 {
-	assert(currentClient!=nullptr);
-	return *currentClient;
+    assert(currentClient!=nullptr);
+    return *currentClient;
 }
 
 /************************************************************************/

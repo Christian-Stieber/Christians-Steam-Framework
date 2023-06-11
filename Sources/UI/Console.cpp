@@ -52,9 +52,12 @@ namespace
 {
     std::ostream& operator<<(std::ostream& stream, const SteamBot::UI::Base::ClientInfo& clientInfo)
     {
+        if (!clientInfo.accountName.empty())
+        {
+            stream << clientInfo.accountName << " ";
+        }
         return stream
-            << clientInfo.accountName
-            << " ["
+            << '['
             << SteamBot::Time::toString(clientInfo.when, false)
             << "]: ";
     }
