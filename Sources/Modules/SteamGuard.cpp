@@ -20,7 +20,6 @@
 #include "Client/Module.hpp"
 #include "Modules/SteamGuard.hpp"
 #include "UI/UI.hpp"
-#include "Config.hpp"
 
 #include <mutex>
 #include <unordered_set>
@@ -60,7 +59,7 @@ namespace
 
 bool SteamGuardModule::isFlagged()
 {
-    const auto& account=SteamBot::Config::SteamAccount::get().user;
+    const auto& account=getClient().accountName;
     std::lock_guard<decltype(mutex)> lock(mutex);
     return (needsSteamGuard.erase(account)!=0);
 }
@@ -90,7 +89,7 @@ void SteamGuardModule::run()
 
 void SteamBot::Modules::SteamGuard::registerAccount()
 {
-    const auto& account=SteamBot::Config::SteamAccount::get().user;
+    const auto& account=SteamBot::Client::getClient().accountName;
     BOOST_LOG_TRIVIAL(info) << "SteamGuard: registering account " << account;
     std::lock_guard<decltype(mutex)> lock(mutex);
     needsSteamGuard.insert(account);

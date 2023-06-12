@@ -33,6 +33,39 @@ std::unique_ptr<SteamBot::UI::Base> SteamBot::UI::create()
 
 /************************************************************************/
 
+class UIQuitter
+{
+public:
+    static inline std::mutex mutex;
+    static inline std::condition_variable condition;
+    static inline bool didQuit=false;
+
+public:
+    static void quit()
+    {
+        {
+            std::lock_guard<decltype(mutex)> lock(mutex);
+            didQuit=true;
+        }
+        condition.notify_one();
+    }
+
+    static void wait()
+    {
+        std::unique_lock<decltype(mutex)> lock(mutex);
+        condition.wait(lock, [](){ return didQuit; });
+    }
+};
+
+/************************************************************************/
+
+void SteamBot::UI::quit()
+{
+    UIQuitter::quit();
+}
+
+/************************************************************************/
+
 int main(void)
 {
 	std::locale::global(std::locale::classic());
@@ -42,8 +75,29 @@ int main(void)
 
     SteamBot::UI::Thread::outputText("Welcome to Christian's work-in-progress SteamBot");
 
-    SteamBot::Client::launch();
+#if 0
+    SteamBot::Client::launchAll();
+#else
+    SteamBot::UI::Thread::outputText("Test");
+
+    std::shared_ptr<SteamBot::Waiter> waiter=SteamBot::Waiter::create();
+    auto passwordWaiter=SteamBot::UI::Thread::requestPassword(waiter, SteamBot::UI::Base::PasswordType::AccountPassword);
+
+    waiter->wait();
+    if (auto password=passwordWaiter->getResult())
+    {
+        SteamBot::UI::Thread::outputText(std::move(*password));
+    }
+#endif
+
+#if 0
+    // do this in a future non-interactive node?
     SteamBot::Client::waitAll();
+#else
+    UIQuitter::wait();
+#endif
+
+    // ToDo: make clients clean up?
 
 	return EXIT_SUCCESS;
 }

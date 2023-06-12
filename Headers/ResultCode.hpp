@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 /************************************************************************/
 /*
  * Various result codes? Not sure where these are used, so I'm keeping

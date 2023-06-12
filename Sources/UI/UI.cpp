@@ -19,7 +19,6 @@
 
 #include "UI/UI.hpp"
 #include "Client/Client.hpp"
-#include "Config.hpp"
 
 /************************************************************************/
 
@@ -160,8 +159,7 @@ Base::ClientInfo::ClientInfo()
 {
     if (auto client=SteamBot::Client::getClientPtr())
     {
-        // Right now, we don't have multiple clients
-        accountName=SteamBot::Config::SteamAccount::get().user;
+        accountName=client->accountName;
     }
 }
 

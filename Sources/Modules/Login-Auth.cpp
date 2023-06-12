@@ -17,7 +17,6 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "Config.hpp"
 #include "ResultCode.hpp"
 #include "Client/Module.hpp"
 #include "Modules/Login.hpp"
@@ -188,12 +187,15 @@ namespace
             std::string message;
         } confirmation;
 
+        std::string password;
+
     public:
         void handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMessageType>);
 
     private:
         std::shared_ptr<SteamBot::Waiter> const waiter=SteamBot::Waiter::create();
         SteamBot::UI::Base::ResultParam<std::string> steamguardCodeWaiter;
+        SteamBot::UI::Base::ResultParam<std::string> passwordWaiter;
 
     private:
         void doLogon();
@@ -202,9 +204,10 @@ namespace
         void queryPollAuthSessionStatus();
         void sendGuardCode(std::string);
         void handleGuardCodeEntry();
+        void handlePasswordEntry();
         void getConfirmationType(const BeginAuthSessionViaCredentialsInfo::ResultType&);
         std::shared_ptr<BeginAuthSessionViaCredentialsInfo::ResultType> execute(BeginAuthSessionViaCredentialsInfo::RequestType&&);
-        static BeginAuthSessionViaCredentialsInfo::RequestType makeBeginAuthRequest(const LoginModule::PublicKey&);
+        BeginAuthSessionViaCredentialsInfo::RequestType makeBeginAuthRequest(const LoginModule::PublicKey&);
         static void sendHello();
         PublicKey getPublicKey();
         void startAuthSession();
@@ -236,7 +239,7 @@ BeginAuthSessionViaCredentialsInfo::RequestType LoginModule::makeBeginAuthReques
 {
     SteamBot::UI::Thread::outputText("obtaining login key");
     BeginAuthSessionViaCredentialsInfo::RequestType request;
-    request.set_account_name(SteamBot::Config::SteamAccount::get().user);
+    request.set_account_name(getClient().accountName);
     request.set_persistence(ESessionPersistence::k_ESessionPersistence_Persistent);
     request.set_website_id(websiteId);
     {
@@ -247,7 +250,7 @@ BeginAuthSessionViaCredentialsInfo::RequestType LoginModule::makeBeginAuthReques
             }
         });
 	}
-    request.set_encrypted_password(publicKey.encrypt(SteamBot::Config::SteamAccount::get().password));
+    request.set_encrypted_password(publicKey.encrypt(password));
     request.set_encryption_timestamp(publicKey.timestamp);
     {
         auto deviceDetails=request.mutable_device_details();
@@ -281,6 +284,7 @@ std::shared_ptr<BeginAuthSessionViaCredentialsInfo::ResultType> LoginModule::exe
             throw;
         }
         BOOST_LOG_TRIVIAL(info) << "got an \"invalid password\" response";
+        SteamBot::UI::Thread::outputText("invalid password");
         getClient().quit(false);
         return content;
     }
@@ -416,6 +420,21 @@ void LoginModule::handleGuardCodeEntry()
 
 /************************************************************************/
 
+void LoginModule::handlePasswordEntry()
+{
+    if (passwordWaiter)
+    {
+        if (auto entered=passwordWaiter->getResult())
+        {
+            password=std::move(*entered);
+            passwordWaiter.reset();
+            startAuthSession();
+        }
+    }
+}
+
+/************************************************************************/
+
 void LoginModule::requestCode()
 {
     switch(confirmation.type)
@@ -444,11 +463,19 @@ void LoginModule::requestCode()
 
 void LoginModule::startAuthSession()
 {
-    auto result=execute(makeBeginAuthRequest(getPublicKey()));
-    if (result)
+    if (password.empty())
     {
-        getConfirmationType(*result);
-        requestCode();
+        assert(!passwordWaiter);
+        passwordWaiter=SteamBot::UI::Thread::requestPassword(waiter, SteamBot::UI::Base::PasswordType::AccountPassword);
+    }
+    else
+    {
+        auto result=execute(makeBeginAuthRequest(getPublicKey()));
+        if (result)
+        {
+            getConfirmationType(*result);
+            requestCode();
+        }
     }
 }
 
@@ -457,7 +484,7 @@ void LoginModule::startAuthSession()
 LoginModule::PublicKey LoginModule::getPublicKey()
 {
     GetPasswordRSAPublicKeyInfo::RequestType request;
-    request.set_account_name(SteamBot::Config::SteamAccount::get().user);
+    request.set_account_name(getClient().accountName);
 
     typedef GetPasswordRSAPublicKeyInfo::ResultType ResultType;
     auto response=UnifiedMessageClient::execute<ResultType, ServiceMethodCallFromClientNonAuthed>("Authentication.GetPasswordRSAPublicKey#1", std::move(request));
@@ -569,7 +596,7 @@ void LoginModule::doLogon()
         const auto& machineId=Steam::MachineInfo::MachineID::getSerialized();
         message->content.set_machine_id(machineId.data(), machineId.size());
 	}
-    message->content.set_account_name(SteamBot::Config::SteamAccount::get().user);
+    message->content.set_account_name(getClient().accountName);
     message->content.set_eresult_sentryfile(toInteger(SteamBot::ResultCode::FileNotFound));
     message->content.set_steam2_ticket_request(false);
 	message->content.set_machine_name(Steam::MachineInfo::Provider::getMachineName());
@@ -690,6 +717,7 @@ void LoginModule::run()
             cmsgClientLogonResponse->handle(this);
 
             handleGuardCodeEntry();
+            handlePasswordEntry();
 
             if (connectionStatus->get(ConnectionStatus::Disconnected)==ConnectionStatus::Connected)
             {

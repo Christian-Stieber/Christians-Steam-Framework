@@ -47,6 +47,8 @@ namespace SteamBot
         class Module;
 
     public:
+        const std::string accountName;
+
         Cancel cancel;
         Whiteboard whiteboard;
         Messageboard messageboard;
@@ -54,8 +56,9 @@ namespace SteamBot
         DataFile dataFile;
 
 	public:
-		static void launch();
-		static void waitAll();
+        static void launch(std::string&&);
+        static void launchAll();
+        static void waitAll();
 
 	public:
 		static Client* getClientPtr();
@@ -90,7 +93,7 @@ namespace SteamBot
 	private:
 		void main();
         void initModules();
-		Client();
+		Client(std::string&&);
 
 	public:
 		~Client();
