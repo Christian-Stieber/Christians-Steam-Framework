@@ -24,6 +24,7 @@
 /************************************************************************/
 
 #include "./Console.hpp"
+#include "EnumString.hpp"
 
 #include <mutex>
 #include <condition_variable>
@@ -78,7 +79,7 @@ private:
 
 public:
     Manager(SteamBot::UI::ConsoleUI&);
-    virtual ~Manager() =default;
+    virtual ~Manager();
 };
 
 /************************************************************************/
@@ -212,8 +213,10 @@ void Manager::body()
     std::unique_ptr<SavedTermios> savedTermios;
     bool commandKey=false;
     Mode mode=Mode::LineInput;
-    while (true)
+    while (mode!=Mode::Shutdown)
     {
+        BOOST_LOG_TRIVIAL(debug) << "Console manager: current mode is " << SteamBot::enumToString(mode) << "; commandKey " << commandKey;
+
         struct pollfd pfd;
         pfd.events=POLLIN;
         if (mode==Mode::NoInput && !commandKey)
@@ -285,6 +288,10 @@ void Manager::body()
             case Mode::None:
                 break;
 
+            case Mode::Shutdown:
+                mode=Mode::Shutdown;
+                break;
+
             default:
                 assert(false);
             }
@@ -305,11 +312,21 @@ Manager::Manager(SteamBot::UI::ConsoleUI& ui_)
     : ManagerBase(ui_)
 {
     thread=std::thread([this](){
+        BOOST_LOG_TRIVIAL(debug) << "Console manager thread running";
         body();
+        BOOST_LOG_TRIVIAL(debug) << "Console manager thread exiting";
     });
 
     std::unique_lock<decltype(mutex)> lock(mutex);
     condition.wait(lock, [this](){ return newMode==Mode::None; });
+}
+
+/************************************************************************/
+
+Manager::~Manager()
+{
+    setMode(Mode::Shutdown);
+    thread.join();
 }
 
 /************************************************************************/

@@ -61,25 +61,11 @@ ConsoleUI::~ConsoleUI() =default;
 void ConsoleUI::performCli()
 {
     assert(SteamBot::UI::Thread::isThread());
-
-    manager->setMode(ManagerBase::Mode::LineInput);
+    if (!cli)
     {
-        std::cout << "Command line mode is now active." << std::endl;
-        std::cout << "End it by entering an empty line." << std::endl;
-        while (true)
-        {
-            std::cout << "command> " << std::flush;
-            std::string command;
-            std::getline(std::cin, command);
-            if (command.empty())
-            {
-                break;
-            }
-            std::cout << "ToDo: actually execute your command: " << command << std::endl;
-        }
-        std::cout << "Command line mode ended." << std::endl;
+        cli=std::make_unique<CLI>(*this);
     }
-    manager->setMode(ManagerBase::Mode::NoInput);
+    cli->run();
 }
 
 /************************************************************************/

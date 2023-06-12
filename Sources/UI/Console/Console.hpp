@@ -32,9 +32,11 @@ namespace SteamBot
         public:
             class ManagerBase;
             class Manager;
+            class CLI;
 
         private:
             std::unique_ptr<ManagerBase> manager;
+            std::unique_ptr<CLI> cli;
 
         public:
             ConsoleUI();
@@ -69,6 +71,7 @@ public:
     enum Mode {
         None,		/* internal use */
         Startup,	/* internal use */
+        Shutdown,	/* internal use */
         LineInput,
         LineInputNoEcho,
         NoInput,
@@ -82,4 +85,42 @@ protected:
 public:
     static std::unique_ptr<ManagerBase> create(ConsoleUI&);
     virtual ~ManagerBase();
+};
+
+/************************************************************************/
+
+class SteamBot::UI::ConsoleUI::CLI
+{
+private:
+    class Command
+    {
+    public:
+        std::string_view command;
+        std::string_view syntax;
+        bool(CLI::*function)(std::vector<std::string_view>&);
+    };
+
+    static const Command commands[];
+
+private:
+    bool quit=false;
+
+private:
+    void showHelp();
+    void command(std::string_view);
+
+public:
+    /* Return 'false' from commands to show the syntax line */
+    bool command_exit(std::vector<std::string_view>&);
+    bool command_help(std::vector<std::string_view>&);
+
+private:
+    ConsoleUI& ui;
+
+public:
+    CLI(ConsoleUI&);
+    ~CLI();
+
+public:
+    void run();
 };

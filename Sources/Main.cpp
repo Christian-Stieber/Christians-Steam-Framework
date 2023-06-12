@@ -33,39 +33,6 @@ std::unique_ptr<SteamBot::UI::Base> SteamBot::UI::create()
 
 /************************************************************************/
 
-class UIQuitter
-{
-public:
-    static inline std::mutex mutex;
-    static inline std::condition_variable condition;
-    static inline bool didQuit=false;
-
-public:
-    static void quit()
-    {
-        {
-            std::lock_guard<decltype(mutex)> lock(mutex);
-            didQuit=true;
-        }
-        condition.notify_one();
-    }
-
-    static void wait()
-    {
-        std::unique_lock<decltype(mutex)> lock(mutex);
-        condition.wait(lock, [](){ return didQuit; });
-    }
-};
-
-/************************************************************************/
-
-void SteamBot::UI::quit()
-{
-    UIQuitter::quit();
-}
-
-/************************************************************************/
-
 int main(void)
 {
 	std::locale::global(std::locale::classic());
@@ -94,10 +61,11 @@ int main(void)
     // do this in a future non-interactive node?
     SteamBot::Client::waitAll();
 #else
-    UIQuitter::wait();
+    SteamBot::UI::Thread::wait();
 #endif
 
     // ToDo: make clients clean up?
 
+    BOOST_LOG_TRIVIAL(debug) << "exiting";
 	return EXIT_SUCCESS;
 }

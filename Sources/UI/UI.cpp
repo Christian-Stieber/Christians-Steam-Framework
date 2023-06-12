@@ -110,7 +110,7 @@ decltype(Thread::queue)::value_type Thread::dequeue()
 
 Thread::Thread()
 {
-    std::thread([this]() {
+    thread=std::thread([this]() {
         BOOST_LOG_TRIVIAL(debug) << "UI thread running";
         isUiThread=true;
         ui=SteamBot::UI::create();
@@ -120,11 +120,29 @@ Thread::Thread()
             {
                 item();
             }
+            else
+            {
+                break;
+            }
         }
-    }).detach();
+        ui.reset();
+
+        BOOST_LOG_TRIVIAL(debug) << "UI thread terminating";
+        {
+            std::lock_guard<decltype(mutex)> lock(mutex);
+            assert(!didQuit);
+            didQuit=true;
+        }
+        condition.notify_all();
+    });
 }
 
-Thread::~Thread() =default;
+/************************************************************************/
+
+Thread::~Thread()
+{
+    thread.join();
+}
 
 /************************************************************************/
 
@@ -149,7 +167,7 @@ void Thread::enqueue(std::function<void()>&& operation, bool front)
             queue.push_back(std::move(operation));
         }
     }
-    condition.notify_one();
+    condition.notify_all();
 }
 
 /************************************************************************/
@@ -239,4 +257,29 @@ Base::ResultParam<std::string> Thread::requestPassword(std::shared_ptr<SteamBot:
 bool Thread::isThread()
 {
     return isUiThread;
+}
+
+/************************************************************************/
+
+void Thread::quit()
+{
+    get().enqueue(nullptr, true);
+}
+
+/************************************************************************/
+
+void Thread::wait_()
+{
+    std::unique_lock<decltype(mutex)> lock(mutex);
+    condition.wait(lock, [this](){ return didQuit; });
+}
+
+/************************************************************************/
+/*
+ * Wait for UI to quit
+ */
+
+void Thread::wait()
+{
+    get().wait_();
 }

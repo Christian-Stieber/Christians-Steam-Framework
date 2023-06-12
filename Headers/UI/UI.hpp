@@ -32,7 +32,6 @@
  * UI thread.
  *
  * create() -> create the UI to use
- * quit() -> this is called when the user initates a quit.
  */
 
 namespace SteamBot
@@ -41,8 +40,6 @@ namespace SteamBot
     {
         class Base;
         std::unique_ptr<Base> create();
-
-        void quit();
     }
 }
 
@@ -183,15 +180,19 @@ namespace SteamBot
         private:
             std::unique_ptr<Base> ui;
 
+            std::thread thread;
+
             std::mutex mutex;
             std::condition_variable condition;
             std::list<std::function<void()>> queue;
+            bool didQuit=false;
 
         private:
             Thread();
             static Thread& get();
             decltype(queue)::value_type dequeue();
             void enqueue(decltype(queue)::value_type&&, bool front=false);
+            void wait_();
 
         public:
             ~Thread();
@@ -202,6 +203,10 @@ namespace SteamBot
         public:
             static void outputText(std::string);
             static Base::ResultParam<std::string> requestPassword(std::shared_ptr<SteamBot::Waiter>, Base::PasswordType);
+
+        public:
+            static void quit();
+            static void wait();
         };
     }
 }
