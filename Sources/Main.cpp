@@ -39,32 +39,10 @@ int main(void)
 	SteamBot::setWorkingDir();
 
     SteamBot::Logging::init();
+    SteamBot::ClientInfo::init();
 
     SteamBot::UI::Thread::outputText("Welcome to Christian's work-in-progress SteamBot");
-
-#if 0
-    SteamBot::Client::launchAll();
-#else
-    SteamBot::UI::Thread::outputText("Test");
-
-    std::shared_ptr<SteamBot::Waiter> waiter=SteamBot::Waiter::create();
-    auto passwordWaiter=SteamBot::UI::Thread::requestPassword(waiter, SteamBot::UI::Base::PasswordType::AccountPassword);
-
-    waiter->wait();
-    if (auto password=passwordWaiter->getResult())
-    {
-        SteamBot::UI::Thread::outputText(std::move(*password));
-    }
-#endif
-
-#if 0
-    // do this in a future non-interactive node?
-    SteamBot::Client::waitAll();
-#else
     SteamBot::UI::Thread::wait();
-#endif
-
-    // ToDo: make clients clean up?
 
     BOOST_LOG_TRIVIAL(debug) << "exiting";
 	return EXIT_SUCCESS;

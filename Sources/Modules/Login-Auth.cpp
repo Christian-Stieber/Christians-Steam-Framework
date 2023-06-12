@@ -239,7 +239,7 @@ BeginAuthSessionViaCredentialsInfo::RequestType LoginModule::makeBeginAuthReques
 {
     SteamBot::UI::Thread::outputText("obtaining login key");
     BeginAuthSessionViaCredentialsInfo::RequestType request;
-    request.set_account_name(getClient().accountName);
+    request.set_account_name(getClient().getClientInfo().accountName);
     request.set_persistence(ESessionPersistence::k_ESessionPersistence_Persistent);
     request.set_website_id(websiteId);
     {
@@ -484,7 +484,7 @@ void LoginModule::startAuthSession()
 LoginModule::PublicKey LoginModule::getPublicKey()
 {
     GetPasswordRSAPublicKeyInfo::RequestType request;
-    request.set_account_name(getClient().accountName);
+    request.set_account_name(getClient().getClientInfo().accountName);
 
     typedef GetPasswordRSAPublicKeyInfo::ResultType ResultType;
     auto response=UnifiedMessageClient::execute<ResultType, ServiceMethodCallFromClientNonAuthed>("Authentication.GetPasswordRSAPublicKey#1", std::move(request));
@@ -596,7 +596,7 @@ void LoginModule::doLogon()
         const auto& machineId=Steam::MachineInfo::MachineID::getSerialized();
         message->content.set_machine_id(machineId.data(), machineId.size());
 	}
-    message->content.set_account_name(getClient().accountName);
+    message->content.set_account_name(getClient().getClientInfo().accountName);
     message->content.set_eresult_sentryfile(toInteger(SteamBot::ResultCode::FileNotFound));
     message->content.set_steam2_ticket_request(false);
 	message->content.set_machine_name(Steam::MachineInfo::Provider::getMachineName());

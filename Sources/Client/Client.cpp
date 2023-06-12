@@ -24,14 +24,13 @@
 #include "EnumString.hpp"
 #include "Helpers/Destruct.hpp"
 #include "UI/UI.hpp"
+#include "Vector.hpp"
 
 #include <thread>
 #include <condition_variable>
 #include <boost/log/trivial.hpp>
 #include <boost/exception/diagnostic_information.hpp>
 #include <boost/fiber/operations.hpp>
-#include <filesystem>
-#include <regex>
 
 #include "boost/examples/fiber/asio/round_robin.hpp"
 #include "AsioYield.hpp"
@@ -71,10 +70,10 @@ void SteamBot::Client::FiberCounter::onEmpty()
 
 /************************************************************************/
 
-SteamBot::Client::Client(std::string&& accountName_)
-    : accountName(std::move(accountName_)),
-      universe{SteamBot::Universe::get(SteamBot::Universe::Type::Public)},
-      dataFile{accountName}
+SteamBot::Client::Client(SteamBot::ClientInfo& clientInfo_)
+    : universe{SteamBot::Universe::get(SteamBot::Universe::Type::Public)},
+      dataFile(clientInfo_.accountName),
+      clientInfo(clientInfo_)
 {
 	assert(currentClient==nullptr);
 	currentClient=this;
@@ -158,13 +157,15 @@ void SteamBot::Client::main()
  * Start a new client
  */
 
-void SteamBot::Client::launch(std::string&& accountName)
+void SteamBot::Client::launch(SteamBot::ClientInfo& clientInfo)
 {
     BOOST_LOG_TRIVIAL(debug) << "Client::launch()";
 
-	std::thread([counter=threadCounter(), accountName=std::move(accountName)]() mutable {
-        std::unique_ptr<Client> client;
-        client.reset(new Client(std::move(accountName)));
+	std::thread([counter=threadCounter(), &clientInfo]() mutable {
+        std::shared_ptr<Client> client;
+        client=std::make_shared<Client>(clientInfo);
+        clientInfo.setClient(client);
+
         try
         {
             client->main();
@@ -182,10 +183,10 @@ void SteamBot::Client::launch(std::string&& accountName)
             break;
 
         case QuitMode::Restart:
-            accountName=std::move(client->accountName);
             client.reset();
+            clientInfo.setClient(client);
             sleep(15);
-            launch(std::move(accountName));
+            launch(clientInfo);
             break;
         }
     }).detach();
@@ -248,35 +249,4 @@ void SteamBot::Client::launchFiber(std::string name, std::function<void()> body)
 
         BOOST_LOG_TRIVIAL(debug) << "fiber " << fiberName << " ending; fiber count is currently at " << fiberCounter.getCount();
 	}).detach();
-}
-
-/************************************************************************/
-/*
- * Starts all the clients that we know about, by searching
- * the ~/.SteamBot directory for data files.
- */
-
-void SteamBot::Client::launchAll()
-{
-    bool first=true;
-    std::regex regex("Data-(([a-z]|[A-Z]|[0-9]|_)+)\\.json");
-    for (auto const& entry: std::filesystem::directory_iterator{"."})
-    {
-        if (entry.is_regular_file())
-        {
-            auto filename=entry.path().filename().string();
-            std::smatch matchResults;
-            if (std::regex_match(filename, matchResults, regex))
-            {
-                assert(matchResults.size()==3);
-                std::string accountName=matchResults[1].str();
-                if (!first)
-                {
-                    first=false;
-                    sleep(15);
-                }
-                launch(std::move(accountName));
-            }
-        }
-    }
 }

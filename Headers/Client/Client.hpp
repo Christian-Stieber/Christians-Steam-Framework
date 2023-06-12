@@ -41,14 +41,14 @@ namespace SteamBot
 
 namespace SteamBot
 {
+    class ClientInfo;
+
     class Client
 	{
     public:
         class Module;
 
     public:
-        const std::string accountName;
-
         Cancel cancel;
         Whiteboard whiteboard;
         Messageboard messageboard;
@@ -56,8 +56,7 @@ namespace SteamBot
         DataFile dataFile;
 
 	public:
-        static void launch(std::string&&);
-        static void launchAll();
+        static void launch(ClientInfo&);
         static void waitAll();
 
 	public:
@@ -85,6 +84,7 @@ namespace SteamBot
 		std::shared_ptr<boost::asio::io_context> ioContext;
         std::unordered_map<std::type_index, std::shared_ptr<Module>> modules;
         FiberCounter fiberCounter{*this};
+        ClientInfo& clientInfo;
 
     private:
         enum class QuitMode : uint8_t { None, Restart, Quit };
@@ -93,12 +93,17 @@ namespace SteamBot
 	private:
 		void main();
         void initModules();
-		Client(std::string&&);
 
 	public:
+		Client(ClientInfo&);		// internal use!!!
 		~Client();
 
     public:
+        const ClientInfo& getClientInfo() const
+        {
+            return clientInfo;
+        }
+
         template <typename T> T& getModule() const
         {
             auto iterator=modules.find(std::type_index(typeid(T)));
@@ -106,4 +111,36 @@ namespace SteamBot
             return dynamic_cast<T&>(*(iterator->second));
         }
 	};
+}
+
+/************************************************************************/
+
+namespace SteamBot
+{
+    class ClientInfo
+    {
+    private:
+        std::shared_ptr<Client> client;
+
+    public:
+        const std::string accountName;
+
+    public:
+        ClientInfo(std::string);		// internal use
+        ~ClientInfo();
+
+    public:
+        void setClient(std::shared_ptr<Client>);	// internal use
+
+    public:
+        std::shared_ptr<Client> getClient();
+
+        static void init();
+
+        static ClientInfo* create(std::string);
+        static ClientInfo* find(std::string_view);
+
+    public:
+        static std::vector<ClientInfo*> getClients();
+    };
 }

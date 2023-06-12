@@ -18,6 +18,7 @@
  */
 
 #include "./Console.hpp"
+#include "Client/Client.hpp"
 
 /************************************************************************/
 
@@ -108,7 +109,8 @@ static std::vector<std::string_view> getWords(std::string_view line)
 
 const CLI::Command CLI::commands[]={
     { "EXIT", "EXIT", &CLI::command_exit },
-    { "help", "help", &CLI::command_help }
+    { "help", "help", &CLI::command_help },
+    { "status", "status", &CLI::command_status }
 };
 
 /************************************************************************/
@@ -120,10 +122,8 @@ CLI::~CLI() =default;
 
 bool CLI::command_exit(std::vector<std::string_view>& words)
 {
-    if (words.size()>1)
-    {
-        return false;
-    }
+    if (words.size()>1) return false;
+
     quit=true;
     return true;
 }
@@ -133,6 +133,20 @@ bool CLI::command_exit(std::vector<std::string_view>& words)
 bool CLI::command_help(std::vector<std::string_view>&)
 {
     showHelp();
+    return true;
+}
+
+/************************************************************************/
+
+bool CLI::command_status(std::vector<std::string_view>& words)
+{
+    if (words.size()>1) return false;
+
+    for (auto client: SteamBot::ClientInfo::getClients())
+    {
+        std::cout << "   " << client->accountName << std::endl;
+    }
+
     return true;
 }
 

@@ -177,7 +177,7 @@ Base::ClientInfo::ClientInfo()
 {
     if (auto client=SteamBot::Client::getClientPtr())
     {
-        accountName=client->accountName;
+        accountName=client->getClientInfo().accountName;
     }
 }
 

@@ -113,6 +113,7 @@ public:
     /* Return 'false' from commands to show the syntax line */
     bool command_exit(std::vector<std::string_view>&);
     bool command_help(std::vector<std::string_view>&);
+    bool command_status(std::vector<std::string_view>&);
 
 private:
     ConsoleUI& ui;
