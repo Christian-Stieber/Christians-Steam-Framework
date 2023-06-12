@@ -28,11 +28,11 @@
 
 /************************************************************************/
 /*
- * YOU must provide this function to create the UI that you want.
+ * YOU must provide the functions. They will be called on the
+ * UI thread.
  *
- * This will be called on the UI thread.
- *
- * You'll probably just call one of the factories.
+ * create() -> create the UI to use
+ * quit() -> this is called when the user initates a quit.
  */
 
 namespace SteamBot
@@ -42,7 +42,20 @@ namespace SteamBot
         class Base;
         std::unique_ptr<Base> create();
 
-        // Factories
+        void quit();
+    }
+}
+
+/************************************************************************/
+/*
+ * Factories for the various UIs. You'll probably call one of these
+ * for in your SteamBot::UI:create() call.
+ */
+
+namespace SteamBot
+{
+    namespace UI
+    {
         std::unique_ptr<Base> createConsole();
     }
 }
@@ -182,6 +195,9 @@ namespace SteamBot
 
         public:
             ~Thread();
+
+        public:
+            static bool isThread();
 
         public:
             static void outputText(std::string);

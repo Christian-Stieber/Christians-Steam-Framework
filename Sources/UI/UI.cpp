@@ -235,3 +235,10 @@ Base::ResultParam<std::string> Thread::requestPassword(std::shared_ptr<SteamBot:
     });
     return item;
 }
+
+/************************************************************************/
+
+bool Thread::isThread()
+{
+    return isUiThread;
+}

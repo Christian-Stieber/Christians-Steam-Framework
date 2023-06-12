@@ -17,34 +17,15 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "UI/UI.hpp"
+#include "./Console.hpp"
 #include "Helpers/Time.hpp"
-#include "./ConsoleMonitor.hpp"
 
 #include <iostream>
 #include <time.h>
 
 /************************************************************************/
 
-namespace
-{
-    class ConsoleUI : public SteamBot::UI::Base
-    {
-    private:
-        std::unique_ptr<SteamBot::UI::ConsoleMonitorBase> monitor;
-
-    public:
-        ConsoleUI();
-        virtual ~ConsoleUI() =default;
-
-    private:
-        void performCli();
-
-    private:
-        virtual void outputText(ClientInfo&, std::string) override;
-        virtual void requestPassword(ClientInfo&, ResultParam<std::string>, PasswordType, bool(*)(const std::string&)) override;
-    };
-}
+typedef SteamBot::UI::ConsoleUI ConsoleUI;
 
 /************************************************************************/
 
@@ -66,19 +47,22 @@ namespace
 /************************************************************************/
 
 ConsoleUI::ConsoleUI()
+    : manager(ManagerBase::create(*this))
 {
-    monitor=SteamBot::UI::ConsoleMonitorBase::create([this]() {
-        BOOST_LOG_TRIVIAL(debug) << "command key pressed";
-        executeOnThread([this]() { performCli(); });
-    });
-    monitor->enable();
+    manager->setMode(ManagerBase::Mode::NoInput);
 }
+
+/************************************************************************/
+
+ConsoleUI::~ConsoleUI() =default;
 
 /************************************************************************/
 
 void ConsoleUI::performCli()
 {
-    monitor->disable();
+    assert(SteamBot::UI::Thread::isThread());
+
+    manager->setMode(ManagerBase::Mode::LineInput);
     {
         std::cout << "Command line mode is now active." << std::endl;
         std::cout << "End it by entering an empty line." << std::endl;
@@ -95,7 +79,7 @@ void ConsoleUI::performCli()
         }
         std::cout << "Command line mode ended." << std::endl;
     }
-    monitor->enable();
+    manager->setMode(ManagerBase::Mode::NoInput);
 }
 
 /************************************************************************/
@@ -109,7 +93,7 @@ void ConsoleUI::outputText(ClientInfo& clientInfo, std::string text)
 
 void ConsoleUI::requestPassword(ClientInfo& clientInfo, ResultParam<std::string> result, SteamBot::UI::Base::PasswordType passwordType, bool(*validator)(const std::string&))
 {
-    monitor->disable();
+    manager->setMode(ManagerBase::Mode::LineInput);
     {
         const char* passwordTypeString=nullptr;
         switch(passwordType)
@@ -139,8 +123,19 @@ void ConsoleUI::requestPassword(ClientInfo& clientInfo, ResultParam<std::string>
         *(result->getResult())=std::move(entered);
         result->completed();
     }
-    monitor->enable();
+    manager->setMode(ManagerBase::Mode::NoInput);
 }
+
+/************************************************************************/
+
+ConsoleUI::ManagerBase::ManagerBase(ConsoleUI& ui_)
+    : ui(ui_)
+{
+}
+
+/************************************************************************/
+
+ConsoleUI::ManagerBase::~ManagerBase() =default;
 
 /************************************************************************/
 
