@@ -110,7 +110,8 @@ static std::vector<std::string_view> getWords(std::string_view line)
 const CLI::Command CLI::commands[]={
     { "EXIT", "EXIT", &CLI::command_exit },
     { "help", "help", &CLI::command_help },
-    { "status", "status", &CLI::command_status }
+    { "status", "status", &CLI::command_status },
+    { "launch", "launch <account>", &CLI::command_launch }
 };
 
 /************************************************************************/
@@ -147,6 +148,25 @@ bool CLI::command_status(std::vector<std::string_view>& words)
         std::cout << "   " << client->accountName << std::endl;
     }
 
+    return true;
+}
+
+/************************************************************************/
+
+bool CLI::command_launch(std::vector<std::string_view>& words)
+{
+    if (words.size()!=2) return false;
+
+    const auto clientInfo=SteamBot::ClientInfo::find(words[1]);
+    if (clientInfo==nullptr)
+    {
+        std::cout << "unknown account \"" << words[1] << "\"" << std::endl;
+    }
+    else
+    {
+        SteamBot::Client::launch(*clientInfo);
+        std::cout << "launched client \"" << clientInfo->accountName << "\"" << std::endl;
+    }
     return true;
 }
 
