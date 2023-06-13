@@ -104,7 +104,7 @@ void LicenseListModule::handleMessage(std::shared_ptr<const Steam::CMsgClientLic
 
 void LicenseListModule::run()
 {
-    getClient().launchFiber("OwnedGamesModule::run", [this](){
+    getClient().launchFiber("LicenseListModule::run", [this](){
         auto waiter=SteamBot::Waiter::create();
         auto cancellation=getClient().cancel.registerObject(*waiter);
 

@@ -115,6 +115,7 @@ public:
     bool command_help(std::vector<std::string_view>&);
     bool command_status(std::vector<std::string_view>&);
     bool command_launch(std::vector<std::string_view>&);
+    bool command_create(std::vector<std::string_view>&);
 
 private:
     ConsoleUI& ui;

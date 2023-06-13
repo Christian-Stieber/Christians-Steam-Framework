@@ -23,6 +23,8 @@
 #include <memory>
 #include <functional>
 
+#include <boost/log/trivial.hpp>
+
 /************************************************************************/
 /*
  * A "Cancel" object maintains a list of cancelable objects. Clients
@@ -77,6 +79,7 @@ namespace SteamBot
         private:
             virtual void cancel() override
             {
+                BOOST_LOG_TRIVIAL(debug) << "cancelling" << boost::typeindex::type_id_runtime(object).pretty_name();
                 object.cancel();
             }
 

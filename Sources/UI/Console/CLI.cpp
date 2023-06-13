@@ -111,7 +111,8 @@ const CLI::Command CLI::commands[]={
     { "EXIT", "EXIT", &CLI::command_exit },
     { "help", "help", &CLI::command_help },
     { "status", "status", &CLI::command_status },
-    { "launch", "launch <account>", &CLI::command_launch }
+    { "launch", "launch <account>", &CLI::command_launch },
+    { "create", "create <account>", &CLI::command_create }
 };
 
 /************************************************************************/
@@ -166,6 +167,25 @@ bool CLI::command_launch(std::vector<std::string_view>& words)
     {
         SteamBot::Client::launch(*clientInfo);
         std::cout << "launched client \"" << clientInfo->accountName << "\"" << std::endl;
+    }
+    return true;
+}
+
+/************************************************************************/
+
+bool CLI::command_create(std::vector<std::string_view>& words)
+{
+    if (words.size()!=2) return false;
+
+    const auto clientInfo=SteamBot::ClientInfo::create(std::string(words[1]));
+    if (clientInfo==nullptr)
+    {
+        std::cout << "account \"" << words[1] << "\" already exists" << std::endl;
+    }
+    else
+    {
+        SteamBot::Client::launch(*clientInfo);
+        std::cout << "launched new client \"" << clientInfo->accountName << "\"" << std::endl;
     }
     return true;
 }
