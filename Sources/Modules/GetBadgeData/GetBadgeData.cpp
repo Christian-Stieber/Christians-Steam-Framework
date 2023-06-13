@@ -52,7 +52,7 @@ namespace
 void GetBadgeDataModule::handle(std::shared_ptr<const GotURL> message)
 {
     typedef SteamBot::Modules::GetPageData::Whiteboard::BadgePageData BadgePageData;
-    BadgePageData data(SteamBot::HTTPClient::parseString(*(message->response)));
+    BadgePageData data(SteamBot::HTTPClient::parseString(*(message->query)));
     BOOST_LOG_TRIVIAL(debug) << "Got badge page data: " << data;
 }
 

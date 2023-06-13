@@ -27,7 +27,6 @@
 #include "Modules/WebSession.hpp"
 #include "Web/URLEncode.hpp"
 #include "Web/Cookies.hpp"
-#include "HTTPClient.hpp"
 #include "Base64.hpp"
 
 #include "Steam/ProtoBuf/steammessages_clientserver_login.hpp"
@@ -78,8 +77,8 @@ namespace
 
     private:
         static std::string createAuthBody(std::string);
-        static SteamBot::HTTPClient::ResponseType performAuthUserRequest(std::string);
-        static std::string createCookies(SteamBot::HTTPClient::ResponseType);
+        static SteamBot::HTTPClient::Query::QueryPtr performAuthUserRequest(std::string);
+        static std::string createCookies(SteamBot::HTTPClient::Query::QueryPtr);
         static void setTimezoneCookie(std::string&);
 
         void requestNonce();
@@ -159,24 +158,25 @@ std::string WebSessionModule::createAuthBody(std::string nonce)
  * returns the response. This will block.
  */
 
-SteamBot::HTTPClient::ResponseType WebSessionModule::performAuthUserRequest(std::string body)
+SteamBot::HTTPClient::Query::QueryPtr WebSessionModule::performAuthUserRequest(std::string body)
 {
     static const auto url=boost::urls::parse_absolute_uri("https://api.steampowered.com/ISteamUserAuth/AuthenticateUser/v1/").value();
 
-    auto request=std::make_shared<SteamBot::HTTPClient::Request>(boost::beast::http::verb::post, url);
-    request->body=std::move(body);
-    request->contentType="application/x-www-form-urlencoded";
+    auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::post, url);
+    query->request.body()=std::move(body);
+    query->request.content_length(query->request.body().size());
+    query->request.base().set("Content-Type", "application/x-www-form-urlencoded");
 
-    return SteamBot::HTTPClient::query(std::move(request)).get();
+    return SteamBot::HTTPClient::perform(std::move(query));
 }
 
 /************************************************************************/
 
-std::string WebSessionModule::createCookies(SteamBot::HTTPClient::ResponseType response)
+std::string WebSessionModule::createCookies(SteamBot::HTTPClient::Query::QueryPtr query)
 {
     std::string cookies;
 
-    auto json=SteamBot::HTTPClient::parseJson(*response);
+    auto json=SteamBot::HTTPClient::parseJson(*query);
 
     boost::json::object& authenticateuser=json.as_object().at("authenticateuser").as_object();
     SteamBot::Web::setCookie(cookies, "steamLogin", authenticateuser.at("token").as_string());
@@ -278,17 +278,18 @@ void WebSessionModule::handleRequests()
     {
         auto& front=requests.front();
 
-        auto request=std::make_shared<SteamBot::HTTPClient::Request>(boost::beast::http::verb::get, front->url);
+        auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, front->url);
         {
             std::string myCookies=cookies;
             setTimezoneCookie(myCookies);
-            request->headers.emplace_back("Cookie", std::move(myCookies));
+            query->request.base().set("Cookie", std::move(myCookies));
         }
-        auto response=SteamBot::HTTPClient::query(std::move(request)).get();
+
+        query=SteamBot::HTTPClient::perform(std::move(query));
 
         auto reply=std::make_shared<SteamBot::Modules::WebSession::Messageboard::GotURL>();
         reply->initiator=std::move(front);
-        reply->response=std::move(response);
+        reply->query=std::move(query);
         requests.pop();
         getClient().messageboard.send(std::move(reply));
     }

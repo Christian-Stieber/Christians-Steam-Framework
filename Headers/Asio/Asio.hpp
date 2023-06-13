@@ -19,26 +19,27 @@
 
 #pragma once
 
-#include <thread>
 #include <boost/asio/io_context.hpp>
 
 /************************************************************************/
+/*
+ * This is the thread that handles all asio-related stuff
+ */
 
 namespace SteamBot
 {
-    class AsioThread
+    class Asio
     {
     private:
-        std::thread thread;
-
-    public:
         boost::asio::io_context ioContext;
 
-    protected:
-        void launch();
+    private:
+        Asio();
+        ~Asio();
+
+        static Asio& get();
 
     public:
-        AsioThread();
-        virtual ~AsioThread();
+        static boost::asio::io_context& getIoContext();
     };
 }

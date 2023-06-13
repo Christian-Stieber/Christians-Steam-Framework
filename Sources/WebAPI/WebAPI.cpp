@@ -18,7 +18,7 @@
  */
 
 #include "WebAPI/WebAPI.hpp"
-#include "HTTPClient.hpp"
+#include "Asio/HTTPClient.hpp"
 
 #include <charconv>
 #include <boost/log/trivial.hpp>
@@ -92,7 +92,7 @@ void SteamBot::WebAPI::Request::set(std::string_view key, const std::vector<std:
 
 boost::json::value SteamBot::WebAPI::Request::send() const
 {
-    auto request=std::make_shared<SteamBot::HTTPClient::Request>(boost::beast::http::verb::get, url);
-    auto response=SteamBot::HTTPClient::query(std::move(request)).get();
+    auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, url);
+    auto response=SteamBot::HTTPClient::perform(std::move(query));
     return SteamBot::HTTPClient::parseJson(*response);
 }

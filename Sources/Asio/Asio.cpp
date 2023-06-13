@@ -17,37 +17,42 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "AsioThread.hpp"
+#include "Asio/Asio.hpp"
 
-#include <boost/log/trivial.hpp>
-
-/************************************************************************/
-
-typedef SteamBot::AsioThread AsioThread;
+#include <thread>
 
 /************************************************************************/
 
-AsioThread::AsioThread() =default;
+typedef SteamBot::Asio Asio;
 
 /************************************************************************/
 
-void AsioThread::launch()
+Asio::~Asio()
 {
-    thread=std::thread([this]{
-        BOOST_LOG_TRIVIAL(debug) << "AsioThread " << boost::typeindex::type_id_runtime(*this).pretty_name() << " launched";
-        auto guard=boost::asio::make_work_guard(ioContext);
-        ioContext.run();
-        BOOST_LOG_TRIVIAL(debug) << "AsioThread " << boost::typeindex::type_id_runtime(*this).pretty_name() << " terminating";
-    });
+    assert(false);
 }
 
 /************************************************************************/
 
-AsioThread::~AsioThread()
+Asio::Asio()
 {
-    ioContext.stop();
-    if (thread.joinable())
-    {
-        thread.join();
-    }
+    std::thread([this](){
+        auto work=boost::asio::make_work_guard(ioContext);
+        ioContext.run();
+    }).detach();
+}
+
+/************************************************************************/
+
+Asio& Asio::get()
+{
+    static Asio& instance=*new Asio();
+    return instance;
+}
+
+/************************************************************************/
+
+boost::asio::io_context& Asio::getIoContext()
+{
+    return get().ioContext;
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "HTTPClient.hpp"
+#include "Asio/HTTPClient.hpp"
 
 #include <boost/url/url.hpp>
 
@@ -28,7 +28,7 @@ namespace SteamBot
                 {
                 public:
                     std::shared_ptr<const GetURL> initiator;
-                    SteamBot::HTTPClient::ResponseType response;
+                    SteamBot::HTTPClient::Query::QueryPtr query;
                 };
             }
         }
