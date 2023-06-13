@@ -68,13 +68,15 @@ namespace
         static boost::asio::ssl::context& getSslContext();
 
     public:
-        Query(HTTPClient::Query& query_)
+        Query(HTTPClient::Query& query_, Callback&& callback_)
             : query(&query_),
+              callback(std::move(callback_)),
               host(query->url.host()),
               ioContext(SteamBot::Asio::getIoContext()),
               resolver(ioContext),
               stream(ioContext, getSslContext())
         {
+            assert(SteamBot::Asio::isThread());
             BOOST_LOG_TRIVIAL(debug) << "constructed query to " << query->url;
         }
 
@@ -95,7 +97,7 @@ namespace
         void resolve_completed(const ErrorCode&, Resolver::results_type);
 
     public:
-        void async_perform(Callback);
+        void perform();
     };
 }
 
@@ -117,9 +119,11 @@ boost::asio::ssl::context& Query::getSslContext()
 
 void Query::complete(const ErrorCode& error)
 {
+    assert(SteamBot::Asio::isThread());
+
     if (error)
     {
-        BOOST_LOG_TRIVIAL(debug) << "query has failed with " << error;
+        BOOST_LOG_TRIVIAL(debug) << "query has failed with " << error.message() << " (" << error << ")";
     }
 
     assert(query!=nullptr);
@@ -238,11 +242,8 @@ void Query::resolve_completed(const ErrorCode& error, Resolver::results_type res
 
 /************************************************************************/
 
-void Query::async_perform(Callback callback_)
+void Query::perform()
 {
-    assert(!callback);
-    callback=std::move(callback_);
-
     std::string_view port=query->url.port();
     if (port.empty()) port="443";
 
@@ -260,23 +261,6 @@ HTTPClient::Query::Query(boost::beast::http::verb method, const boost::urls::url
 /************************************************************************/
 
 HTTPClient::Query::~Query() =default;
-
-/************************************************************************/
-
-std::shared_ptr<HTTPClient::Query::WaiterType> HTTPClient::perform(std::shared_ptr<SteamBot::Waiter> waiter, HTTPClient::Query::QueryPtr query)
-{
-    auto result=waiter->createWaiter<HTTPClient::Query::WaiterType>();
-    result->setResult()=std::move(query);
-
-    SteamBot::Asio::getIoContext().post([result]() {
-        auto query=std::make_shared<::Query>(*(result->setResult()));
-        query->async_perform([result=std::move(result)]() {
-            result->completed();
-        });
-    });
-
-    return result;
-}
 
 /************************************************************************/
 
@@ -327,4 +311,80 @@ HTTPClient::Query::QueryPtr HTTPClient::perform(HTTPClient::Query::QueryPtr quer
             return std::move(*response);
         }
     }
+}
+
+/************************************************************************/
+/*
+ * For some reason, I want to serialize the http queries, and also
+ * slow them down a bit.
+ */
+
+namespace
+{
+    class Queue
+    {
+    private:
+        typedef std::shared_ptr<HTTPClient::Query::WaiterType> ItemType;
+
+        std::chrono::steady_clock::time_point lastQuery;
+        std::queue<ItemType> queue;
+
+        boost::asio::steady_timer timer{SteamBot::Asio::getIoContext()};
+
+    public:
+        void performNext()
+        {
+            assert(SteamBot::Asio::isThread());
+            if (!queue.empty())
+            {
+                auto now=decltype(lastQuery)::clock::now();
+                auto next=lastQuery+std::chrono::seconds(5);
+                if (now<next)
+                {
+                    auto cancelled=timer.expires_at(next);
+                    assert(cancelled==0);
+                    timer.async_wait([this](const boost::system::error_code& error) {
+                        assert(!error);
+                        performNext();
+                    });
+                }
+                else
+                {
+                    auto& item=queue.front();
+                    auto query=std::make_shared<::Query>(*(item->setResult()),[this, item]() {
+                        lastQuery=decltype(lastQuery)::clock::now();
+                        item->completed();
+                        assert(!queue.empty() && queue.front()==item);
+                        queue.pop();
+                        performNext();
+                    });
+                    query->perform();
+                }
+            }
+        }
+
+    public:
+        void enqueue(ItemType item)
+        {
+            SteamBot::Asio::getIoContext().post([this, item]() {
+                queue.push(std::move(item));
+                if (queue.size()==1)
+                {
+                    performNext();
+                }
+            });
+        }
+    };
+}
+
+/************************************************************************/
+
+std::shared_ptr<HTTPClient::Query::WaiterType> HTTPClient::perform(std::shared_ptr<SteamBot::Waiter> waiter, HTTPClient::Query::QueryPtr query)
+{
+    static Queue& queue=*new Queue;
+
+    auto result=waiter->createWaiter<HTTPClient::Query::WaiterType>();
+    result->setResult()=std::move(query);
+    queue.enqueue(result);
+    return result;
 }

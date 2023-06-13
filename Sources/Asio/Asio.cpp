@@ -19,8 +19,6 @@
 
 #include "Asio/Asio.hpp"
 
-#include <thread>
-
 /************************************************************************/
 
 typedef SteamBot::Asio Asio;
@@ -36,10 +34,10 @@ Asio::~Asio()
 
 Asio::Asio()
 {
-    std::thread([this](){
+    thread=std::thread([this](){
         auto work=boost::asio::make_work_guard(ioContext);
         ioContext.run();
-    }).detach();
+    });
 }
 
 /************************************************************************/
@@ -48,6 +46,16 @@ Asio& Asio::get()
 {
     static Asio& instance=*new Asio();
     return instance;
+}
+
+/************************************************************************/
+/*
+ * Check whether we are on the asio thread
+ */
+
+bool Asio::isThread()
+{
+    return get().thread.get_id()==std::this_thread::get_id();
 }
 
 /************************************************************************/

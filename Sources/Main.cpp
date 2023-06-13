@@ -42,6 +42,7 @@ int main(void)
     SteamBot::ClientInfo::init();
 
     SteamBot::UI::Thread::outputText("Welcome to Christian's work-in-progress SteamBot");
+    SteamBot::UI::Thread::outputText("Note: use the TAB or RETURN key to enter command mode");
     SteamBot::UI::Thread::wait();
 
     BOOST_LOG_TRIVIAL(debug) << "exiting";

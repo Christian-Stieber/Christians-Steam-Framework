@@ -21,6 +21,8 @@
 
 #include <boost/asio/io_context.hpp>
 
+#include <thread>
+
 /************************************************************************/
 /*
  * This is the thread that handles all asio-related stuff
@@ -31,6 +33,7 @@ namespace SteamBot
     class Asio
     {
     private:
+        std::thread thread;
         boost::asio::io_context ioContext;
 
     private:
@@ -40,6 +43,8 @@ namespace SteamBot
         static Asio& get();
 
     public:
+        static bool isThread();
+
         static boost::asio::io_context& getIoContext();
     };
 }
