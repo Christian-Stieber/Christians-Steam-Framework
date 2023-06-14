@@ -18,21 +18,10 @@
  */
 
 #include "WebAPI/ISteamDirectory/GetCMList.hpp"
-#include "Client/Client.hpp"
+#include "Asio/Asio.hpp"
+#include "WebAPI/WebAPI.hpp"
 
-#include <boost/fiber/mutex.hpp>
 #include <boost/log/trivial.hpp>
-
-/************************************************************************/
-
-typedef SteamBot::WebAPI::ISteamDirectory::GetCMList GetCMList;
-
-/************************************************************************/
-
-static const std::chrono::minutes cacheLifetime{30};
-
-static boost::fibers::mutex mutex;
-static std::unordered_map<unsigned int, std::shared_ptr<const GetCMList>> cache;
 
 /************************************************************************/
 /*
@@ -45,6 +34,46 @@ static std::unordered_map<unsigned int, std::shared_ptr<const GetCMList>> cache;
  * IP-addresses, and it feels like a waste to decode them all when
  * we'll just pick a random one and use that in the end.
  */
+
+/************************************************************************/
+
+typedef SteamBot::WebAPI::ISteamDirectory::GetCMList GetCMList;
+
+/************************************************************************/
+
+static constexpr std::chrono::minutes cacheLifetime{30};
+
+/************************************************************************/
+
+namespace
+{
+    class CMList
+    {
+    private:
+        std::unordered_map<unsigned int, std::shared_ptr<const GetCMList>> cache;
+        std::unordered_multimap<unsigned int, GetCMList::CallbackType> callbacks;
+
+    private:
+        CMList() =default;
+        ~CMList() =delete;
+
+    private:
+        void requestData(unsigned int);
+        void receivedData(unsigned int, std::unique_ptr<SteamBot::WebAPI::Query>);
+
+        std::shared_ptr<const GetCMList> getCacheData(unsigned int);
+
+    public:
+        void get(unsigned int, GetCMList::CallbackType);
+
+    public:
+        static CMList& get();
+    };
+}
+
+/************************************************************************/
+
+GetCMList::~GetCMList() =default;
 
 /************************************************************************/
 /*
@@ -69,77 +98,118 @@ static std::unordered_map<unsigned int, std::shared_ptr<const GetCMList>> cache;
 
 /************************************************************************/
 
-GetCMList::~GetCMList() =default;
-
-/************************************************************************/
-
-static boost::json::value perform(SteamBot::WebAPI::Query::QueryPtr&& query)
+GetCMList::GetCMList(boost::json::value& json)
+    : when(decltype(when)::clock::now())
 {
-    auto waiter=SteamBot::Waiter::create();
-
-    decltype(SteamBot::Client::getClient().cancel.registerObject(*waiter)) cancellation;
-    if (auto client=SteamBot::Client::getClientPtr())
+    auto serverlistJson=json.at("response").at("serverlist").as_array();
+    serverlist.reserve(serverlistJson.size());
+    for (auto& value: serverlistJson)
     {
-        cancellation=client->cancel.registerObject(*waiter);
+        serverlist.emplace_back(static_cast<std::string_view>(value.as_string()));
     }
-
-    auto responseWaiter=SteamBot::WebAPI::perform(waiter, std::move(query));
-    while (true)
-    {
-        waiter->wait();
-        if (auto response=responseWaiter->getResult())
-        {
-            if ((*response)->error)
-            {
-                throw boost::system::system_error((*response)->error);
-            }
-            return std::move((*response)->value);
-        }
-    }
-}
-
-/************************************************************************/
-
-GetCMList::GetCMList(unsigned int cellId)
-    : when(std::chrono::system_clock::now())
-{
-    // Get the data from Steam
-    boost::json::value json;
-    {
-        auto query=std::make_unique<SteamBot::WebAPI::Query>("ISteamDirectory", "GetCMList", 1);
-        query->set("cellid", static_cast<int>(cellId));
-        json=::perform(std::move(query));
-    }
-
-    // Process the serverlist
-    {
-        auto serverlistJson=json.at("response").at("serverlist").as_array();
-        serverlist.reserve(serverlistJson.size());
-        for (auto& value: serverlistJson)
-        {
-            serverlist.emplace_back(static_cast<std::string_view>(value.as_string()));
-        }
-    }
-
     BOOST_LOG_TRIVIAL(info) << "ISteamDirectory/GetCMList returned " << serverlist.size() << " endpoints";
 }
 
 /************************************************************************/
 
-std::shared_ptr<const GetCMList> GetCMList::get(unsigned int cellId)
+CMList& CMList::get()
 {
-    const auto now=std::chrono::system_clock::now();
-    std::shared_ptr<const GetCMList> data;
+    static CMList& instance=*new CMList;
+    return instance;
+}
 
-    std::lock_guard<decltype(mutex)> lock(mutex);
+/************************************************************************/
 
+static void postCallback(GetCMList::CallbackType&& callback, std::shared_ptr<const GetCMList> data)
+{
+    SteamBot::Asio::getIoContext().post([callback=std::move(callback), data=std::move(data)](){
+        callback(std::move(data));
+    });
+}
+
+/************************************************************************/
+
+void CMList::receivedData(unsigned int cellId, std::unique_ptr<SteamBot::WebAPI::Query> query)
+{
+    BOOST_LOG_TRIVIAL(info) << "received ISteamDirectory/GetCMList";
+    if (query->error)
     {
+        assert(false);	// Deal with it some other time
+    }
+    else
+    {
+        auto data=std::make_shared<const GetCMList>(query->value);
+
+        bool success=cache.try_emplace(cellId, data).second;
+        assert(success);
+
+        auto range=callbacks.equal_range(cellId);
+        for (auto iterator=range.first; iterator!=range.second; ++iterator)
+        {
+            assert(iterator->first==cellId);
+            postCallback(std::move(iterator->second), data);
+        }
+        callbacks.erase(range.first, range.second);
+        assert(callbacks.count(cellId)==0);
+    }
+}
+
+/************************************************************************/
+
+void CMList::requestData(unsigned int cellId)
+{
+    // And.. the CallbackWaiter doesn't work for us here...
+    class MyWaiter : public SteamBot::WaiterBase
+    {
+    public:
+        unsigned int cellId;
+        std::shared_ptr<WaiterBase> self;
+        std::shared_ptr<SteamBot::WebAPI::Query::WaiterType> queryWaiter;
+
+    public:
+        void perform(unsigned int cellId_)
+        {
+            BOOST_LOG_TRIVIAL(info) << "requesting ISteamDirectory/GetCMList";
+            cellId=cellId_;
+            self=shared_from_this();
+            auto query=std::make_unique<SteamBot::WebAPI::Query>("ISteamDirectory", "GetCMList", 1);
+            query->set("cellid", static_cast<int>(cellId));
+            queryWaiter=SteamBot::WebAPI::perform(self, std::move(query));
+        }
+
+    private:
+        virtual void wakeup(ItemBase*) override
+        {
+            assert(SteamBot::Asio::isThread());
+            if (auto result=queryWaiter->getResult())
+            {
+                CMList::get().receivedData(cellId, std::move(*result));
+                self.reset();
+            }
+        }
+    };
+
+    std::make_shared<MyWaiter>()->perform(cellId);;
+}
+
+/************************************************************************/
+/*
+ * Will expire entry if too old.
+ *
+ * empty shared_ptr if expired or not available
+ */
+
+std::shared_ptr<const GetCMList> CMList::getCacheData(unsigned int cellId)
+{
+    std::shared_ptr<const GetCMList> result;
+    {
+        const auto now=std::chrono::system_clock::now();
         auto iterator=cache.find(cellId);
         if (iterator!=cache.end())
         {
             if (iterator->second->when+cacheLifetime>now)
             {
-                data=iterator->second;
+                result=iterator->second;
             }
             else
             {
@@ -147,14 +217,82 @@ std::shared_ptr<const GetCMList> GetCMList::get(unsigned int cellId)
             }
         }
     }
+    return result;
+}
 
-    if (!data)
+/************************************************************************/
+
+void CMList::get(unsigned int cellId, GetCMList::CallbackType callback)
+{
+    assert(SteamBot::Asio::isThread());
+
+    std::shared_ptr<const GetCMList> data;
+
+    // note: if we have callbacks stored, it means we're currently retrieving the data
+    bool noCallbacks;
+
     {
-        data=std::make_shared<const GetCMList>(cellId);
-
-        bool success=cache.try_emplace(cellId, data).second;
-        assert(success);
+        auto result=callbacks.equal_range(cellId);
+        noCallbacks=(result.first==callbacks.end());
+        if (noCallbacks)
+        {
+            data=getCacheData(cellId);
+        }
     }
 
-    return data;
+    if (data)
+    {
+        postCallback(std::move(callback), std::move(data));
+    }
+    else
+    {
+        callbacks.emplace(cellId, std::move(callback));
+        if (noCallbacks)
+        {
+            requestData(cellId);
+        }
+    }
+}
+
+/************************************************************************/
+
+void GetCMList::get(unsigned int cellId, GetCMList::CallbackType callback)
+{
+    CMList::get().get(cellId, std::move(callback));
+}
+
+/************************************************************************/
+/*
+ * Temporary hack providing the old API
+ */
+
+#include <boost/fiber/mutex.hpp>
+#include <boost/fiber/condition_variable.hpp>
+
+std::shared_ptr<const GetCMList> GetCMList::get(unsigned int cellId)
+{
+    class Stuff
+    {
+    public:
+        boost::fibers::mutex mutex;
+        boost::fibers::condition_variable condition;
+        std::shared_ptr<const GetCMList> result;
+    };
+
+    auto stuff=std::make_shared<Stuff>();
+
+    SteamBot::Asio::getIoContext().post([stuff, cellId]() mutable {
+        CMList::get().get(cellId, [stuff=std::move(stuff)](std::shared_ptr<const GetCMList> data) {
+            {
+                std::lock_guard<decltype(stuff->mutex)> lock(stuff->mutex);
+                assert(!stuff->result);
+                stuff->result=std::move(data);
+            }
+            stuff->condition.notify_one();
+        });
+    });
+
+    std::unique_lock<decltype(stuff->mutex)> lock(stuff->mutex);
+    stuff->condition.wait(lock, [&stuff](){ return static_cast<bool>(stuff->result); });
+    return std::move(stuff->result);
 }

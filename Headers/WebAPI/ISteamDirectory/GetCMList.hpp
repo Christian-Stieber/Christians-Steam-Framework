@@ -19,9 +19,13 @@
 
 #pragma once
 
-#include "WebAPI/WebAPI.hpp"
-
 #include <chrono>
+#include <vector>
+#include <string>
+#include <functional>
+#include <memory>
+
+#include <boost/json/value.hpp>
 
 /************************************************************************/
 
@@ -39,10 +43,16 @@ namespace SteamBot
 				std::vector<std::string> serverlist;
 
             public:
-                GetCMList(unsigned int);		// private, use get() instead
+                GetCMList(boost::json::value&);		// private, use get() instead
                 ~GetCMList();
 
             public:
+                // Note: this MUST only used on the Asio thread, so I'm not using the Waiter interface here
+                typedef std::function<void(std::shared_ptr<const GetCMList>)> CallbackType;
+                static void get(unsigned int, CallbackType);
+
+            public:
+                // Temporary, until the new connection handling gets done
                 static std::shared_ptr<const GetCMList> get(unsigned int);
             };
         }
