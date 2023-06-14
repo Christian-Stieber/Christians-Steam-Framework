@@ -37,6 +37,10 @@
  * These "waiter items" have their own trigger status, and different
  * APIs for users to retrieve the result.
  *
+ * Note: the wakeup() call (to be implemented by subclasses) either
+ * gets a pointer to the item that has just called wakeup, or
+ * a nullptr if that came from a cancel.
+ *
  * To use this, create a Waiter instance first, then use
  * createWaiter<T>(...) to attach waiter items from other subsystems
  * to it (such as Whiteboard::Waiter<U>).
@@ -69,7 +73,7 @@ namespace SteamBot
         std::vector<std::weak_ptr<ItemBase>> items;
 
     public:
-        virtual void wakeup() =0;	// make this threadsafe!
+        virtual void wakeup(ItemBase*) =0;	// make this threadsafe!
         void cancel();
 
     protected:
@@ -142,7 +146,7 @@ namespace SteamBot
         boost::fibers::condition_variable condition;
 
     private:
-        virtual void wakeup() override;
+        virtual void wakeup(ItemBase*) override;
 
     protected:
         Waiter();

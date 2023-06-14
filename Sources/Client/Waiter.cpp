@@ -51,7 +51,7 @@ void ItemBase::wakeup()
 {
     if (auto locked=waiter.lock())
     {
-        locked->wakeup();
+        locked->wakeup(this);
     }
 }
 
@@ -65,10 +65,9 @@ void ItemBase::install(std::shared_ptr<ItemBase>)
 
 void WaiterBase::cancel()
 {
-    if (!cancelled)
+    if (!cancelled.exchange(true))
     {
-        cancelled=true;
-        wakeup();
+        wakeup(nullptr);
     }
 }
 
@@ -122,7 +121,7 @@ bool Waiter::wait(std::chrono::milliseconds timeout)
 
 /************************************************************************/
 
-void Waiter::wakeup()
+void Waiter::wakeup(ItemBase*)
 {
     condition.notify_all();
 }
