@@ -22,6 +22,11 @@
 
 #include <charconv>
 #include <boost/log/trivial.hpp>
+#include <boost/url/url_view.hpp>
+
+/************************************************************************/
+
+typedef SteamBot::WebAPI::Query Query;
 
 /************************************************************************/
 
@@ -39,7 +44,7 @@ static std::string makeString(int value)
 
 /************************************************************************/
 
-SteamBot::WebAPI::Request::Request(std::string_view interface, std::string_view method, unsigned int version)
+Query::Query(std::string_view interface, std::string_view method, unsigned int version)
     : url(defaultBaseAddress)
 {
     url.segments().push_back(interface);
@@ -52,11 +57,11 @@ SteamBot::WebAPI::Request::Request(std::string_view interface, std::string_view 
 
 /************************************************************************/
 
-SteamBot::WebAPI::Request::~Request() =default;
+Query::~Query() =default;
 
 /************************************************************************/
 
-void SteamBot::WebAPI::Request::set(std::string_view key, std::string_view value)
+void Query::set(std::string_view key, std::string_view value)
 {
     assert(!url.params().contains(key));
     url.params().set(key, value);
@@ -64,14 +69,14 @@ void SteamBot::WebAPI::Request::set(std::string_view key, std::string_view value
 
 /************************************************************************/
 
-void SteamBot::WebAPI::Request::set(std::string_view key, int value)
+void Query::set(std::string_view key, int value)
 {
     set(std::move(key), makeString(value));
 }
 
 /************************************************************************/
 
-void SteamBot::WebAPI::Request::set(std::string_view key, const std::vector<std::string>& values)
+void Query::set(std::string_view key, const std::vector<std::string>& values)
 {
     set("count", static_cast<int>(values.size()));
     for (int i=0; i<values.size(); i++)
@@ -87,12 +92,30 @@ void SteamBot::WebAPI::Request::set(std::string_view key, const std::vector<std:
 /************************************************************************/
 /*
  * Sends the query.
- * Returns the json-decoded response, or throws.
  */
 
-boost::json::value SteamBot::WebAPI::Request::send() const
+std::shared_ptr<Query::WaiterType> SteamBot::WebAPI::perform(std::shared_ptr<SteamBot::Waiter> waiter, Query::QueryPtr query)
 {
-    auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, url);
-    auto response=SteamBot::HTTPClient::perform(std::move(query));
-    return SteamBot::HTTPClient::parseJson(*response);
+    auto result=waiter->createWaiter<Query::WaiterType>();
+    auto httpQuery=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, query->url);
+    result->setResult()=std::move(query);
+    SteamBot::HTTPClient::perform(std::move(httpQuery), [result](SteamBot::HTTPClient::Query::QueryPtr httpQuery) mutable {
+        if (httpQuery->error)
+        {
+            result->setResult()->error=httpQuery->error;
+        }
+        else
+        {
+            try
+            {
+                result->setResult()->value=SteamBot::HTTPClient::parseJson(*httpQuery);
+            }
+            catch(const boost::system::system_error& exception)
+            {
+                result->setResult()->error=exception.code();
+            }
+        }
+        result->completed();
+    });
+    return result;
 }

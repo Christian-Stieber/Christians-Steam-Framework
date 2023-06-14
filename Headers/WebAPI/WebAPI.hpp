@@ -19,15 +19,11 @@
 
 #pragma once
 
-#include <memory>
+#include "Client/ResultWaiter.hpp"
+
 #include <string_view>
-#include <functional>
 #include <boost/url/url.hpp>
-#include <boost/url/url_view.hpp>
-#include <boost/beast/http.hpp>
-#include <boost/beast/http/status.hpp>
 #include <boost/json.hpp>
-#include <list>
 
 /************************************************************************/
 /*
@@ -52,16 +48,22 @@ namespace SteamBot
 {
     namespace WebAPI
     {
-        class Request
+        class Query
         {
-        private:
+        public:
             boost::urls::url url;
 
         public:
-            Request(std::string_view, std::string_view, unsigned int);
-            virtual ~Request();
+            Query(std::string_view, std::string_view, unsigned int);
+            virtual ~Query();
 
-            boost::json::value send() const;
+        public:
+            // Result data will be filled in during perform()
+            boost::system::error_code error;
+            boost::json::value value;
+
+            typedef std::unique_ptr<Query> QueryPtr;
+            typedef SteamBot::ResultWaiter<QueryPtr> WaiterType;
 
         public:
             void set(std::string_view, std::string_view);
@@ -69,5 +71,7 @@ namespace SteamBot
 
             void set(std::string_view, int);	// for now, let's just assume this is enough
         };
+
+        std::shared_ptr<Query::WaiterType> perform(std::shared_ptr<SteamBot::Waiter>, Query::QueryPtr);
     }
 }

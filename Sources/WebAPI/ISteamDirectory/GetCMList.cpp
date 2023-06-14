@@ -18,6 +18,7 @@
  */
 
 #include "WebAPI/ISteamDirectory/GetCMList.hpp"
+#include "Client/Client.hpp"
 
 #include <boost/fiber/mutex.hpp>
 #include <boost/log/trivial.hpp>
@@ -72,15 +73,42 @@ GetCMList::~GetCMList() =default;
 
 /************************************************************************/
 
+static boost::json::value perform(SteamBot::WebAPI::Query::QueryPtr&& query)
+{
+    auto waiter=SteamBot::Waiter::create();
+
+    decltype(SteamBot::Client::getClient().cancel.registerObject(*waiter)) cancellation;
+    if (auto client=SteamBot::Client::getClientPtr())
+    {
+        cancellation=client->cancel.registerObject(*waiter);
+    }
+
+    auto responseWaiter=SteamBot::WebAPI::perform(waiter, std::move(query));
+    while (true)
+    {
+        waiter->wait();
+        if (auto response=responseWaiter->getResult())
+        {
+            if ((*response)->error)
+            {
+                throw boost::system::system_error((*response)->error);
+            }
+            return std::move((*response)->value);
+        }
+    }
+}
+
+/************************************************************************/
+
 GetCMList::GetCMList(unsigned int cellId)
     : when(std::chrono::system_clock::now())
 {
     // Get the data from Steam
     boost::json::value json;
     {
-        SteamBot::WebAPI::Request request("ISteamDirectory", "GetCMList", 1);
-        request.set("cellid", static_cast<int>(cellId));
-        json=request.send();
+        auto query=std::make_unique<SteamBot::WebAPI::Query>("ISteamDirectory", "GetCMList", 1);
+        query->set("cellid", static_cast<int>(cellId));
+        json=::perform(std::move(query));
     }
 
     // Process the serverlist
