@@ -72,6 +72,6 @@ namespace SteamBot
             void set(std::string_view, int);	// for now, let's just assume this is enough
         };
 
-        std::shared_ptr<Query::WaiterType> perform(std::shared_ptr<SteamBot::Waiter>, Query::QueryPtr);
+        std::shared_ptr<Query::WaiterType> perform(std::shared_ptr<SteamBot::WaiterBase>, Query::QueryPtr);
     }
 }

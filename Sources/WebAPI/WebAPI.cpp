@@ -96,7 +96,7 @@ void Query::set(std::string_view key, const std::vector<std::string>& values)
  * Sends the query.
  */
 
-std::shared_ptr<Query::WaiterType> SteamBot::WebAPI::perform(std::shared_ptr<SteamBot::Waiter> waiter, Query::QueryPtr query)
+std::shared_ptr<Query::WaiterType> SteamBot::WebAPI::perform(std::shared_ptr<SteamBot::WaiterBase> waiter, Query::QueryPtr query)
 {
     auto initiator=[query=std::move(query)](std::shared_ptr<SteamBot::WaiterBase> waiter, std::shared_ptr<Query::WaiterType> result) mutable {
         result->setResult()=std::move(query);
