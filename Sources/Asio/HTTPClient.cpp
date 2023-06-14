@@ -293,27 +293,6 @@ std::string SteamBot::HTTPClient::parseString(const SteamBot::HTTPClient::Query&
 }
 
 /************************************************************************/
-
-HTTPClient::Query::QueryPtr HTTPClient::perform(HTTPClient::Query::QueryPtr query)
-{
-    auto waiter=SteamBot::Waiter::create();
-    auto cancellation=SteamBot::Client::getClient().cancel.registerObject(*waiter);
-    auto responseWaiter=SteamBot::HTTPClient::perform(waiter, std::move(query));
-    while (true)
-    {
-        waiter->wait();
-        if (auto response=responseWaiter->getResult())
-        {
-            if ((*response)->error)
-            {
-                throw boost::system::system_error((*response)->error);
-            }
-            return std::move(*response);
-        }
-    }
-}
-
-/************************************************************************/
 /*
  * For some reason, I want to serialize the http queries, and also
  * slow them down a bit.
@@ -324,10 +303,24 @@ namespace
     class Queue
     {
     private:
-        typedef std::shared_ptr<HTTPClient::Query::WaiterType> ItemType;
+        class QueueItem
+        {
+        public:
+            HTTPClient::Query::QueryPtr query;
+            std::function<void(HTTPClient::Query::QueryPtr)> callback;
 
+        public:
+            QueueItem(decltype(query)&& query_, decltype(callback)&& callback_)
+                : query(std::move(query_)), callback(std::move(callback_))
+            {
+            }
+
+            ~QueueItem() =default;
+        };
+
+    private:
         std::chrono::steady_clock::time_point lastQuery;
-        std::queue<ItemType> queue;
+        std::queue<std::shared_ptr<QueueItem>> queue;
 
         boost::asio::steady_timer timer{SteamBot::Asio::getIoContext()};
 
@@ -350,11 +343,11 @@ namespace
                 }
                 else
                 {
-                    auto& item=queue.front();
-                    auto query=std::make_shared<::Query>(*(item->setResult()),[this, item]() {
+                    auto item=queue.front();
+                    auto query=std::make_shared<::Query>(*(item->query), [this, item]() {
                         lastQuery=decltype(lastQuery)::clock::now();
-                        item->completed();
                         assert(!queue.empty() && queue.front()==item);
+                        item->callback(std::move(item->query));
                         queue.pop();
                         performNext();
                     });
@@ -364,9 +357,10 @@ namespace
         }
 
     public:
-        void enqueue(ItemType item)
+        void enqueue(HTTPClient::Query::QueryPtr&& query, std::function<void(HTTPClient::Query::QueryPtr)>&& callback)
         {
-            SteamBot::Asio::getIoContext().post([this, item]() {
+            auto item=std::make_shared<QueueItem>(std::move(query), std::move(callback));
+            SteamBot::Asio::getIoContext().post([this, item=std::move(item)]() {
                 queue.push(std::move(item));
                 if (queue.size()==1)
                 {
@@ -379,12 +373,47 @@ namespace
 
 /************************************************************************/
 
-std::shared_ptr<HTTPClient::Query::WaiterType> HTTPClient::perform(std::shared_ptr<SteamBot::Waiter> waiter, HTTPClient::Query::QueryPtr query)
+void HTTPClient::perform(HTTPClient::Query::QueryPtr query, std::function<void(HTTPClient::Query::QueryPtr)> callback)
 {
     static Queue& queue=*new Queue;
+    queue.enqueue(std::move(query), std::move(callback));
+}
 
+/************************************************************************/
+
+std::shared_ptr<HTTPClient::Query::WaiterType> HTTPClient::perform(std::shared_ptr<SteamBot::Waiter> waiter, HTTPClient::Query::QueryPtr query)
+{
     auto result=waiter->createWaiter<HTTPClient::Query::WaiterType>();
-    result->setResult()=std::move(query);
-    queue.enqueue(result);
+    perform(std::move(query), [result](HTTPClient::Query::QueryPtr query){
+        result->setResult()=std::move(query);
+        result->completed();
+    });
     return result;
+}
+
+/************************************************************************/
+
+HTTPClient::Query::QueryPtr HTTPClient::perform(HTTPClient::Query::QueryPtr query)
+{
+    auto waiter=SteamBot::Waiter::create();
+
+    decltype(SteamBot::Client::getClient().cancel.registerObject(*waiter)) cancellation;
+    if (auto client=SteamBot::Client::getClientPtr())
+    {
+        cancellation=client->cancel.registerObject(*waiter);
+    }
+
+    auto responseWaiter=SteamBot::HTTPClient::perform(waiter, std::move(query));
+    while (true)
+    {
+        waiter->wait();
+        if (auto response=responseWaiter->getResult())
+        {
+            if ((*response)->error)
+            {
+                throw boost::system::system_error((*response)->error);
+            }
+            return std::move(*response);
+        }
+    }
 }
