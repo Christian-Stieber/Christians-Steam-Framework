@@ -19,6 +19,7 @@
 
 #include "WebAPI/WebAPI.hpp"
 #include "Asio/HTTPClient.hpp"
+#include "Asio/Asio.hpp"
 
 #include <charconv>
 #include <boost/log/trivial.hpp>
@@ -124,9 +125,11 @@ std::shared_ptr<Query::WaiterType> SteamBot::WebAPI::perform(std::shared_ptr<Ste
     private:
         virtual void wakeup(ItemBase*) override
         {
+            assert(SteamBot::Asio::isThread());
             if (cancelled)
             {
                 // ToDo: ???
+                self.reset();
             }
             else if (auto httpQuery=httpWaiterItem->getResult())
             {
@@ -146,6 +149,7 @@ std::shared_ptr<Query::WaiterType> SteamBot::WebAPI::perform(std::shared_ptr<Ste
                     }
                 }
                 result->completed();
+                self.reset();
             }
         }
     };
