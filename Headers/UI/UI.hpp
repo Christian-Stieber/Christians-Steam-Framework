@@ -76,7 +76,7 @@ namespace SteamBot
             bool resultAvailable=false;
 
         public:
-            WaiterBase(std::shared_ptr<SteamBot::Waiter>&&);
+            WaiterBase(std::shared_ptr<SteamBot::WaiterBase>&&);
             virtual ~WaiterBase();
 
             void completed();		// call this when done
@@ -93,7 +93,7 @@ namespace SteamBot
             T result;
 
         public:
-            Waiter(std::shared_ptr<SteamBot::Waiter> waiter)
+            Waiter(std::shared_ptr<SteamBot::WaiterBase> waiter)
                 : WaiterBase(std::move(waiter))
             {
             }
@@ -202,7 +202,7 @@ namespace SteamBot
 
         public:
             static void outputText(std::string);
-            static Base::ResultParam<std::string> requestPassword(std::shared_ptr<SteamBot::Waiter>, Base::PasswordType);
+            static Base::ResultParam<std::string> requestPassword(std::shared_ptr<SteamBot::WaiterBase>, Base::PasswordType);
 
         public:
             static void quit();

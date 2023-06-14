@@ -22,7 +22,7 @@
 
 /************************************************************************/
 
-SteamBot::Whiteboard::WaiterBase::WaiterBase(std::shared_ptr<SteamBot::Waiter> waiter_, SteamBot::Whiteboard& whiteboard_)
+SteamBot::Whiteboard::WaiterBase::WaiterBase(std::shared_ptr<SteamBot::WaiterBase> waiter_, SteamBot::Whiteboard& whiteboard_)
     : ItemBase(std::move(waiter_)), whiteboard(whiteboard_)
 {
 }

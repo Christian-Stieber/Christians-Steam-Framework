@@ -121,7 +121,7 @@ namespace SteamBot
 
 /************************************************************************/
 
-class SteamBot::Whiteboard::WaiterBase : public SteamBot::Waiter::ItemBase
+class SteamBot::Whiteboard::WaiterBase : public SteamBot::WaiterBase::ItemBase
 {
 private:
     bool hasChanged=false;
@@ -129,7 +129,7 @@ private:
 protected:
     Whiteboard& whiteboard;
 
-    WaiterBase(std::shared_ptr<SteamBot::Waiter>, Whiteboard&);
+    WaiterBase(std::shared_ptr<SteamBot::WaiterBase>, Whiteboard&);
 
     void resetChanged()
     {
@@ -154,7 +154,7 @@ public:
     }
 
 public:
-    Waiter(std::shared_ptr<SteamBot::Waiter> waiter_, Whiteboard& whiteboard_)
+    Waiter(std::shared_ptr<SteamBot::WaiterBase> waiter_, Whiteboard& whiteboard_)
         : WaiterBase(std::move(waiter_), whiteboard_)
     {
     }

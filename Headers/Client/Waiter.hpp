@@ -27,85 +27,57 @@
 
 /************************************************************************/
 /*
- * A "Waiter" object is a single object that can be notified from
- * different other systems in SteamBot.
+ * I'm not entirely sure that this was a good way to go, but it's
+ * there, at least for now.
+ *
+ * The "waiter" system acts as a event loop: it is a single object
+ * that a fiber can "wait" on, and various other components return
+ * "waiter items" that can be attached to a waiter.
+ *
+ * These "waiter items" have their own trigger status, and different
+ * APIs for users to retrieve the result.
  *
  * To use this, create a Waiter instance first, then use
- * createWaiter<T>(...) to attach waiter classes from other subsystems
+ * createWaiter<T>(...) to attach waiter items from other subsystems
  * to it (such as Whiteboard::Waiter<U>).
  *
- * Call wait() to block the calling fiber until one of the attached
- * sources wakes it up.
+ * If the aforementioned T has a static function "createdWaiter()", it
+ * will be called during createWaiter().
  *
- * Call cancel() to abort ongoing wait() calls. These will throw an
- * OperationCancelledException.
- *
- * If T has a static function "createdWaiter()", it will be called
- * during createWaiter().
+ * "Waiter" is the actual waiter class.
  */
+
+/************************************************************************/
+
+#include <memory>
+#include <atomic>
+#include <vector>
 
 /************************************************************************/
 
 namespace SteamBot
 {
-    class Waiter : public std::enable_shared_from_this<Waiter>
+    class WaiterBase : public std::enable_shared_from_this<WaiterBase>
     {
     public:
-        class ItemBase
-        {
-            friend class Waiter;
+        class ItemBase;
 
-        private:
-            std::weak_ptr<Waiter> waiter;
-
-        public:
-            ItemBase(std::shared_ptr<Waiter> waiter_)
-                : waiter(std::move(waiter_))
-            {
-            }
-
-            virtual ~ItemBase() =default;
-
-        public:
-            // Note: this should be thread-safe
-            void wakeup()
-            {
-                auto locked=waiter.lock();
-                if (locked)
-                {
-                    locked->wakeup();
-                }
-            }
-
-        public:
-            virtual void install(std::shared_ptr<ItemBase>) { }
-            virtual bool isWoken() const =0;
-        };
+    protected:
+        std::atomic<bool> cancelled{false};
 
     private:
-        boost::fibers::mutex mutex;
-        boost::fibers::condition_variable condition;
-        bool cancelled=false;
-
         std::vector<std::weak_ptr<ItemBase>> items;
 
-    private:
-        bool isWoken();
-
     public:
-        void wakeup();
-        void wait();
-        bool wait(std::chrono::milliseconds);
+        virtual void wakeup() =0;	// make this threadsafe!
         void cancel();
 
     protected:
-        Waiter();
+        WaiterBase();
+        bool isWoken();
 
     public:
-        ~Waiter();
-
-    public:
-        static std::shared_ptr<Waiter> create();
+        virtual ~WaiterBase();
 
     private:
         // https://stackoverflow.com/questions/47443922/calling-a-member-function-if-it-exists-falling-back-to-a-free-function-and-vice
@@ -126,5 +98,62 @@ namespace SteamBot
             item->install(item);
             return item;
         }
+    };
+}
+
+/************************************************************************/
+
+class SteamBot::WaiterBase::ItemBase
+{
+    friend class WaiterBase;
+
+private:
+    std::weak_ptr<WaiterBase> waiter;
+
+public:
+    ItemBase(std::shared_ptr<WaiterBase>_);
+    virtual ~ItemBase();
+
+public:
+    void wakeup();		// Note: this is threadsafe
+
+public:
+    virtual void install(std::shared_ptr<ItemBase>);
+    virtual bool isWoken() const =0;		// Must be threadsafe
+};
+
+/************************************************************************/
+/*
+ * The "Waiter" class is the classic waiter.
+ *
+ * Call wait() to block the calling fiber until one of the attached
+ * items wakes it up.
+ *
+ * Call cancel() to abort ongoing wait() calls. These will throw an
+ * OperationCancelledException.
+ */
+
+namespace SteamBot
+{
+    class Waiter : public WaiterBase
+    {
+    private:
+        boost::fibers::mutex mutex;
+        boost::fibers::condition_variable condition;
+
+    private:
+        virtual void wakeup() override;
+
+    protected:
+        Waiter();
+
+    public:
+        virtual ~Waiter();
+
+        void wait();
+        bool wait(std::chrono::milliseconds);
+
+    public:
+        static std::shared_ptr<Waiter> create();
     };
 }

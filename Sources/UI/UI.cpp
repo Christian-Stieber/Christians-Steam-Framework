@@ -48,7 +48,7 @@ void Base::executeOnThread(std::function<void()>&& function)
 
 /************************************************************************/
 
-WaiterBase::WaiterBase(std::shared_ptr<SteamBot::Waiter>&& waiter)
+WaiterBase::WaiterBase(std::shared_ptr<SteamBot::WaiterBase>&& waiter)
     : ItemBase(std::move(waiter))
 {
 }
@@ -229,7 +229,7 @@ static bool PasswordValidator(const std::string& password)
 
 /************************************************************************/
 
-Base::ResultParam<std::string> Thread::requestPassword(std::shared_ptr<SteamBot::Waiter> waiter, Base::PasswordType passwordType)
+Base::ResultParam<std::string> Thread::requestPassword(std::shared_ptr<SteamBot::WaiterBase> waiter, Base::PasswordType passwordType)
 {
     bool(*validator)(const std::string&)=nullptr;
     switch(passwordType)

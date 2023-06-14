@@ -23,29 +23,47 @@
 
 /************************************************************************/
 
-SteamBot::Waiter::Waiter() =default;
-SteamBot::Waiter::~Waiter() =default;
+typedef SteamBot::WaiterBase WaiterBase;
+typedef WaiterBase::ItemBase ItemBase;
+
+typedef SteamBot::Waiter Waiter;
 
 /************************************************************************/
 
-std::shared_ptr<SteamBot::Waiter> SteamBot::Waiter::create()
+WaiterBase::WaiterBase() =default;
+WaiterBase::~WaiterBase() =default;
+
+Waiter::Waiter() =default;
+Waiter::~Waiter() =default;
+
+/************************************************************************/
+
+ItemBase::ItemBase(std::shared_ptr<WaiterBase> waiter_)
+    : waiter(std::move(waiter_))
 {
-    return std::shared_ptr<SteamBot::Waiter>(new Waiter);
+}
+
+ItemBase::~ItemBase() =default;
+
+/************************************************************************/
+
+void ItemBase::wakeup()
+{
+    if (auto locked=waiter.lock())
+    {
+        locked->wakeup();
+    }
 }
 
 /************************************************************************/
-/*
- * Note: this should be thread-safe
- */
 
-void SteamBot::Waiter::wakeup()
+void ItemBase::install(std::shared_ptr<ItemBase>)
 {
-    condition.notify_all();
 }
 
 /************************************************************************/
 
-void SteamBot::Waiter::cancel()
+void WaiterBase::cancel()
 {
     if (!cancelled)
     {
@@ -56,7 +74,7 @@ void SteamBot::Waiter::cancel()
 
 /************************************************************************/
 
-bool SteamBot::Waiter::isWoken()
+bool WaiterBase::isWoken()
 {
     bool woken=false;
     SteamBot::erase(items, [&woken](const std::weak_ptr<ItemBase>& item){
@@ -76,7 +94,7 @@ bool SteamBot::Waiter::isWoken()
 
 /************************************************************************/
 
-void SteamBot::Waiter::wait()
+void Waiter::wait()
 {
     std::unique_lock<decltype(mutex)> lock(mutex);
     condition.wait(lock, [this](){ return cancelled || isWoken(); });
@@ -91,7 +109,7 @@ void SteamBot::Waiter::wait()
  * Returne false if the timeout was reached
  */
 
-bool SteamBot::Waiter::wait(std::chrono::milliseconds timeout)
+bool Waiter::wait(std::chrono::milliseconds timeout)
 {
     std::unique_lock<decltype(mutex)> lock(mutex);
     bool result=condition.wait_for(lock, timeout, [this](){ return cancelled || isWoken(); });
@@ -100,4 +118,18 @@ bool SteamBot::Waiter::wait(std::chrono::milliseconds timeout)
         throw OperationCancelledException();
     }
     return result;
+}
+
+/************************************************************************/
+
+void Waiter::wakeup()
+{
+    condition.notify_all();
+}
+
+/************************************************************************/
+
+std::shared_ptr<SteamBot::Waiter> Waiter::create()
+{
+    return std::shared_ptr<SteamBot::Waiter>(new Waiter);
 }

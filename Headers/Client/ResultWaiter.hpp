@@ -53,7 +53,7 @@ namespace SteamBot
         }
 
     protected:
-        ResultWaiterBase(std::shared_ptr<SteamBot::Waiter>&& waiter)
+        ResultWaiterBase(std::shared_ptr<SteamBot::WaiterBase>&& waiter)
             : ItemBase(std::move(waiter))
         {
         }
@@ -80,7 +80,7 @@ namespace SteamBot
         T result;
 
     public:
-        ResultWaiter(std::shared_ptr<SteamBot::Waiter> waiter)
+        ResultWaiter(std::shared_ptr<SteamBot::WaiterBase> waiter)
             : ResultWaiterBase(std::move(waiter))
         {
         }

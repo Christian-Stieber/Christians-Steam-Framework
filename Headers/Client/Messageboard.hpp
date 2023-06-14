@@ -87,12 +87,12 @@ namespace SteamBot
 
 /************************************************************************/
 
-class SteamBot::Messageboard::WaiterBase : public SteamBot::Waiter::ItemBase
+class SteamBot::Messageboard::WaiterBase : public SteamBot::WaiterBase::ItemBase
 {
 protected:
     Messageboard& messageboard;
 
-    WaiterBase(std::shared_ptr<SteamBot::Waiter>, Messageboard&);
+    WaiterBase(std::shared_ptr<SteamBot::WaiterBase>, Messageboard&);
 
 public:
     virtual ~WaiterBase();
@@ -119,7 +119,7 @@ public:
     }
 
 public:
-    Waiter(std::shared_ptr<SteamBot::Waiter> waiter_, Messageboard& messageboard_)
+    Waiter(std::shared_ptr<SteamBot::WaiterBase> waiter_, Messageboard& messageboard_)
         : WaiterBase(std::move(waiter_), messageboard_)
     {
     }
