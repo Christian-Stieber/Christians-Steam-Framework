@@ -60,7 +60,7 @@ namespace SteamBot
             typedef SteamBot::ResultWaiter<QueryPtr> WaiterType;
         };
 
-        std::shared_ptr<Query::WaiterType> perform(std::shared_ptr<SteamBot::Waiter>, Query::QueryPtr);
+        std::shared_ptr<Query::WaiterType> perform(std::shared_ptr<SteamBot::WaiterBase>, Query::QueryPtr);
     }
 }
 

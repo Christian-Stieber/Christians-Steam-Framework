@@ -379,7 +379,7 @@ namespace
 
 /************************************************************************/
 
-std::shared_ptr<HTTPClient::Query::WaiterType> HTTPClient::perform(std::shared_ptr<SteamBot::Waiter> waiter, HTTPClient::Query::QueryPtr query)
+std::shared_ptr<HTTPClient::Query::WaiterType> HTTPClient::perform(std::shared_ptr<SteamBot::WaiterBase> waiter, HTTPClient::Query::QueryPtr query)
 {
     static Queue& queue=*new Queue;
 
