@@ -84,20 +84,6 @@ namespace SteamBot
 
 /************************************************************************/
 /*
- * And here's one with a callback... which gets executed on the Asio
- * thread.
- */
-
-namespace SteamBot
-{
-    namespace HTTPClient
-    {
-        void perform(Query::QueryPtr, std::function<void(Query::QueryPtr)>);
-    }
-}
-
-/************************************************************************/
-/*
  * Given a response from an HTTPCliebnt query, return the body as
  * "something useful".
  */
