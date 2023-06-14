@@ -20,6 +20,7 @@
 #include "WebAPI/WebAPI.hpp"
 #include "Asio/HTTPClient.hpp"
 #include "Asio/Asio.hpp"
+#include "Client/CallbackWaiter.hpp"
 
 #include <charconv>
 #include <boost/log/trivial.hpp>
@@ -97,64 +98,36 @@ void Query::set(std::string_view key, const std::vector<std::string>& values)
 
 std::shared_ptr<Query::WaiterType> SteamBot::WebAPI::perform(std::shared_ptr<SteamBot::Waiter> waiter, Query::QueryPtr query)
 {
-    auto result=waiter->createWaiter<Query::WaiterType>();
-    result->setResult()=std::move(query);
-
-    class MyWaiter : public SteamBot::WaiterBase
-    {
-    private:
-        std::shared_ptr<WaiterBase> self;
-        std::shared_ptr<Query::WaiterType> result;
-        std::shared_ptr<SteamBot::HTTPClient::Query::WaiterType> httpWaiterItem;
-
-    public:
-        virtual ~MyWaiter() =default;
-
-        MyWaiter(decltype(result) result_)
-            : result(std::move(result_))
-        {
-        }
-
-        void perform()
-        {
-            auto httpQuery=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, result->setResult().get()->url);
-            self=shared_from_this();
-            httpWaiterItem=SteamBot::HTTPClient::perform(self, std::move(httpQuery));
-        }
-
-    private:
-        virtual void wakeup(ItemBase*) override
-        {
-            assert(SteamBot::Asio::isThread());
-            if (cancelled)
-            {
-                // ToDo: ???
-                self.reset();
-            }
-            else if (auto httpQuery=httpWaiterItem->getResult())
-            {
-                if ((*httpQuery)->error)
-                {
-                    result->setResult()->error=(*httpQuery)->error;
-                }
-                else
-                {
-                    try
-                    {
-                        result->setResult()->value=SteamBot::HTTPClient::parseJson(**httpQuery);
-                    }
-                    catch(const boost::system::system_error& exception)
-                    {
-                        result->setResult()->error=exception.code();
-                    }
-                }
-                result->completed();
-                self.reset();
-            }
-        }
+    auto initiator=[query=std::move(query)](std::shared_ptr<SteamBot::WaiterBase> waiter, std::shared_ptr<Query::WaiterType> result) mutable {
+        result->setResult()=std::move(query);
+        auto httpQuery=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, result->setResult().get()->url);
+        return SteamBot::HTTPClient::perform(std::move(waiter), std::move(httpQuery));
     };
 
-    std::make_shared<MyWaiter>(result)->perform();
+    auto completer=[](std::shared_ptr<SteamBot::HTTPClient::Query::WaiterType> http, std::shared_ptr<Query::WaiterType> result) {
+        assert(SteamBot::Asio::isThread());
+        if (auto httpQuery=http->getResult())
+        {
+            if ((*httpQuery)->error)
+            {
+                result->setResult()->error=(*httpQuery)->error;
+            }
+            else
+            {
+                try
+                {
+                    result->setResult()->value=SteamBot::HTTPClient::parseJson(**httpQuery);
+                }
+                catch(const boost::system::system_error& exception)
+                {
+                    result->setResult()->error=exception.code();
+                }
+            }
+            result->completed();
+            return true;
+        }
+        return false;
+    };
 
-    return result;
+    return SteamBot::CallbackWaiter::perform(std::move(waiter), std::move(initiator), std::move(completer));
 }
