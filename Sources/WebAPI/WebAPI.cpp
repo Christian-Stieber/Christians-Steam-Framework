@@ -97,25 +97,60 @@ void Query::set(std::string_view key, const std::vector<std::string>& values)
 std::shared_ptr<Query::WaiterType> SteamBot::WebAPI::perform(std::shared_ptr<SteamBot::Waiter> waiter, Query::QueryPtr query)
 {
     auto result=waiter->createWaiter<Query::WaiterType>();
-    auto httpQuery=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, query->url);
     result->setResult()=std::move(query);
-    SteamBot::HTTPClient::perform(std::move(httpQuery), [result](SteamBot::HTTPClient::Query::QueryPtr httpQuery) mutable {
-        if (httpQuery->error)
+
+    class MyWaiter : public SteamBot::WaiterBase
+    {
+    private:
+        std::shared_ptr<WaiterBase> self;
+        std::shared_ptr<Query::WaiterType> result;
+        std::shared_ptr<SteamBot::HTTPClient::Query::WaiterType> httpWaiterItem;
+
+    public:
+        virtual ~MyWaiter() =default;
+
+        MyWaiter(decltype(result) result_)
+            : result(std::move(result_))
         {
-            result->setResult()->error=httpQuery->error;
         }
-        else
+
+        void perform()
         {
-            try
+            auto httpQuery=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, result->setResult().get()->url);
+            self=shared_from_this();
+            httpWaiterItem=SteamBot::HTTPClient::perform(self, std::move(httpQuery));
+        }
+
+    private:
+        virtual void wakeup(ItemBase*) override
+        {
+            if (cancelled)
             {
-                result->setResult()->value=SteamBot::HTTPClient::parseJson(*httpQuery);
+                // ToDo: ???
             }
-            catch(const boost::system::system_error& exception)
+            else if (auto httpQuery=httpWaiterItem->getResult())
             {
-                result->setResult()->error=exception.code();
+                if ((*httpQuery)->error)
+                {
+                    result->setResult()->error=(*httpQuery)->error;
+                }
+                else
+                {
+                    try
+                    {
+                        result->setResult()->value=SteamBot::HTTPClient::parseJson(**httpQuery);
+                    }
+                    catch(const boost::system::system_error& exception)
+                    {
+                        result->setResult()->error=exception.code();
+                    }
+                }
+                result->completed();
             }
         }
-        result->completed();
-    });
+    };
+
+    std::make_shared<MyWaiter>(result)->perform();
+
     return result;
 }
