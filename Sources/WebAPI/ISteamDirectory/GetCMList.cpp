@@ -20,6 +20,7 @@
 #include "WebAPI/ISteamDirectory/GetCMList.hpp"
 #include "Asio/Asio.hpp"
 #include "WebAPI/WebAPI.hpp"
+#include "Client/CallbackWaiter.hpp"
 
 #include <boost/log/trivial.hpp>
 
@@ -158,38 +159,25 @@ void CMList::receivedData(unsigned int cellId, std::unique_ptr<SteamBot::WebAPI:
 
 void CMList::requestData(unsigned int cellId)
 {
-    // And.. the CallbackWaiter doesn't work for us here...
-    class MyWaiter : public SteamBot::WaiterBase
-    {
-    public:
-        unsigned int cellId;
-        std::shared_ptr<WaiterBase> self;
-        std::shared_ptr<SteamBot::WebAPI::Query::WaiterType> queryWaiter;
+    BOOST_LOG_TRIVIAL(info) << "requesting ISteamDirectory/GetCMList";
 
-    public:
-        void perform(unsigned int cellId_)
-        {
-            BOOST_LOG_TRIVIAL(info) << "requesting ISteamDirectory/GetCMList";
-            cellId=cellId_;
-            self=shared_from_this();
-            auto query=std::make_unique<SteamBot::WebAPI::Query>("ISteamDirectory", "GetCMList", 1);
-            query->set("cellid", static_cast<int>(cellId));
-            queryWaiter=SteamBot::WebAPI::perform(self, std::move(query));
-        }
-
-    private:
-        virtual void wakeup(ItemBase*) override
-        {
-            assert(SteamBot::Asio::isThread());
-            if (auto result=queryWaiter->getResult())
-            {
-                CMList::get().receivedData(cellId, std::move(*result));
-                self.reset();
-            }
-        }
+    auto initiator=[cellId](std::shared_ptr<SteamBot::WaiterBase> waiter) {
+        auto query=std::make_unique<SteamBot::WebAPI::Query>("ISteamDirectory", "GetCMList", 1);
+        query->set("cellid", static_cast<int>(cellId));
+        return SteamBot::WebAPI::perform(std::move(waiter), std::move(query));
     };
 
-    std::make_shared<MyWaiter>()->perform(cellId);;
+    auto completer=[cellId](std::shared_ptr<SteamBot::WebAPI::Query::WaiterType> intermediate) {
+        assert(SteamBot::Asio::isThread());
+        if (auto result=intermediate->getResult())
+        {
+            CMList::get().receivedData(cellId, std::move(*result));
+            return true;
+        }
+        return false;
+    };
+
+    SteamBot::CallbackWaiter::perform(std::move(initiator), std::move(completer));
 }
 
 /************************************************************************/
