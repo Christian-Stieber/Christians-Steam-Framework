@@ -29,24 +29,33 @@
  * This provides a simple function "CallbackWaiter::perform" taking
  * arguments, designed to easily chain waiter-items.
  *
- * If your final waiter-item is of type RESULT, and you have
- * an intermediate asyc operation of type INTERMEDIATE, your
- * perform() call looks like so:
+ * There are two versions of this. One simply gives you a callback
+ * at the end; the other one additionally takes a waiter object
+ * and returns a result-item that you can wait for.
+ *    void perform(INITIATOR initiator, COMPLETER completer);
+ *    std::shared_ptr<RESULT> perform(std::shared_ptr<WaiterBase> waiter, INITIATOR initiator, COMPLETER completer);
  *
- * std::shared_ptr<RESULT> perform(std::shared_ptr<WaiterBase> waiter, INITIATOR initiator, COMPLETER completer);
+ * Both have an intermediate waiter item that they use alongside
+ * an internal waiter.
  *
- * Initiator is used like this:
- *    std::shared_ptr<INTERMEDIATE> initiator(std::shared_ptr<WaiterBase>, std::shared_ptr<RESULT>)
- * This lets you create your intermediate async operation.
+ * You supply two callback functions.
  *
- * The result is passed for your convenience, in case you want to use
- * it to store something. You're not meant to complete the result here.
+ * The "initiator" callback gets the temporary waiter as an argument;
+ * create and return the intermediate object that you want to wait for
+ * and attach it to that waiter.
+ *    std::shared_ptr<INTERMEDIATE> initiator(std::shared_ptr<WaiterBase>);
  *
- * Note that the waiter argument is a temporary waiter, not the one
- * passed to the perform() call.
+ * The version with the result item also gets the newly created result
+ * item as a second argument; you can use this to store some data in
+ * there already, if you need to. You're not meant to complete the
+ * result here.
+ *    std::shared_ptr<INTERMEDIATE> initiator(std::shared_ptr<WaiterBase>, std::shared_ptr<RESULT>);
  *
- * Completer is used like this:
- *    bool initiator(std::shared_ptr<INTERMEDIATE>, std::shared_ptr<RESULT>);
+ * The "completer" callback is called when the intermediate object
+ * triggers. Similar to before, the signatures differ slightly based
+ * on whether you have a result item or not:
+ *    bool completer(std::shared_ptr<INTERMEDIATE>);
+ *    bool completer(std::shared_ptr<INTERMEDIATE>, std::shared_ptr<RESULT>);
  *
  * Note that this is called from the "intermediate" context, so it's not necessarily
  * your thrad/fiber. Examine the intermediate, update the result, and return true
@@ -59,11 +68,10 @@ namespace SteamBot
 {
     namespace CallbackWaiter
     {
-        template <typename RESULT, typename INTERMEDIATE> class CallbackWaiter : public SteamBot::WaiterBase
+        template <typename INTERMEDIATE> class CallbackWaiter : public SteamBot::WaiterBase
         {
         public:
             std::shared_ptr<CallbackWaiter> self;
-            RESULT result;
 
             std::function<bool(std::shared_ptr<CallbackWaiter>, ItemBase*)> completer;
 
@@ -74,15 +82,8 @@ namespace SteamBot
             INTERMEDIATE intermediate;
 
         public:
-            CallbackWaiter()
-            {
-                BOOST_LOG_TRIVIAL(debug) << "created 'CallbackWaiter' class: " << boost::typeindex::type_id<CallbackWaiter>().pretty_name();
-            }
-
-            ~CallbackWaiter()
-            {
-                BOOST_LOG_TRIVIAL(debug) << "destroyed 'CallbackWaiter' class: " << boost::typeindex::type_id<CallbackWaiter>().pretty_name();
-            }
+            CallbackWaiter() =default;
+            virtual ~CallbackWaiter() =default;
 
         private:
             virtual void wakeup(ItemBase* item) override
@@ -96,6 +97,7 @@ namespace SteamBot
                 }
                 else if (completer(self, item))
                 {
+                    BOOST_LOG_TRIVIAL(debug) << "completed " << boost::typeindex::type_id_runtime(*this).pretty_name();
                     self.reset();
                 }
             }
@@ -117,23 +119,62 @@ namespace SteamBot
         {
             typedef ArgumentType<INITIATOR, 1> ResultType;
             typedef ReturnType<INITIATOR> IntermediateType;
+            typedef CallbackWaiter<IntermediateType> CallbackWaiterType;
 
             // Check the completer signature
             static_assert(std::is_same_v<bool, ReturnType<COMPLETER>>);
             static_assert(std::is_same_v<boost::callable_traits::args_t<COMPLETER>, std::tuple<IntermediateType, ResultType>>);
 
             auto result=waiter->createWaiter<typename ResultType::element_type>();
-            auto myWaiter=std::make_shared<CallbackWaiter<ResultType, IntermediateType>>();
+            auto myWaiter=std::make_shared<CallbackWaiterType>();
             myWaiter->self=myWaiter;
-            myWaiter->result=result;
-            myWaiter->completer=[completer=std::move(completer)](std::shared_ptr<CallbackWaiter<ResultType, IntermediateType>> waiter, SteamBot::Waiter::ItemBase* item){
-                return completer(waiter->intermediate, waiter->result);
+            myWaiter->completer=[result, completer=std::move(completer)](std::shared_ptr<CallbackWaiterType> waiter, SteamBot::Waiter::ItemBase* item){
+                return completer(waiter->intermediate, result);
             };
             {
                 std::lock_guard<std::mutex> lock(myWaiter->mutex);
                 myWaiter->intermediate=initiator(myWaiter, result);
             }
             return result;
+        }
+    }
+}
+
+/************************************************************************/
+/*
+ * This is "waiter" that doesn't supply an item at all -- all your
+ * action has to take place inside the "completer".
+ *
+ * This means the main waiter as been removed from the perform() call,
+ * and the intiator/completer don't have the result parameter.
+ */
+
+namespace SteamBot
+{
+    namespace CallbackWaiter
+    {
+        template <typename FUNC> using ReturnType=boost::callable_traits::return_type_t<FUNC>;
+        template <typename FUNC, size_t INDEX> using ArgumentType=typename std::tuple_element<INDEX, boost::callable_traits::args_t<FUNC>>::type;
+
+        template <typename INITIATOR, typename COMPLETER>
+        auto perform(INITIATOR initiator, COMPLETER completer)
+        {
+            typedef ReturnType<INITIATOR> IntermediateType;
+            typedef CallbackWaiter<IntermediateType> CallbackWaiterType;
+
+            // Check the completer signature
+            static_assert(std::is_same_v<bool, ReturnType<COMPLETER>>);
+            static_assert(std::is_same_v<boost::callable_traits::args_t<COMPLETER>, std::tuple<IntermediateType>>);
+
+            auto myWaiter=std::make_shared<CallbackWaiterType>();
+            myWaiter->self=myWaiter;
+            myWaiter->completer=[completer=std::move(completer)](std::shared_ptr<CallbackWaiterType> waiter, SteamBot::Waiter::ItemBase* item){
+                return completer(waiter->intermediate);
+            };
+            {
+                std::lock_guard<std::mutex> lock(myWaiter->mutex);
+                myWaiter->intermediate=initiator(myWaiter);
+            }
         }
     }
 }
