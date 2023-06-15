@@ -366,7 +366,7 @@ namespace
     public:
         void enqueue(ItemType item)
         {
-            SteamBot::Asio::getIoContext().post([this, item]() {
+            SteamBot::Asio::post("HTTPClient/Queue::enqueue", [this, item]() {
                 queue.push(std::move(item));
                 if (queue.size()==1)
                 {

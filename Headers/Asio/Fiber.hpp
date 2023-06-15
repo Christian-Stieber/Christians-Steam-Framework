@@ -19,7 +19,20 @@
 
 #pragma once
 
+#include <memory>
+
+#include <boost/system/error_code.hpp>
 #include "boost/examples/fiber/asio/yield.hpp"
+
+/************************************************************************/
+
+namespace boost
+{
+    namespace asio
+    {
+        class io_context;
+    }
+}
 
 /************************************************************************/
 
@@ -30,6 +43,8 @@ namespace boost
         namespace asio
         {
             extern thread_local yield_t yield;
+
+            void setSchedulingAlgorithm(std::shared_ptr<boost::asio::io_context>);
         }
     }
 }

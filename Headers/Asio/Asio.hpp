@@ -19,9 +19,10 @@
 
 #pragma once
 
-#include <boost/asio/io_context.hpp>
-
 #include <thread>
+
+#include <boost/asio/io_context.hpp>
+#include <boost/log/trivial.hpp>
 
 /************************************************************************/
 /*
@@ -34,7 +35,7 @@ namespace SteamBot
     {
     private:
         std::thread thread;
-        boost::asio::io_context ioContext;
+        std::shared_ptr<boost::asio::io_context> ioContext;
 
     private:
         Asio();
@@ -46,5 +47,16 @@ namespace SteamBot
         static bool isThread();
 
         static boost::asio::io_context& getIoContext();
+
+    public:
+        template <typename HANDLER> static void post(std::string_view name, HANDLER handler)
+        {
+            BOOST_LOG_TRIVIAL(debug) << "Asio: posting \"" << name << "\"";
+            getIoContext().post([name, handler=std::move(handler)]() mutable {
+                BOOST_LOG_TRIVIAL(debug) << "Asio: thread is running \"" << name << "\"";
+                handler();
+                BOOST_LOG_TRIVIAL(debug) << "Asio: thread is exiting \"" << name << "\"";
+            });
+        }
     };
 }

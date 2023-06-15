@@ -123,7 +123,7 @@ CMList& CMList::get()
 
 static void postCallback(GetCMList::CallbackType&& callback, std::shared_ptr<const GetCMList> data)
 {
-    SteamBot::Asio::getIoContext().post([callback=std::move(callback), data=std::move(data)](){
+    SteamBot::Asio::post("GetCMList/postCallback", [callback=std::move(callback), data=std::move(data)](){
         callback(std::move(data));
     });
 }
@@ -269,7 +269,7 @@ std::shared_ptr<const GetCMList> GetCMList::get(unsigned int cellId)
 
     auto stuff=std::make_shared<Stuff>();
 
-    SteamBot::Asio::getIoContext().post([stuff, cellId]() mutable {
+    SteamBot::Asio::post("GetCMList::get", [stuff, cellId]() mutable {
         CMList::get().get(cellId, [stuff=std::move(stuff)](std::shared_ptr<const GetCMList> data) {
             {
                 std::lock_guard<decltype(stuff->mutex)> lock(stuff->mutex);

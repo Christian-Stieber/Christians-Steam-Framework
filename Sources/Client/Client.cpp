@@ -31,15 +31,13 @@
 #include <boost/log/trivial.hpp>
 #include <boost/exception/diagnostic_information.hpp>
 #include <boost/fiber/operations.hpp>
+#include <boost/asio/post.hpp>
 
-#include "boost/examples/fiber/asio/round_robin.hpp"
-#include "AsioYield.hpp"
+#include "Asio/Fiber.hpp"
 
 /************************************************************************/
 
 static thread_local SteamBot::Client* currentClient=nullptr;
-
-thread_local boost::fibers::asio::yield_t boost::fibers::asio::yield{};
 
 /************************************************************************/
 
@@ -119,7 +117,7 @@ void SteamBot::Client::initModules()
 void SteamBot::Client::main()
 {
     ioContext=std::make_shared<boost::asio::io_context>();
-    boost::fibers::use_scheduling_algorithm<boost::fibers::asio::round_robin>(ioContext);
+    boost::fibers::asio::setSchedulingAlgorithm(ioContext);
 
     SteamBot::UI::Thread::outputText("running client");
     ExecuteOnDestruct atEnd([](){

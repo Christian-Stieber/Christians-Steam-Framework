@@ -17,7 +17,16 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+/************************************************************************/
+/*
+ * Note: the existing Connection/ stuff is fiber based, and I'll
+ * leave it at that... for now at least.
+ */
+
+/************************************************************************/
+
 #include "Asio/Asio.hpp"
+#include "Asio/Fiber.hpp"
 
 /************************************************************************/
 
@@ -33,10 +42,14 @@ Asio::~Asio()
 /************************************************************************/
 
 Asio::Asio()
+    : ioContext(std::make_shared<boost::asio::io_context>())
 {
     thread=std::thread([this](){
+        BOOST_LOG_TRIVIAL(debug) << "Asio: running thread";
+        boost::fibers::asio::setSchedulingAlgorithm(ioContext);
         auto work=boost::asio::make_work_guard(ioContext);
-        ioContext.run();
+        ioContext->run();
+        BOOST_LOG_TRIVIAL(debug) << "Asio: exiting thread";
     });
 }
 
@@ -62,5 +75,5 @@ bool Asio::isThread()
 
 boost::asio::io_context& Asio::getIoContext()
 {
-    return get().ioContext;
+    return *(get().ioContext);
 }
