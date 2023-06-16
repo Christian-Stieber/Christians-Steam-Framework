@@ -161,7 +161,7 @@ void SteamBot::Client::launch(SteamBot::ClientInfo& clientInfo)
 {
     BOOST_LOG_TRIVIAL(debug) << "Client::launch()";
 
-	std::thread([counter=threadCounter(), &clientInfo]() mutable {
+    std::thread([counter = threadCounter(), &clientInfo]() mutable {
         std::shared_ptr<Client> client;
         client=std::make_shared<Client>(clientInfo);
         clientInfo.setClient(client);
@@ -185,7 +185,7 @@ void SteamBot::Client::launch(SteamBot::ClientInfo& clientInfo)
         case QuitMode::Restart:
             client.reset();
             clientInfo.setClient(client);
-            sleep(15);
+            std::this_thread::sleep_for(std::chrono::seconds(15));
             launch(clientInfo);
             break;
         }

@@ -25,10 +25,7 @@
     <ClCompile Include="Sources\Client\Client.cpp" />
     <ClCompile Include="Sources\Client\ClientInfo.cpp" />
     <ClCompile Include="Sources\Client\DataFile.cpp" />
-    <ClCompile Include="Sources\Client\Dispatcher.cpp" />
-    <ClCompile Include="Sources\Client\Endpoint.cpp" />
     <ClCompile Include="Sources\Client\LicenseList.cpp" />
-    <ClCompile Include="Sources\Client\Login.cpp" />
     <ClCompile Include="Sources\Client\Messageboard.cpp" />
     <ClCompile Include="Sources\Client\Module.cpp" />
     <ClCompile Include="Sources\Client\Sleep.cpp" />
