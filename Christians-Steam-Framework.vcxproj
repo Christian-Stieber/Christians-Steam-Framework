@@ -25,7 +25,6 @@
     <ClCompile Include="Sources\Client\Client.cpp" />
     <ClCompile Include="Sources\Client\ClientInfo.cpp" />
     <ClCompile Include="Sources\Client\DataFile.cpp" />
-    <ClCompile Include="Sources\Client\LicenseList.cpp" />
     <ClCompile Include="Sources\Client\Messageboard.cpp" />
     <ClCompile Include="Sources\Client\Module.cpp" />
     <ClCompile Include="Sources\Client\Sleep.cpp" />
@@ -114,7 +113,6 @@
     <ClInclude Include="Headers\Client\Counter.hpp" />
     <ClInclude Include="Headers\Client\DataFile.hpp" />
     <ClInclude Include="Headers\Client\Dispatcher.hpp" />
-    <ClInclude Include="Headers\Client\LicenseList.hpp" />
     <ClInclude Include="Headers\Client\Messageboard.hpp" />
     <ClInclude Include="Headers\Client\Module.hpp" />
     <ClInclude Include="Headers\Client\OSType.hpp" />
@@ -200,6 +198,15 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_base.proto">
+      <FileType>Document</FileType>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver.proto">
+      <FileType>Document</FileType>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\encrypted_app_ticket.proto">
+      <FileType>Document</FileType>
+    </CustomBuild>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -321,6 +328,8 @@
   <ImportGroup Label="ExtensionTargets">
     <Import Project="packages\boost.1.82.0\build\boost.targets" Condition="Exists('packages\boost.1.82.0\build\boost.targets')" />
     <Import Project="packages\openssl-vc142.1.1.0\build\native\openssl-vc142.targets" Condition="Exists('packages\openssl-vc142.1.1.0\build\native\openssl-vc142.targets')" />
+    <Import Project="packages\protobuf-v141.3.7.1\build\native\protobuf-v141.targets" Condition="Exists('packages\protobuf-v141.3.7.1\build\native\protobuf-v141.targets')" />
+    <Import Project="packages\Google.Protobuf.Tools.3.7.0\build\Google.Protobuf.Tools.targets" Condition="Exists('packages\Google.Protobuf.Tools.3.7.0\build\Google.Protobuf.Tools.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
@@ -328,5 +337,7 @@
     </PropertyGroup>
     <Error Condition="!Exists('packages\boost.1.82.0\build\boost.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost.1.82.0\build\boost.targets'))" />
     <Error Condition="!Exists('packages\openssl-vc142.1.1.0\build\native\openssl-vc142.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\openssl-vc142.1.1.0\build\native\openssl-vc142.targets'))" />
+    <Error Condition="!Exists('packages\protobuf-v141.3.7.1\build\native\protobuf-v141.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\protobuf-v141.3.7.1\build\native\protobuf-v141.targets'))" />
+    <Error Condition="!Exists('packages\Google.Protobuf.Tools.3.7.0\build\Google.Protobuf.Tools.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Google.Protobuf.Tools.3.7.0\build\Google.Protobuf.Tools.targets'))" />
   </Target>
 </Project>

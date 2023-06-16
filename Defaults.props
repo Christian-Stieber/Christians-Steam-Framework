@@ -5,8 +5,18 @@
   <PropertyGroup />
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>_WIN32_WINNT=0x0601;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WIN32_WINNT=0x0601;_SILENCE_CXX20_IS_POD_DEPRECATION_WARNING;_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(OutputPath);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
+    <CustomBuild>
+      <Command>$(protoc_windows86) --proto_path=$(ProjectDir) --proto_path=$(ProjectDir)\steamdatabase\protobufs --proto_path=$(ProjectDir)%(RelativeDir) --cpp_out=$(OutputPath) %(FullPath)</Command>
+    </CustomBuild>
+    <CustomBuild>
+      <Message>Protobuf Compiler</Message>
+    </CustomBuild>
+    <CustomBuild>
+      <Outputs>$(OutputPath)%(RelativeDir)%(Filename).pb.cc;$(OutputPath)%(RelativeDir)%(Filename).pb.h</Outputs>
+    </CustomBuild>
   </ItemDefinitionGroup>
   <ItemGroup />
 </Project>

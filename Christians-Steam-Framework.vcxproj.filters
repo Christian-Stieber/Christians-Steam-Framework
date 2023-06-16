@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Protobufs">
+      <UniqueIdentifier>{99bcfa77-8113-42c1-9803-5213b54bff5d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Protobufs\steam">
+      <UniqueIdentifier>{5652517e-7f1f-4010-b3c8-21c77a97a599}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Sources\Client\Client.cpp">
@@ -22,9 +28,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Sources\Client\DataFile.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Sources\Client\LicenseList.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Sources\Client\Messageboard.cpp">
@@ -249,9 +252,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Headers\Client\Dispatcher.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Headers\Client\LicenseList.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Headers\Client\Messageboard.hpp">
@@ -548,5 +548,16 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_base.proto">
+      <Filter>Protobufs\steam</Filter>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver.proto">
+      <Filter>Protobufs\steam</Filter>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\encrypted_app_ticket.proto">
+      <Filter>Protobufs\steam</Filter>
+    </CustomBuild>
   </ItemGroup>
 </Project>
