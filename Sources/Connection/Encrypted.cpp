@@ -85,6 +85,7 @@ namespace
 		{
 			// we are not sending these
 			assert(false);
+			return 0;
 		}
 
 		virtual void deserialize(SteamBot::Connection::Deserializer& deserializer) override
@@ -207,6 +208,7 @@ namespace
 		{
 			// we are not sending these
 			assert(false);
+			return 0;
 		}
 
 		virtual void deserialize(SteamBot::Connection::Deserializer& deserializer) override

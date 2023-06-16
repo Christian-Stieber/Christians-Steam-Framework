@@ -21,6 +21,7 @@
 
 #include "Steam/KeyValue.hpp"
 
+#include <array>
 #include <span>
 #include <cstring>
 

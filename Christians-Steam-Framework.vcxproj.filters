@@ -559,5 +559,26 @@
     <CustomBuild Include="steamdatabase\protobufs\steam\encrypted_app_ticket.proto">
       <Filter>Protobufs\steam</Filter>
     </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver_friends.proto">
+      <Filter>Protobufs\steam</Filter>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver_login.proto">
+      <Filter>Protobufs\steam</Filter>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver_uds.proto">
+      <Filter>Protobufs\steam</Filter>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_player.steamclient.proto">
+      <Filter>Protobufs\steam</Filter>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_auth.steamclient.proto">
+      <Filter>Protobufs\steam</Filter>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_unified_base.steamclient.proto">
+      <Filter>Protobufs\steam</Filter>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\enums.proto">
+      <Filter>Protobufs\steam</Filter>
+    </CustomBuild>
   </ItemGroup>
 </Project>

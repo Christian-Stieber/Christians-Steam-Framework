@@ -58,7 +58,7 @@ Licenses::LicenseInfo::~LicenseInfo() =default;
 boost::json::value Licenses::LicenseInfo::toJson() const
 {
     boost::json::object json;
-    SteamBot::enumToJson(json, "packageId", packageId);
+    json["packageId"]=static_cast<std::underlying_type_t<decltype(packageId)>>(packageId);
     SteamBot::enumToJson(json, "licenseType", licenseType);
     SteamBot::enumToJson(json, "paymentMethod", paymentMethod);
     return json;

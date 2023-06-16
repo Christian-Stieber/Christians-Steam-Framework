@@ -82,7 +82,7 @@ size_t Serializer::storeProto(const google::protobuf::MessageLite& protobufMessa
 	const auto messageSize=protobufMessage.ByteSizeLong();
 	const auto currentIndex=result.size();
 	result.resize(currentIndex+messageSize);
-	if (!protobufMessage.SerializeToArray(result.data()+currentIndex, messageSize))
+	if (!protobufMessage.SerializeToArray(result.data()+currentIndex, static_cast<int>(messageSize)))
 	{
 		throw std::runtime_error("error while serializing protobuf messsage");
 	}
@@ -104,7 +104,7 @@ void Deserializer::getProto(google::protobuf::MessageLite& protobufMessage, size
 		throw NotEnoughDataException();
 	}
 
-	google::protobuf::io::ArrayInputStream stream(data.data(), messageSize);
+	google::protobuf::io::ArrayInputStream stream(data.data(), static_cast<int>(messageSize));
 	if (!protobufMessage.ParseFromZeroCopyStream(&stream))
 	{
 		throw ProtobufException();
@@ -116,6 +116,7 @@ void Deserializer::getProto(google::protobuf::MessageLite& protobufMessage, size
 	}
 
 	const auto bytesRead=stream.ByteCount();
-	assert(bytesRead<=data.size());
+	assert(bytesRead>=0);
+	assert(static_cast<size_t>(bytesRead)<=data.size());
 	getBytes(bytesRead);
 }

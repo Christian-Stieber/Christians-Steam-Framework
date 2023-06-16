@@ -43,7 +43,7 @@
  * SteamKit says:
  * Known values are "Unknown", "Client", "Mobile", "Website", "Store", "Community", "Partner", "SteamStats".
  */
-static constexpr std::string websiteId{"Client"};
+static const char websiteId[]="Client";
 
 static constexpr auto platformType=EAuthTokenPlatformType::k_EAuthTokenPlatformType_SteamClient;
 

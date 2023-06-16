@@ -136,13 +136,13 @@ const SteamBot::Universe& SteamBot::Universe::get(Type myType)
 #define RETURNUNIVERSE(name) case Type::name: return Universe_##name
 	switch(myType)
 	{
+		default:
+			assert(false);
+
 		RETURNUNIVERSE(Public);
 		RETURNUNIVERSE(Beta);
 		RETURNUNIVERSE(Internal);
 		RETURNUNIVERSE(Dev);
-
-		default:
-			assert(false);
 	}
 #undef RETURNUNIVERSE
 }

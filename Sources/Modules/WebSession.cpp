@@ -215,15 +215,28 @@ void WebSessionModule::setTimezoneCookie(std::string& cookies)
 {
     auto timepoint=std::chrono::system_clock::now();
 
+	int32_t offset=0;
 #ifdef CHRISTIAN_USE_TIMEZONE
     // This is untested, for now
-    auto info=std::chrono::time_zone::get_info(timepoint);
-    auto offset=info.offset.count();
+	try
+	{
+		if (auto zone=std::chrono::get_tzdb().current_zone())
+		{
+			auto info=zone->get_info(timepoint);
+			offset=static_cast<decltype(offset)>(info.offset.count());
+		}
+	}
+	catch(const std::runtime_error& exception)
+	{
+        BOOST_LOG_TRIVIAL(error) << "std::chrono::get_tzdb() failed: " << exception.what();
+	}
 #else
     auto timestamp=std::chrono::system_clock::to_time_t(timepoint);
     struct tm timedata;
-    localtime_r(&timestamp, &timedata);
-    auto offset=timedata.tm_gmtoff;
+    if (localtime_r(&timestamp, &timedata)!=nullptr)
+	{
+		offset=timedata.tm_gmtoff;
+	}
 #endif
 
     std::string value(std::to_string(offset));

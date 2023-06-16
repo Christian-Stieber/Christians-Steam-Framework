@@ -100,10 +100,11 @@ static Steam::OSType getOSType_()
 /************************************************************************/
 
 #ifdef _WIN32
+#include <windows.h>
 #include <versionhelpers.h>
-Steam::OSType Steam::getOSType_()
+Steam::OSType getOSType_()
 {
-	if (IsWindows11OrGreater()) return Steam::OSType::Win11;
+	// if (IsWindows11OrGreater()) return Steam::OSType::Win11;
 	if (IsWindows10OrGreater()) return Steam::OSType::Windows10;
 	if (IsWindows8Point1OrGreater()) return Steam::OSType::Windows81;
 	if (IsWindows8OrGreater()) return Steam::OSType::Windows8;

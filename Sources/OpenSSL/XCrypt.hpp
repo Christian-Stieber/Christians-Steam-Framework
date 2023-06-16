@@ -90,13 +90,13 @@ namespace SteamBot
                 EVP_CIPHER_CTX_set_padding(context, padding);
 
                 int bytesWritten=0;
-                Exception::throwMaybe(EVP_XcryptUpdate(context, outputData, &bytesWritten, static_cast<const uint8_t*>(input.data()), input.size()));
+                Exception::throwMaybe(EVP_XcryptUpdate(context, outputData, &bytesWritten, static_cast<const uint8_t*>(input.data()), static_cast<int>(input.size())));
                 outputData+=bytesWritten;
 
                 Exception::throwMaybe(EVP_XcryptFinal_ex(context, outputData, &bytesWritten));
                 outputData+=bytesWritten;
 
-                bytesWritten=outputData-static_cast<uint8_t*>(output.data());
+                bytesWritten=static_cast<int>(outputData-static_cast<uint8_t*>(output.data()));
                 assert(bytesWritten<=output.size());
 
                 return static_cast<size_t>(bytesWritten);

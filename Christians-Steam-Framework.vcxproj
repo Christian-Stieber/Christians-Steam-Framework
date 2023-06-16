@@ -207,6 +207,27 @@
     <CustomBuild Include="steamdatabase\protobufs\steam\encrypted_app_ticket.proto">
       <FileType>Document</FileType>
     </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver_friends.proto">
+      <FileType>Document</FileType>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver_login.proto">
+      <FileType>Document</FileType>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver_uds.proto">
+      <FileType>Document</FileType>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_player.steamclient.proto">
+      <FileType>Document</FileType>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_auth.steamclient.proto">
+      <FileType>Document</FileType>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_unified_base.steamclient.proto">
+      <FileType>Document</FileType>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\enums.proto">
+      <FileType>Document</FileType>
+    </CustomBuild>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -264,6 +285,9 @@
     <Import Project="Defaults.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Label="Vcpkg">
+    <VcpkgEnableManifest>true</VcpkgEnableManifest>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -327,7 +351,6 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="packages\boost.1.82.0\build\boost.targets" Condition="Exists('packages\boost.1.82.0\build\boost.targets')" />
-    <Import Project="packages\openssl-vc142.1.1.0\build\native\openssl-vc142.targets" Condition="Exists('packages\openssl-vc142.1.1.0\build\native\openssl-vc142.targets')" />
     <Import Project="packages\protobuf-v141.3.7.1\build\native\protobuf-v141.targets" Condition="Exists('packages\protobuf-v141.3.7.1\build\native\protobuf-v141.targets')" />
     <Import Project="packages\Google.Protobuf.Tools.3.7.0\build\Google.Protobuf.Tools.targets" Condition="Exists('packages\Google.Protobuf.Tools.3.7.0\build\Google.Protobuf.Tools.targets')" />
   </ImportGroup>
@@ -336,7 +359,6 @@
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('packages\boost.1.82.0\build\boost.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost.1.82.0\build\boost.targets'))" />
-    <Error Condition="!Exists('packages\openssl-vc142.1.1.0\build\native\openssl-vc142.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\openssl-vc142.1.1.0\build\native\openssl-vc142.targets'))" />
     <Error Condition="!Exists('packages\protobuf-v141.3.7.1\build\native\protobuf-v141.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\protobuf-v141.3.7.1\build\native\protobuf-v141.targets'))" />
     <Error Condition="!Exists('packages\Google.Protobuf.Tools.3.7.0\build\Google.Protobuf.Tools.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Google.Protobuf.Tools.3.7.0\build\Google.Protobuf.Tools.targets'))" />
   </Target>

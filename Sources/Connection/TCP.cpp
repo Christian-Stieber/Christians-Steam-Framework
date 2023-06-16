@@ -53,7 +53,7 @@ namespace
 
 	public:
 		PacketHeader(size_t myLength)
-			: length(myLength)
+			: length(static_cast<uint32_t>(myLength))
 		{
 		}
 
