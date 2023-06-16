@@ -219,9 +219,6 @@
     <ClCompile Include="Sources\Random.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Sources\SteamID.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Sources\Universe.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -557,5 +554,8 @@
     <ClInclude Include="Christians-HTML-Parser\Headers\HTMLParser\Tree.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

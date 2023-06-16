@@ -75,7 +75,6 @@
     <ClCompile Include="Sources\OpenSSL\SHA1.cpp" />
     <ClCompile Include="Sources\Printable.cpp" />
     <ClCompile Include="Sources\Random.cpp" />
-    <ClCompile Include="Sources\SteamID.cpp" />
     <ClCompile Include="Sources\Steam\KeyValue.cpp" />
     <ClCompile Include="Sources\Steam\MachineInfo.cpp" />
     <ClCompile Include="Sources\Steam\MachineInfo\Linux.cpp" />
@@ -202,6 +201,9 @@
     <ClInclude Include="Sources\OpenSSL\XCrypt.hpp" />
     <ClInclude Include="Sources\UI\Console\Console.hpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -243,15 +245,19 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="Defaults.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="Defaults.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="Defaults.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="Defaults.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -317,11 +323,13 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="packages\boost.1.82.0\build\boost.targets" Condition="Exists('packages\boost.1.82.0\build\boost.targets')" />
+    <Import Project="packages\openssl-vc142.1.1.0\build\native\openssl-vc142.targets" Condition="Exists('packages\openssl-vc142.1.1.0\build\native\openssl-vc142.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('packages\boost.1.82.0\build\boost.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost.1.82.0\build\boost.targets'))" />
+    <Error Condition="!Exists('packages\openssl-vc142.1.1.0\build\native\openssl-vc142.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\openssl-vc142.1.1.0\build\native\openssl-vc142.targets'))" />
   </Target>
 </Project>

@@ -19,13 +19,13 @@
 
 #pragma once
 
+#include <boost/asio/io_context.hpp>
+
 #include "Client/Cancel.hpp"
 #include "Client/Whiteboard.hpp"
 #include "Client/Messageboard.hpp"
 #include "Client/DataFile.hpp"
 #include "Client/Counter.hpp"
-
-#include <boost/asio/io_context.hpp>
 
 /************************************************************************/
 
