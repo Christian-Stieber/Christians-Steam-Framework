@@ -17,8 +17,8 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "./Console.hpp"
 #include "Client/Client.hpp"
+#include "./Console.hpp"
 
 /************************************************************************/
 

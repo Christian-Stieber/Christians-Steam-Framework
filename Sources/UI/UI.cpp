@@ -17,8 +17,8 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "UI/UI.hpp"
 #include "Client/Client.hpp"
+#include "UI/UI.hpp"
 
 /************************************************************************/
 
