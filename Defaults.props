@@ -7,15 +7,17 @@
     <ClCompile>
       <PreprocessorDefinitions>_WIN32_WINNT=0x0601;_SILENCE_CXX20_IS_POD_DEPRECATION_WARNING;_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(OutputPath);$(ProjectDir)Christians-HTML-Parser\Headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <CustomBuild>
-      <Command>$(protoc_windows86) --proto_path=$(ProjectDir) --proto_path=$(ProjectDir)\steamdatabase\protobufs --proto_path=$(ProjectDir)%(RelativeDir) --cpp_out=$(OutputPath) %(FullPath)</Command>
+      <Command>$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\tools\protobuf\protoc.exe --proto_path=%(RelativeDir) --proto_path=steamdatabase\protobufs --cpp_out=$(IntDir)%(RelativeDir) %(Identity)</Command>
     </CustomBuild>
     <CustomBuild>
       <Message>Protobuf Compiler</Message>
     </CustomBuild>
     <CustomBuild>
-      <Outputs>$(OutputPath)%(RelativeDir)%(Filename).pb.cc;$(OutputPath)%(RelativeDir)%(Filename).pb.h</Outputs>
+      <Outputs>$(Intdir)%(RelativeDir)%(Filename).pb.h;$(IntDir)%(RelativeDir)%(Filename).pb.cc</Outputs>
+      <OutputItemType>ClCompile</OutputItemType>
     </CustomBuild>
   </ItemDefinitionGroup>
   <ItemGroup />

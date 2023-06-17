@@ -288,6 +288,18 @@
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnableManifest>true</VcpkgEnableManifest>
   </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <VcpkgUseStatic>true</VcpkgUseStatic>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <VcpkgUseStatic>true</VcpkgUseStatic>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <VcpkgUseStatic>true</VcpkgUseStatic>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <VcpkgUseStatic>true</VcpkgUseStatic>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -323,7 +335,6 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
-      <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>$(ProjectDir)Headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
@@ -351,8 +362,6 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="packages\boost.1.82.0\build\boost.targets" Condition="Exists('packages\boost.1.82.0\build\boost.targets')" />
-    <Import Project="packages\protobuf-v141.3.7.1\build\native\protobuf-v141.targets" Condition="Exists('packages\protobuf-v141.3.7.1\build\native\protobuf-v141.targets')" />
-    <Import Project="packages\Google.Protobuf.Tools.3.7.0\build\Google.Protobuf.Tools.targets" Condition="Exists('packages\Google.Protobuf.Tools.3.7.0\build\Google.Protobuf.Tools.targets')" />
     <Import Project="packages\boost_log-vc143.1.82.0\build\boost_log-vc143.targets" Condition="Exists('packages\boost_log-vc143.1.82.0\build\boost_log-vc143.targets')" />
     <Import Project="packages\boost_log_setup-vc143.1.82.0\build\boost_log_setup-vc143.targets" Condition="Exists('packages\boost_log_setup-vc143.1.82.0\build\boost_log_setup-vc143.targets')" />
     <Import Project="packages\boost_filesystem-vc143.1.82.0\build\boost_filesystem-vc143.targets" Condition="Exists('packages\boost_filesystem-vc143.1.82.0\build\boost_filesystem-vc143.targets')" />
@@ -372,8 +381,6 @@
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('packages\boost.1.82.0\build\boost.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost.1.82.0\build\boost.targets'))" />
-    <Error Condition="!Exists('packages\protobuf-v141.3.7.1\build\native\protobuf-v141.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\protobuf-v141.3.7.1\build\native\protobuf-v141.targets'))" />
-    <Error Condition="!Exists('packages\Google.Protobuf.Tools.3.7.0\build\Google.Protobuf.Tools.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Google.Protobuf.Tools.3.7.0\build\Google.Protobuf.Tools.targets'))" />
     <Error Condition="!Exists('packages\boost_log-vc143.1.82.0\build\boost_log-vc143.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost_log-vc143.1.82.0\build\boost_log-vc143.targets'))" />
     <Error Condition="!Exists('packages\boost_log_setup-vc143.1.82.0\build\boost_log_setup-vc143.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost_log_setup-vc143.1.82.0\build\boost_log_setup-vc143.targets'))" />
     <Error Condition="!Exists('packages\boost_filesystem-vc143.1.82.0\build\boost_filesystem-vc143.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost_filesystem-vc143.1.82.0\build\boost_filesystem-vc143.targets'))" />
