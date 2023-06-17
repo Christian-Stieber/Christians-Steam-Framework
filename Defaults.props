@@ -13,7 +13,7 @@
       <Command>$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\tools\protobuf\protoc.exe --proto_path=%(RelativeDir) --proto_path=steamdatabase\protobufs --cpp_out=$(IntDir)%(RelativeDir) %(Identity)</Command>
     </CustomBuild>
     <CustomBuild>
-      <Message>Protobuf Compiler</Message>
+      <Message>Protobuf Compiler %(Identity)</Message>
     </CustomBuild>
     <CustomBuild>
       <Outputs>$(Intdir)%(RelativeDir)%(Filename).pb.h;$(IntDir)%(RelativeDir)%(Filename).pb.cc</Outputs>

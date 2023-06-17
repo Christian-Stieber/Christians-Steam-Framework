@@ -50,7 +50,7 @@ std::string SteamBot::Time::toString(std::chrono::system_clock::time_point when,
     }
 
     char buffer[200];
-    auto size=strftime(buffer, sizeof(buffer), "%F %T %Z", &tmBuffer);
+    auto size=strftime(buffer, sizeof(buffer), "%F %T", &tmBuffer);
 
     return std::string(buffer, size);
 }
