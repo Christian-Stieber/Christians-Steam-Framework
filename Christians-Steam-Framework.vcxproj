@@ -353,6 +353,19 @@
     <Import Project="packages\boost.1.82.0\build\boost.targets" Condition="Exists('packages\boost.1.82.0\build\boost.targets')" />
     <Import Project="packages\protobuf-v141.3.7.1\build\native\protobuf-v141.targets" Condition="Exists('packages\protobuf-v141.3.7.1\build\native\protobuf-v141.targets')" />
     <Import Project="packages\Google.Protobuf.Tools.3.7.0\build\Google.Protobuf.Tools.targets" Condition="Exists('packages\Google.Protobuf.Tools.3.7.0\build\Google.Protobuf.Tools.targets')" />
+    <Import Project="packages\boost_log-vc143.1.82.0\build\boost_log-vc143.targets" Condition="Exists('packages\boost_log-vc143.1.82.0\build\boost_log-vc143.targets')" />
+    <Import Project="packages\boost_log_setup-vc143.1.82.0\build\boost_log_setup-vc143.targets" Condition="Exists('packages\boost_log_setup-vc143.1.82.0\build\boost_log_setup-vc143.targets')" />
+    <Import Project="packages\boost_filesystem-vc143.1.82.0\build\boost_filesystem-vc143.targets" Condition="Exists('packages\boost_filesystem-vc143.1.82.0\build\boost_filesystem-vc143.targets')" />
+    <Import Project="packages\boost_thread-vc143.1.82.0\build\boost_thread-vc143.targets" Condition="Exists('packages\boost_thread-vc143.1.82.0\build\boost_thread-vc143.targets')" />
+    <Import Project="packages\boost_container-vc143.1.82.0\build\boost_container-vc143.targets" Condition="Exists('packages\boost_container-vc143.1.82.0\build\boost_container-vc143.targets')" />
+    <Import Project="packages\boost_fiber-vc143.1.82.0\build\boost_fiber-vc143.targets" Condition="Exists('packages\boost_fiber-vc143.1.82.0\build\boost_fiber-vc143.targets')" />
+    <Import Project="packages\boost_context-vc143.1.82.0\build\boost_context-vc143.targets" Condition="Exists('packages\boost_context-vc143.1.82.0\build\boost_context-vc143.targets')" />
+    <Import Project="packages\boost_url-vc143.1.82.0\build\boost_url-vc143.targets" Condition="Exists('packages\boost_url-vc143.1.82.0\build\boost_url-vc143.targets')" />
+    <Import Project="packages\boost_json-vc143.1.82.0\build\boost_json-vc143.targets" Condition="Exists('packages\boost_json-vc143.1.82.0\build\boost_json-vc143.targets')" />
+    <Import Project="packages\boost_chrono-vc143.1.82.0\build\boost_chrono-vc143.targets" Condition="Exists('packages\boost_chrono-vc143.1.82.0\build\boost_chrono-vc143.targets')" />
+    <Import Project="packages\boost_atomic-vc143.1.82.0\build\boost_atomic-vc143.targets" Condition="Exists('packages\boost_atomic-vc143.1.82.0\build\boost_atomic-vc143.targets')" />
+    <Import Project="packages\boost_iostreams-vc143.1.82.0\build\boost_iostreams-vc143.targets" Condition="Exists('packages\boost_iostreams-vc143.1.82.0\build\boost_iostreams-vc143.targets')" />
+    <Import Project="packages\boost_zlib-vc143.1.82.0\build\boost_zlib-vc143.targets" Condition="Exists('packages\boost_zlib-vc143.1.82.0\build\boost_zlib-vc143.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
@@ -361,5 +374,18 @@
     <Error Condition="!Exists('packages\boost.1.82.0\build\boost.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost.1.82.0\build\boost.targets'))" />
     <Error Condition="!Exists('packages\protobuf-v141.3.7.1\build\native\protobuf-v141.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\protobuf-v141.3.7.1\build\native\protobuf-v141.targets'))" />
     <Error Condition="!Exists('packages\Google.Protobuf.Tools.3.7.0\build\Google.Protobuf.Tools.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Google.Protobuf.Tools.3.7.0\build\Google.Protobuf.Tools.targets'))" />
+    <Error Condition="!Exists('packages\boost_log-vc143.1.82.0\build\boost_log-vc143.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost_log-vc143.1.82.0\build\boost_log-vc143.targets'))" />
+    <Error Condition="!Exists('packages\boost_log_setup-vc143.1.82.0\build\boost_log_setup-vc143.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost_log_setup-vc143.1.82.0\build\boost_log_setup-vc143.targets'))" />
+    <Error Condition="!Exists('packages\boost_filesystem-vc143.1.82.0\build\boost_filesystem-vc143.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost_filesystem-vc143.1.82.0\build\boost_filesystem-vc143.targets'))" />
+    <Error Condition="!Exists('packages\boost_thread-vc143.1.82.0\build\boost_thread-vc143.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost_thread-vc143.1.82.0\build\boost_thread-vc143.targets'))" />
+    <Error Condition="!Exists('packages\boost_container-vc143.1.82.0\build\boost_container-vc143.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost_container-vc143.1.82.0\build\boost_container-vc143.targets'))" />
+    <Error Condition="!Exists('packages\boost_fiber-vc143.1.82.0\build\boost_fiber-vc143.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost_fiber-vc143.1.82.0\build\boost_fiber-vc143.targets'))" />
+    <Error Condition="!Exists('packages\boost_context-vc143.1.82.0\build\boost_context-vc143.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost_context-vc143.1.82.0\build\boost_context-vc143.targets'))" />
+    <Error Condition="!Exists('packages\boost_url-vc143.1.82.0\build\boost_url-vc143.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost_url-vc143.1.82.0\build\boost_url-vc143.targets'))" />
+    <Error Condition="!Exists('packages\boost_json-vc143.1.82.0\build\boost_json-vc143.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost_json-vc143.1.82.0\build\boost_json-vc143.targets'))" />
+    <Error Condition="!Exists('packages\boost_chrono-vc143.1.82.0\build\boost_chrono-vc143.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost_chrono-vc143.1.82.0\build\boost_chrono-vc143.targets'))" />
+    <Error Condition="!Exists('packages\boost_atomic-vc143.1.82.0\build\boost_atomic-vc143.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost_atomic-vc143.1.82.0\build\boost_atomic-vc143.targets'))" />
+    <Error Condition="!Exists('packages\boost_iostreams-vc143.1.82.0\build\boost_iostreams-vc143.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost_iostreams-vc143.1.82.0\build\boost_iostreams-vc143.targets'))" />
+    <Error Condition="!Exists('packages\boost_zlib-vc143.1.82.0\build\boost_zlib-vc143.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\boost_zlib-vc143.1.82.0\build\boost_zlib-vc143.targets'))" />
   </Target>
 </Project>
