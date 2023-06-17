@@ -162,9 +162,6 @@
     <ClCompile Include="Sources\UI\Console\Console.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Sources\UI\Console\Manager.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Sources\UI\UI.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -217,6 +214,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Sources\WorkingDir.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\UI\Console\Manager_Windows.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

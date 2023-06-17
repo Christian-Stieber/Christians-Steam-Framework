@@ -77,7 +77,7 @@
     <ClCompile Include="Sources\Steam\OSType.cpp" />
     <ClCompile Include="Sources\UI\Console\CLI.cpp" />
     <ClCompile Include="Sources\UI\Console\Console.cpp" />
-    <ClCompile Include="Sources\UI\Console\Manager.cpp" />
+    <ClCompile Include="Sources\UI\Console\Manager_Windows.cpp" />
     <ClCompile Include="Sources\UI\UI.cpp" />
     <ClCompile Include="Sources\Universe.cpp" />
     <ClCompile Include="Sources\WebAPI\ISteamDirectory\GetCMList.cpp" />
