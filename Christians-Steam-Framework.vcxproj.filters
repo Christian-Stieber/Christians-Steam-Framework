@@ -144,9 +144,6 @@
     <ClCompile Include="Sources\OpenSSL\SHA1.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Sources\Steam\MachineInfo\Linux.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Sources\Steam\KeyValue.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -217,6 +214,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Sources\UI\Console\Manager_Windows.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Steam\MachineInfo\Windows.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -73,7 +73,7 @@
     <ClCompile Include="Sources\Random.cpp" />
     <ClCompile Include="Sources\Steam\KeyValue.cpp" />
     <ClCompile Include="Sources\Steam\MachineInfo.cpp" />
-    <ClCompile Include="Sources\Steam\MachineInfo\Linux.cpp" />
+    <ClCompile Include="Sources\Steam\MachineInfo\Windows.cpp" />
     <ClCompile Include="Sources\Steam\OSType.cpp" />
     <ClCompile Include="Sources\UI\Console\CLI.cpp" />
     <ClCompile Include="Sources\UI\Console\Console.cpp" />
