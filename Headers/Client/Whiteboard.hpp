@@ -164,6 +164,11 @@ public:
         auto ourItem=std::dynamic_pointer_cast<SteamBot::Whiteboard::WaiterBase>(item);
         assert(ourItem);
         whiteboard.waiters[std::type_index(typeid(T))].emplace_back(ourItem);
+
+        if (whiteboard.has<T>()!=nullptr)
+        {
+            setChanged();
+        }
     }
 
 public:
