@@ -1,6 +1,0 @@
-<!-- Put a file like this into ~/.SteamBot/Config.xml -->
-
-<steam-account>
-  <user>account name</user>
-  <password>password</password>
-</steam-account>
