@@ -40,7 +40,7 @@ namespace SteamBot
 
 /************************************************************************/
 /*
- * This amanages all client connections.
+ * This manages all client connections.
  * It runs on the Asio thread.
  */
 
@@ -49,23 +49,13 @@ namespace SteamBot
     class Connections
     {
     public:
-        class Connection
-        {
-            friend class Connections;
+        class Connection;
 
-        private:
-            std::weak_ptr<Client> client;
-            SteamBot::Connection::Encrypted connection;
-
-        public:
-            Connection(std::shared_ptr<Client>);	// internal use
-            ~Connection();
-        };
-
+    public:
         std::vector<std::weak_ptr<Connection>> connections;
 
     public:
-        typedef std::shared_ptr<SteamBot::ResultWaiter<std::shared_ptr<Connection>>> ConnectResult;
+        typedef std::shared_ptr<Connection> ConnectResult;
 
     private:
         Connections();
@@ -73,6 +63,8 @@ namespace SteamBot
 
         static Connections& get();
 
+        static bool readPacket(ConnectResult::weak_type);
+        static void run(ConnectResult::weak_type);
         static void makeConnection(ConnectResult, std::shared_ptr<const SteamBot::WebAPI::ISteamDirectory::GetCMList>);
         static void getCMList_completed(ConnectResult, std::shared_ptr<const SteamBot::WebAPI::ISteamDirectory::GetCMList>);
         void connect(Connections::ConnectResult);
@@ -81,3 +73,50 @@ namespace SteamBot
         static ConnectResult connect(std::shared_ptr<SteamBot::WaiterBase>, std::shared_ptr<Client>);
     };
 }
+
+/************************************************************************/
+/*
+ * A connection is also a waiter-item. It becomes active when one
+ * of the following is true:
+ *  - a packet is available for reading
+ *  - the connection status has changed
+ *
+ * Also, you can call writePacket() from other threads.
+ */
+
+class SteamBot::Connections::Connection : public SteamBot::Waiter::ItemBase
+{
+    friend class Connections;
+
+public:
+    enum Status { Connecting, Connected, GotEOF, Error };
+
+private:
+    // This is owned by the asio-thread
+    std::weak_ptr<Client> client;
+    std::shared_ptr<SteamBot::Connection::Encrypted> connection;
+
+private:
+    // Get the mutex before using this
+    mutable boost::fibers::mutex mutex;
+    Status status=Status::Connecting;
+    std::queue<std::vector<std::byte>> readPackets;
+    bool statusChanged=true;
+
+private:
+    void setStatus(Status);
+
+private:
+    virtual bool isWoken() const override;
+
+public:
+    Connection(std::shared_ptr<SteamBot::WaiterBase>&& waiter, std::shared_ptr<Client>);	// internal use
+    virtual ~Connection();
+
+public:
+    Status peekStatus() const;
+    Status getStatus();						// this will reset the changed status
+    std::vector<std::byte> readPacket();	// empty when there's none
+
+    void writePacket(std::vector<std::byte>);
+};
