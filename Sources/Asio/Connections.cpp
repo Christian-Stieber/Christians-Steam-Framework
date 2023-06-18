@@ -90,7 +90,6 @@ bool Connections::Connection::isWoken() const
         std::lock_guard<decltype(mutex)> lock(mutex);
         result=(statusChanged || !readPackets.empty());
     }
-    BOOST_LOG_TRIVIAL(debug) << "Connection " << this << " isWoken? -> " << result;
     return result;
 }
 

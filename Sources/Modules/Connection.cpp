@@ -153,7 +153,6 @@ void ConnectionModule::body()
 
         typedef SteamBot::Connections::Connection::Status Status;
         const auto status=connection->getStatus();
-        BOOST_LOG_TRIVIAL(debug) << "current connection status: " << SteamBot::enumToString(status);
         if (status==Status::GotEOF || status==Status::Error)
         {
             break;

@@ -22,18 +22,25 @@
 #include <boost/log/core.hpp>
 #include <boost/log/utility/setup/file.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/log/trivial.hpp>
 
 /************************************************************************/
 
 void SteamBot::Logging::init()
 {
+    namespace keywords=boost::log::keywords;
     boost::log::add_file_log
     (
-        boost::log::keywords::file_name = "SteamBot_%N.log",
-        boost::log::keywords::time_based_rotation = boost::log::sinks::file::rotation_at_time_point(0, 0, 0),
-        boost::log::keywords::format = "[%TimeStamp%]: %Message%",
-        boost::log::keywords::auto_flush = true
+        keywords::file_name = "Framework.log",
+        keywords::target_file_name = "Framework_%N.log",
+        keywords::open_mode = std::ios_base::out | std::ios_base::app,
+        keywords::time_based_rotation = boost::log::sinks::file::rotation_at_time_point(0, 0, 0),
+        keywords::format = "[%TimeStamp%]: %Message%",
+        keywords::auto_flush = true,
+        keywords::enable_final_rotation = false
     );
 
     boost::log::add_common_attributes();
+
+    BOOST_LOG_TRIVIAL(info) << "============================== program launch ==============================";
 }

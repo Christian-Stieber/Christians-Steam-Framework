@@ -79,7 +79,6 @@ namespace SteamBot
         private:
             virtual void cancel() override
             {
-                BOOST_LOG_TRIVIAL(debug) << "cancelling" << boost::typeindex::type_id_runtime(object).pretty_name();
                 object.cancel();
             }
 
