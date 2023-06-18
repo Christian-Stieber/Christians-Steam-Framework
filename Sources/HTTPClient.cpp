@@ -33,6 +33,7 @@
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <boost/json/stream_parser.hpp>
+#include <boost/exception/diagnostic_information.hpp>
 
 #include <boost/log/trivial.hpp>
 
@@ -57,9 +58,39 @@
 static boost::asio::ssl::context makeSslContext()
 {
     boost::asio::ssl::context sslContext{boost::asio::ssl::context::tlsv12_client};
+#ifndef _WIN32
     sslContext.set_default_verify_paths();
     sslContext.set_verify_mode(boost::asio::ssl::verify_peer | boost::asio::ssl::verify_fail_if_no_peer_cert);
+#else
+    // ToDo: Windows-openssl doesn't seem to have certificates?
+    sslContext.set_verify_mode(boost::asio::ssl::verify_none);
+#endif
     return sslContext;
+}
+
+/************************************************************************/
+/*
+ * https://stackoverflow.com/questions/9828066/how-to-decipher-a-boost-asio-ssl-error-code
+ */
+
+#include <openssl/err.h>
+#include <boost/lexical_cast.hpp>
+
+static void printSslError(const boost::system::error_code& error)
+{
+    std::string err = error.message();
+    if (error.category() == boost::asio::error::get_ssl_category()) {
+        err = std::string(" (")
+            +boost::lexical_cast<std::string>(ERR_GET_LIB(error.value()))+","
+            //+boost::lexical_cast<std::string>(ERR_GET_FUNC(error.value()))+","
+            +boost::lexical_cast<std::string>(ERR_GET_REASON(error.value()))+") "
+            ;
+        //ERR_PACK /* crypto/err/err.h */
+        char buf[128];
+        ::ERR_error_string_n(error.value(), buf, sizeof(buf));
+        err += buf;
+        BOOST_LOG_TRIVIAL(error) << "ssl error: " << err;
+    }
 }
 
 /************************************************************************/
@@ -203,9 +234,14 @@ std::unique_ptr<SteamBot::HTTPClient::Response> HTTPClient::performQuery(HTTPCli
                                 << " byte response with code " << response->response.result();
         return response;
     }
+    catch(const boost::system::system_error& exception)
+    {
+        BOOST_LOG_TRIVIAL(error) << "exception: " << exception.what();
+        printSslError(exception.code());
+    }
     catch(...)
     {
-        /* ToDo: add some logging */
+        BOOST_LOG_TRIVIAL(error) << "exception: " << boost::current_exception_diagnostic_information();
     }
 
     BOOST_LOG_TRIVIAL(info) << "HTTPClient: performQuery for \"" << url << "\" has produced an error";
