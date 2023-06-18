@@ -19,11 +19,11 @@
 
 #pragma once
 
-#include "Client/Client.hpp"
 #include "Client/ResultWaiter.hpp"
 #include "Connection/Encrypted.hpp"
 
 #include <memory>
+#include <queue>
 
 /************************************************************************/
 
@@ -52,9 +52,6 @@ namespace SteamBot
         class Connection;
 
     public:
-        std::vector<std::weak_ptr<Connection>> connections;
-
-    public:
         typedef std::shared_ptr<Connection> ConnectResult;
 
     private:
@@ -67,10 +64,9 @@ namespace SteamBot
         static void run(ConnectResult::weak_type);
         static void makeConnection(ConnectResult, std::shared_ptr<const SteamBot::WebAPI::ISteamDirectory::GetCMList>);
         static void getCMList_completed(ConnectResult, std::shared_ptr<const SteamBot::WebAPI::ISteamDirectory::GetCMList>);
-        void connect(Connections::ConnectResult);
 
     public:
-        static ConnectResult connect(std::shared_ptr<SteamBot::WaiterBase>, std::shared_ptr<Client>);
+        static ConnectResult connect(std::shared_ptr<SteamBot::WaiterBase>);
     };
 }
 
@@ -92,14 +88,13 @@ class SteamBot::Connections::Connection : public SteamBot::Waiter::ItemBase
     friend class Connections;
 
 public:
-    enum Status { Connecting, Connected, GotEOF, Error };
+    enum class Status { Connecting, Connected, GotEOF, Error };
 
 private:
     std::weak_ptr<Connection> self;
 
 private:
     // This is owned by the asio-thread
-    std::weak_ptr<Client> client;
     std::shared_ptr<SteamBot::Connection::Encrypted> connection;
     bool writingPackets=false;
 
@@ -110,6 +105,7 @@ private:
     std::queue<std::vector<std::byte>> readPackets;
     bool statusChanged=true;
     std::queue<std::vector<std::byte>> writePackets;
+    SteamBot::Connection::Endpoint localEndpoint;
 
 private:
     void doWritePackets();
@@ -119,7 +115,7 @@ private:
     virtual bool isWoken() const override;
 
 public:
-    Connection(std::shared_ptr<SteamBot::WaiterBase>&& waiter, std::shared_ptr<Client>);	// internal use
+    Connection(std::shared_ptr<SteamBot::WaiterBase>&&);	// internal use
     virtual ~Connection();
     virtual void install(std::shared_ptr<ItemBase>) override;
 
@@ -127,6 +123,7 @@ public:
     Status peekStatus() const;
     Status getStatus();						// this will reset the changed status
     std::vector<std::byte> readPacket();	// empty when there's none
+    decltype(localEndpoint) getLocalEndpoint() const;
 
     void writePacket(std::vector<std::byte>);
 };

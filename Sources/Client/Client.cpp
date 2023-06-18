@@ -45,29 +45,6 @@ static SteamBot::Counter threadCounter;
 
 /************************************************************************/
 
-SteamBot::Client::FiberCounter::FiberCounter(SteamBot::Client& client_)
-    : client(client_)
-{
-}
-
-/************************************************************************/
-
-SteamBot::Client::FiberCounter::~FiberCounter() =default;
-
-/************************************************************************/
-
-void SteamBot::Client::FiberCounter::onEmpty()
-{
-#if 0
-    // why does this not end the io_context->run()?
-    boost::asio::use_service<boost::fibers::asio::round_robin::service>(*ioContext).shutdown_service();
-#else
-    client.ioContext->stop();
-#endif
-}
-
-/************************************************************************/
-
 SteamBot::Client::Client(SteamBot::ClientInfo& clientInfo_)
     : universe{SteamBot::Universe::get(SteamBot::Universe::Type::Public)},
       dataFile(clientInfo_.accountName),
@@ -116,38 +93,12 @@ void SteamBot::Client::initModules()
 
 void SteamBot::Client::main()
 {
-    ioContext=std::make_shared<boost::asio::io_context>();
-    boost::fibers::asio::setSchedulingAlgorithm(ioContext);
-
-    SteamBot::UI::Thread::outputText("running client");
-    ExecuteOnDestruct atEnd([](){
-        SteamBot::UI::Thread::outputText("exiting client");
-    });
+    SteamBot::UI::Thread::outputText(std::string("running client ")+clientInfo.accountName);
 
     initModules();
+    fiberCounter.wait();
 
-    while (true)
-    {
-        try
-        {
-            // This doesn't exit until all fibers have exited?
-            ioContext->run();
-            BOOST_LOG_TRIVIAL(debug) << "event loop exit";
-            break;
-        }
-        catch(...)
-        {
-            if (quitMode==QuitMode::None)
-            {
-                BOOST_LOG_TRIVIAL(error) << "unhandled client exception: " << boost::current_exception_diagnostic_information();
-                quit(false);
-                boost::this_fiber::yield();		// ToDo: why do we need this?
-            }
-        }
-    }
-
-    assert(fiberCounter.getCount()==0);
-    assert(cancel.empty());
+    SteamBot::UI::Thread::outputText(std::string("exiting client ")+clientInfo.accountName);
 }
 
 /************************************************************************/
@@ -164,14 +115,7 @@ void SteamBot::Client::launch(SteamBot::ClientInfo& clientInfo)
         client=std::make_shared<Client>(clientInfo);
         clientInfo.setClient(client);
 
-        try
-        {
-            client->main();
-        }
-        catch(...)
-        {
-            BOOST_LOG_TRIVIAL(error) << "unhandled client exception: " << boost::current_exception_diagnostic_information();
-        }
+        client->main();
 
         BOOST_LOG_TRIVIAL(info) << "client quit with mode \"" << SteamBot::enumToStringAlways(client->quitMode) << "\"";
         switch(client->quitMode)
@@ -236,13 +180,6 @@ void SteamBot::Client::launchFiber(std::string name, std::function<void()> body)
         catch(const OperationCancelledException&)
         {
             BOOST_LOG_TRIVIAL(debug) << "fiber " << fiberName << " was cancelled";
-        }
-		catch(...)
-        {
-            BOOST_LOG_TRIVIAL(debug) << "uncaught exception in fiber " << fiberName;
-            boost::asio::post(*ioContext, [exception=std::current_exception()](){
-                std::rethrow_exception(exception);
-            });
         }
 
         BOOST_LOG_TRIVIAL(debug) << "fiber " << fiberName << " ending; fiber count is currently at " << fiberCounter.getCount();

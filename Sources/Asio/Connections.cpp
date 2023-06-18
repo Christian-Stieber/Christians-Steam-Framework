@@ -17,11 +17,10 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "Asio/Connections.hpp"
 #include "Asio/Asio.hpp"
+#include "Asio/Connections.hpp"
 #include "Connection/TCP.hpp"
 #include "WebAPI/ISteamDirectory/GetCMList.hpp"
-#include "Vector.hpp"
 #include "Random.hpp"
 
 #include <boost/fiber/operations.hpp>
@@ -38,12 +37,13 @@ Connections::Connections() =default;
 
 /************************************************************************/
 
-Connection::Connection(std::shared_ptr<SteamBot::WaiterBase>&& waiter, std::shared_ptr<SteamBot::Client> client_)
-    : ItemBase(std::move(waiter)),
-      client(std::move(client_))
+Connection::Connection(std::shared_ptr<SteamBot::WaiterBase>&& waiter)
+    : ItemBase(std::move(waiter))
 {
     auto baseConnection=std::make_unique<SteamBot::Connection::TCP>();
     connection=std::make_shared<SteamBot::Connection::Encrypted>(std::move(baseConnection));
+
+    BOOST_LOG_TRIVIAL(debug) << "created Steam connection " << this;
 }
 
 /************************************************************************/
@@ -56,6 +56,8 @@ Connection::~Connection()
     SteamBot::Asio::post("Connections::disconnect", [connection=std::move(myConnection)]() {
         connection->cancel();
     });
+
+    BOOST_LOG_TRIVIAL(debug) << "destroying Steam connection " << this;
 }
 
 /************************************************************************/
@@ -83,7 +85,13 @@ void Connection::setStatus(Connection::Status newStatus)
 
 bool Connections::Connection::isWoken() const
 {
-    return statusChanged || !readPackets.empty();
+    bool result;
+    {
+        std::lock_guard<decltype(mutex)> lock(mutex);
+        result=(statusChanged || !readPackets.empty());
+    }
+    BOOST_LOG_TRIVIAL(debug) << "Connection " << this << " isWoken? -> " << result;
+    return result;
 }
 
 /************************************************************************/
@@ -121,6 +129,14 @@ std::vector<std::byte> Connection::readPacket()
 
 /************************************************************************/
 
+decltype(Connection::localEndpoint) Connection::getLocalEndpoint() const
+{
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    return localEndpoint;
+}
+
+/************************************************************************/
+
 Connections& Connections::get()
 {
     static Connections& instance=*new Connections;
@@ -139,6 +155,9 @@ void Connections::makeConnection(Connections::ConnectResult result, std::shared_
     // ... and try to connect to it
     result->connection->connect(endpoint);
     BOOST_LOG_TRIVIAL(info) << "connected to " << endpoint.address;
+
+    std::lock_guard<decltype(result->mutex)> lock(result->mutex);
+    result->connection->getLocalAddress(result->localEndpoint);
 }
 
 /************************************************************************/
@@ -150,15 +169,15 @@ static void logException(const boost::system::system_error& exception)
     switch(exception.code().value())
     {
     case boost::asio::error::eof:
-        logLevel==boost::log::trivial::info;
+        logLevel=boost::log::trivial::info;
         break;
 
     case boost::asio::error::operation_aborted:
-        logLevel==boost::log::trivial::debug;
+        logLevel=boost::log::trivial::debug;
         break;
 
     default:
-        logLevel==boost::log::trivial::error;
+        logLevel=boost::log::trivial::error;
         break;
     }
 
@@ -189,9 +208,12 @@ bool Connections::readPacket(ConnectResult::weak_type result)
             locked=result.lock();
             if (locked)
             {
-                std::vector<std::byte> bytes(packet.begin(), packet.end());
-                std::lock_guard<decltype(locked->mutex)> lock(locked->mutex);
-                locked->readPackets.emplace(std::move(bytes));
+                {
+                    std::vector<std::byte> bytes(packet.begin(), packet.end());
+                    std::lock_guard<decltype(locked->mutex)> lock(locked->mutex);
+                    locked->readPackets.emplace(std::move(bytes));
+                }
+                locked->wakeup();
                 return true;
             }
         }
@@ -236,6 +258,8 @@ void Connections::run(ConnectResult::weak_type result)
     {
         BOOST_LOG_TRIVIAL(error) << "exception on Steam connection: " << boost::current_exception_diagnostic_information();
     }
+
+    BOOST_LOG_TRIVIAL(debug) << "Steam connection is ending the run loop";
 }
 
 /************************************************************************/
@@ -287,33 +311,7 @@ void Connections::getCMList_completed(Connections::ConnectResult result, std::sh
             }
         }
         run(result);
-    });
-}
-
-/************************************************************************/
-
-void Connections::connect(Connections::ConnectResult result)
-{
-    auto client=result->client.lock();
-
-    // Make sure the client doesn't have a connection already
-    SteamBot::erase(connections, [result, client=std::move(client)](std::weak_ptr<Connection>& connection) {
-        if (auto connectionLocked=connection.lock())
-        {
-            if (auto connectionClient=connectionLocked->client.lock())
-            {
-                if (client)
-                {
-                    assert(client!=connectionClient);
-                }
-                return false;
-            }
-        }
-        return true;
-    });
-
-    // Get the Steam endpoints
-    SteamBot::WebAPI::ISteamDirectory::GetCMList::get(0, std::bind_front(&Connections::getCMList_completed, std::move(result)));
+    }).detach();
 }
 
 /************************************************************************/
@@ -374,12 +372,12 @@ void Connection::doWritePackets()
  * Just delete the connection if you don't need it anymore.
  */
 
-Connections::ConnectResult Connections::connect(std::shared_ptr<SteamBot::WaiterBase> waiter, std::shared_ptr<Client> client)
+Connections::ConnectResult Connections::connect(std::shared_ptr<SteamBot::WaiterBase> waiter)
 {
-    auto result=waiter->createWaiter<ConnectResult::element_type>(std::move(client));
+    auto result=waiter->createWaiter<ConnectResult::element_type>();
 
     SteamBot::Asio::post("Connections::create", [result]() mutable {
-        get().connect(std::move(result));
+        SteamBot::WebAPI::ISteamDirectory::GetCMList::get(0, std::bind_front(&Connections::getCMList_completed, std::move(result)));
     });
 
     return result;
@@ -405,7 +403,7 @@ void Connection::writePacket(std::vector<std::byte> packet)
     auto locked=self.lock();
 
     SteamBot::Asio::post("Connections::writePacket", [locked=std::move(locked)]() mutable {
-        if (locked->writingPackets)
+        if (!locked->writingPackets)
         {
             bool empty;
             {
@@ -418,7 +416,7 @@ void Connection::writePacket(std::vector<std::byte> packet)
                 boost::fibers::fiber([locked=std::move(locked)]() {
                     locked->doWritePackets();
                     locked->writingPackets=false;
-                });
+                }).detach();
             }
         }
     });

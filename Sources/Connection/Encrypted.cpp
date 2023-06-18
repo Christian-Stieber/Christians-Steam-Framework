@@ -22,7 +22,6 @@
 #include "OpenSSL/AES.hpp"
 #include "OpenSSL/RSA.hpp"
 #include "OpenSSL/Random.hpp"
-#include "Client/Client.hpp"
 #include "EnumString.hpp"
 #include "Universe.hpp"
 #include "ResultCode.hpp"
@@ -149,7 +148,7 @@ void Encrypted::handleEncryptRequest(std::span<const std::byte> bytes)
 	BOOST_LOG_TRIVIAL(debug) << "encryption request for protocol version " << request.content.protocolVersion << ", universe " << SteamBot::enumToString(request.content.universe);
 
 	assert(request.content.protocolVersion==encryptionProtocolVersion);
-	assert(request.content.universe==SteamBot::Client::getClient().universe.type);
+	assert(request.content.universe==SteamBot::Universe::Type::Public);
 
 	std::array<std::byte, 32> tempSessionKey;
 	OpenSSL::makeRandomBytes(tempSessionKey);
@@ -159,7 +158,7 @@ void Encrypted::handleEncryptRequest(std::span<const std::byte> bytes)
 	// RSA-encrypt the session key.
 	// If the request has a randomChallenge, add it to the plaintext as well
 	{
-		OpenSSL::RSACrypto rsa(Client::getClient().universe);
+		OpenSSL::RSACrypto rsa(SteamBot::Universe::get(SteamBot::Universe::Type::Public));
 		std::vector<std::byte> blobToEncrypt;
 		blobToEncrypt.reserve(tempSessionKey.size()+request.content.randomChallenge.size());
 		blobToEncrypt.insert(blobToEncrypt.end(), tempSessionKey.cbegin(), tempSessionKey.cend());

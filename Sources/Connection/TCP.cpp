@@ -17,7 +17,7 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "Client/Client.hpp"
+#include "Asio/Asio.hpp"
 #include "Connection/TCP.hpp"
 #include "Connection/Serialize.hpp"
 #include "Asio/Fiber.hpp"
@@ -90,7 +90,7 @@ namespace
 /************************************************************************/
 
 TCP::TCP()
-	: socket(SteamBot::Client::getClient().getIoContext())
+	: socket(SteamBot::Asio::getIoContext())
 {
 }
 

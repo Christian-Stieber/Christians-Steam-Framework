@@ -19,8 +19,6 @@
 
 #pragma once
 
-#include <boost/asio/io_context.hpp>
-
 #include "Client/Cancel.hpp"
 #include "Client/Whiteboard.hpp"
 #include "Client/Messageboard.hpp"
@@ -63,27 +61,12 @@ namespace SteamBot
 		static Client* getClientPtr();
 		static Client& getClient();
 
-        boost::asio::io_context& getIoContext() { return *ioContext; }
-
 		void launchFiber(std::string, std::function<void()>);
         void quit(bool restart=false);
 
-    private:
-        class FiberCounter : public Counter
-        {
-        private:
-            Client& client;
-
-        public:
-            FiberCounter(Client&);
-            virtual ~FiberCounter();
-            virtual void onEmpty() override;
-        };
-
 	private:
-		std::shared_ptr<boost::asio::io_context> ioContext;
         std::unordered_map<std::type_index, std::shared_ptr<Module>> modules;
-        FiberCounter fiberCounter{*this};
+        Counter fiberCounter;
         ClientInfo& clientInfo;
 
     private:
@@ -91,7 +74,7 @@ namespace SteamBot
         QuitMode quitMode=QuitMode::None;
 
 	private:
-		void main();
+        void main();
         void initModules();
 
 	public:
