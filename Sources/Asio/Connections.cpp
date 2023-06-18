@@ -17,9 +17,9 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#include "Connection/TCP.hpp"
 #include "Asio/Asio.hpp"
 #include "Asio/Connections.hpp"
-#include "Connection/TCP.hpp"
 #include "WebAPI/ISteamDirectory/GetCMList.hpp"
 #include "Random.hpp"
 

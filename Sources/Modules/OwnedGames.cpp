@@ -17,10 +17,10 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#include "Modules/UnifiedMessageClient.hpp"
 #include "Client/Module.hpp"
 #include "Modules/OwnedGames.hpp"
 #include "Modules/Login.hpp"
-#include "Modules/UnifiedMessageClient.hpp"
 
 #include "steamdatabase/protobufs/steam/steammessages_player.steamclient.pb.h"
 

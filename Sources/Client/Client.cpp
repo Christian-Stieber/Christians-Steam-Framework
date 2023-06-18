@@ -22,18 +22,12 @@
 #include "Universe.hpp"
 #include "Exceptions.hpp"
 #include "EnumString.hpp"
-#include "Helpers/Destruct.hpp"
 #include "UI/UI.hpp"
-#include "Vector.hpp"
 
 #include <thread>
-#include <condition_variable>
 #include <boost/log/trivial.hpp>
 #include <boost/exception/diagnostic_information.hpp>
 #include <boost/fiber/operations.hpp>
-#include <boost/asio/post.hpp>
-
-#include "Asio/Fiber.hpp"
 
 /************************************************************************/
 

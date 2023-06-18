@@ -17,10 +17,10 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#include "Modules/Connection.hpp"
 #include "ResultCode.hpp"
 #include "Client/Module.hpp"
 #include "Modules/Login.hpp"
-#include "Modules/Connection.hpp"
 #include "Modules/UnifiedMessageClient.hpp"
 #include "Steam/MsgClientLogon.hpp"
 #include "OpenSSL/RSA.hpp"

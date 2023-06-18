@@ -17,10 +17,10 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#include "Modules/Connection.hpp"
 #include "Client/Module.hpp"
 #include "Steam/PersonaState.hpp"
 #include "EnumFlags.hpp"
-#include "Modules/Connection.hpp"
 #include "Modules/Login.hpp"
 
 #include "Steam/ProtoBuf/steammessages_clientserver_friends.hpp"

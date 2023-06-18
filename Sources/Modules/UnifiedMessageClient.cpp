@@ -17,9 +17,9 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#include "Modules/UnifiedMessageClient.hpp"
 #include "Client/Module.hpp"
 #include "Vector.hpp"
-#include "Modules/UnifiedMessageClient.hpp"
 
 #include <boost/log/trivial.hpp>
 

@@ -17,9 +17,10 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#include "Steam/ProtoBuf/steammessages_clientserver.hpp"
+
 #include "Client/Module.hpp"
 #include "Modules/LicenseList.hpp"
-#include "Steam/ProtoBuf/steammessages_clientserver.hpp"
 #include "EnumString.hpp"
 
 /************************************************************************/

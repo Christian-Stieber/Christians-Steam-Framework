@@ -28,9 +28,9 @@
 
 #include "steamdatabase/protobufs/steam/steammessages_base.pb.h"
 
+#include "Connection/Base.hpp"
 #include "DestructMonitor.hpp"
 #include "Connection/Serialize.hpp"
-#include "Connection/Base.hpp"
 #include "EnumString.hpp"
 
 /************************************************************************/

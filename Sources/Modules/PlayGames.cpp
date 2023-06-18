@@ -17,9 +17,9 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#include "Modules/Connection.hpp"
 #include "Client/Module.hpp"
 #include "Modules/PlayGames.hpp"
-#include "Modules/Connection.hpp"
 #include "Steam/OSType.hpp"
 #include "GameID.hpp"
 

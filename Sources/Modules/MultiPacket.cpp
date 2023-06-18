@@ -17,8 +17,8 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "Client/Module.hpp"
 #include "Modules/Connection.hpp"
+#include "Client/Module.hpp"
 
 #include "Steam/ProtoBuf/steammessages_base.hpp"
 

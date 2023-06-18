@@ -17,9 +17,9 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#include "Modules/Connection.hpp"
 #include "Client/Module.hpp"
 #include "Asio/Connections.hpp"
-#include "Modules/Connection.hpp"
 #include "Modules/Connection_Internal.hpp"
 #include "Connection/Message.hpp"
 

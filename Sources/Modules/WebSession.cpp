@@ -17,12 +17,12 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#include "Modules/Connection.hpp"
 #include "Client/Module.hpp"
 #include "ResultCode.hpp"
 #include "OpenSSL/Random.hpp"
 #include "OpenSSL/RSA.hpp"
 #include "OpenSSL/AES.hpp"
-#include "Modules/Connection.hpp"
 #include "Modules/Login.hpp"
 #include "Modules/WebSession.hpp"
 #include "Web/URLEncode.hpp"

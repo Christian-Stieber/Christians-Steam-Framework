@@ -17,8 +17,8 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "Client/Module.hpp"
 #include "Connection/Message.hpp"
+#include "Client/Module.hpp"
 
 /************************************************************************/
 /*
