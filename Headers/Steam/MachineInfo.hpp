@@ -21,6 +21,7 @@
 
 #include "Steam/KeyValue.hpp"
 
+#include <array>
 #include <span>
 #include <cstring>
 
@@ -30,7 +31,7 @@ namespace boost
 {
 	namespace uuids
 	{
-		class uuid;
+		struct uuid;
 	}
 }
 

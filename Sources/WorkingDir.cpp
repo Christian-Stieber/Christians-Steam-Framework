@@ -19,21 +19,17 @@
 
 #include "WorkingDir.hpp"
 
-#include <filesystem>
-
 /************************************************************************/
 
-#ifdef __linux__
+#if defined(__linux__)
+
+#include <filesystem>
 #include <unistd.h>
 #include <pwd.h>
-#endif
 
-/************************************************************************/
-
-static const std::filesystem::path& getHomeDir()
+void SteamBot::setWorkingDir()
 {
 	static const std::filesystem::path homeDir=[](){
-#ifdef __linux__
 		// I don't use getpwuid_r(), since this is only meant to be called
 		// once on startup.
 		const struct passwd* entry=getpwuid(getuid());
@@ -43,16 +39,57 @@ static const std::filesystem::path& getHomeDir()
 			throw std::system_error(Errno, std::generic_category());
 		}
 		return entry->pw_dir;
-#else
-#error Missing implementation for platform
-#endif
 	}();
-	return homeDir;
+
+	std::filesystem::current_path(homeDir / ".SteamBot");
 }
 
 /************************************************************************/
 
+#elif defined(_WIN32)
+
+#include <string>
+#include <cassert>
+
+#include <windows.h>
+#include <shlobj_core.h>
+
 void SteamBot::setWorkingDir()
 {
-	std::filesystem::current_path(getHomeDir() / ".SteamBot");
+	std::wstring path(L"\\\\?\\");
+
+	{
+		PWSTR folderPath=nullptr;
+		{
+			auto result=SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_DEFAULT, NULL, &folderPath);
+			assert(result==S_OK);
+		}
+		path.append(folderPath);
+		CoTaskMemFree(folderPath);
+	}
+
+	path.append(L"\\Christian-Stieber");
+	if (CreateDirectoryW(path.c_str(), NULL)==0)
+	{
+		assert(GetLastError()==ERROR_ALREADY_EXISTS);
+	}
+
+	path.append(L"\\Steam-Framework");
+	if (CreateDirectoryW(path.c_str(), NULL)==0)
+	{
+		assert(GetLastError()==ERROR_ALREADY_EXISTS);
+	}
+
+	path.append(L"\\");
+
+	{
+		auto result=SetCurrentDirectoryW(path.c_str());
+		assert(result);
+	}
 }
+
+/************************************************************************/
+
+#else
+#error Missing implementation for platform
+#endif

@@ -60,8 +60,6 @@ namespace SteamBot
                 counter.counter++;
             }
 
-            Handle(Handle&&) =delete;
-
             ~Handle()
             {
                 std::lock_guard<boost::fibers::mutex> lock(counter.mutex);

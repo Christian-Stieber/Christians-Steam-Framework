@@ -1,1 +1,6 @@
 build
+Christians-Steam-Framework.vcxproj.user
+x64
+.vs
+packages
+vcpkg_installed

@@ -17,9 +17,9 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#include "Asio/Asio.hpp"
 #include "WebAPI/WebAPI.hpp"
 #include "Asio/HTTPClient.hpp"
-#include "Asio/Asio.hpp"
 #include "Client/CallbackWaiter.hpp"
 
 #include <charconv>

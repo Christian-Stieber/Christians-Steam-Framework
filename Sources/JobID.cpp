@@ -24,7 +24,7 @@
 
 /************************************************************************/
 
-static std::atomic<SteamBot::JobID::valueType> sequence{0};
+static std::atomic<SteamBot::JobID::SequentialCountField::valueType> sequence{0};
 
 static const auto startTime=SteamBot::GlobalID::Clock::now();
 

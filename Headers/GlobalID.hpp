@@ -50,7 +50,7 @@ namespace SteamBot
 
 		void setStartTime(Clock::time_point time)
 		{
-			setStartTimeSeconds(std::chrono::duration_cast<std::chrono::seconds>(time-epoch2005).count());
+			setStartTimeSeconds(static_cast<StartTimeSecondsField::valueType>(std::chrono::duration_cast<std::chrono::seconds>(time-epoch2005).count()));
 		}
 
         Clock::time_point getStartTime() const

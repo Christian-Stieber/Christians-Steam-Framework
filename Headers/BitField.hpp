@@ -115,7 +115,7 @@ namespace SteamBot
 /************************************************************************/
 
 // https://stackoverflow.com/questions/4189945/templated-class-specialization-where-template-argument-is-a-template
-template <> template <typename T> struct std::hash<SteamBot::BitField<T>>
+template <typename T> struct std::hash<SteamBot::BitField<T>>
 {
     std::size_t operator()(const SteamBot::BitField<T>& bitfield) const noexcept
     {
@@ -130,9 +130,8 @@ template <> template <typename T> struct std::hash<SteamBot::BitField<T>>
  */
 
 #define STEAM_BITFIELD_MAKE_ACCESSORS(type, fieldName, offset, size) \
-	private: \
-	typedef Accessor<offset, size, type> fieldName##Field; \
 	public: \
+	typedef Accessor<offset, size, type> fieldName##Field; \
 	void set##fieldName(fieldName##Field::valueType value) { fieldName##Field::set(*this, value); } \
 	fieldName##Field::valueType get##fieldName() const { return fieldName##Field::get(*this); } \
 	static_assert(true, "so we can put a semicolon after the macro")

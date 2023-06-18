@@ -128,7 +128,11 @@ namespace magic_enum
 		template <> struct enum_range<SteamBot::Connection::Message::Type>
 		{
 			static constexpr int min=0;
+#ifdef _WIN32
+			static constexpr int max=1000;
+#else
 			static constexpr int max=10000;
+#endif
 		};
 	}
 }

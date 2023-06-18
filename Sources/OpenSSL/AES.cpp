@@ -17,6 +17,17 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+/************************************************************************/
+/*
+ * Doesn't really matter WHERE we put it
+ */
+
+#ifdef _WIN32
+#pragma comment(lib, "crypt32.lib")
+#endif
+
+/************************************************************************/
+
 #include "OpenSSL/AES.hpp"
 #include "OpenSSL/Random.hpp"
 #include "./XCrypt.hpp"

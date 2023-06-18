@@ -350,13 +350,11 @@ void Manager::setMode(Mode mode)
 
 /************************************************************************/
 
-#else
-#error "Unsupported platform"
-#endif /* __linux__ */
-
-/************************************************************************/
-
 std::unique_ptr<SteamBot::UI::ConsoleUI::ManagerBase> SteamBot::UI::ConsoleUI::ManagerBase::create(SteamBot::UI::ConsoleUI& ui)
 {
     return std::make_unique<Manager>(ui);
 }
+
+/************************************************************************/
+
+#endif /* __linux__ */

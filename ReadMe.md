@@ -22,20 +22,6 @@ Note that while there's some intention somewhere in the back of my
 head to allow for other types of UI eventually, current development
 focuses on a simple console-based CLI.
 
-# "CURRENT" STATE
-
-I don't know how "current" the "current" really is; maybe I'll update
-it when something interesting happens :-)
-
-* lots of basic infrastructure to build on
-* runs a single client instance
-* supports SteamGuard codes for login
-* unconditionally runs a single hardcoded game
-* can do authenticated web-queries (like steam community pages with login)
-
-As I said, it's work in progress -- and the above is certainly useful
-progress towards the final goal.
-
 # PLATFORMS
 
 If, for whatever reaason, you are stupid enough to want to try this:
@@ -44,22 +30,33 @@ platform-specific items such as getting information about the current
 machine. Code might not exist yet for all platforms, and if it does
 exist then it certainly hasn't been tested.
 
-Currently, I'm developing this on a Debian Linux box. Windows is high
-on the priority list (actually, that Debian runs in a VM on a Windows
-box...), but I haven't done it yet.
+## Linux
 
-MacOS is likely to not ever happen, due to lack of hardware on my side.
+Currently, I'm developing this on a Debian Linux box.
 
-# DEPENDENCIES
+This list of required packages might be incomplete:
 
-* C++20 compiler
-* boost 1.81
-* protobuf, ssl, and a couple other minor libraries
-* I'm not very happy with the cmake stuff, but I'm currently using that to build
+* `g++` (at least version 12)
+* `libboost-all-dev` (at least 1.81)
+* `cmake`
+* `libprotobuf-dev`
+* `protobuf-compiler`
+* `libssl-dev`
+* `libsystemd-dev`
+* `libzstd-dev`
+* `libbz2-dev`
+* `liblzma-dev`
+
+## Windows
+
+I'm now working on a project for Visual Studio 2022. This is still work-in-progress.
+Currently, it uses boch nuget and vcpkg package manegers; make sure you install vcpkg from the Visual Studio tool selection, and run `vcpkg integrate install` in the Visual Studio command prompt.
+
+I think this should do it.
 
 # 3RD PARTY CODE
 
-In addition to libraries, the framework includes some other 3rd party code:
+In addition to libraries that are used through packages, the framework includes some other 3rd party code in its source tree:
 
 * https://github.com/steamdatabase/protobufs.git \
   Was added as a **submodule**

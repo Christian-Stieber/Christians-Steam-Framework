@@ -17,8 +17,8 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "Client/Sleep.hpp"
 #include "Client/Client.hpp"
+#include "Client/Sleep.hpp"
 #include "Exceptions.hpp"
 
 /************************************************************************/

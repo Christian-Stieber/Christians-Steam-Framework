@@ -19,6 +19,8 @@
 
 #include "Helpers/Time.hpp"
 
+#include <cassert>
+
 /************************************************************************/
 
 std::string SteamBot::Time::toString(std::chrono::system_clock::time_point when, bool utc)
@@ -28,15 +30,27 @@ std::string SteamBot::Time::toString(std::chrono::system_clock::time_point when,
     struct tm tmBuffer;
     if (utc)
     {
-        gmtime_r(&timeBuffer, &tmBuffer);
+#ifdef __linux__
+		auto result=gmtime_r(&timeBuffer, &tmBuffer);
+		assert(result!=nullptr);
+#else
+		auto result=_gmtime64_s(&tmBuffer, &timeBuffer);
+		assert(result==0);
+#endif
     }
     else
     {
-        localtime_r(&timeBuffer, &tmBuffer);
+#ifdef __linux__
+		auto result=localtime_r(&timeBuffer, &tmBuffer);
+		assert(result!=nullptr);
+#else
+		auto result=_localtime64_s(&tmBuffer, &timeBuffer);
+		assert(result==0);
+#endif
     }
 
     char buffer[200];
-    auto size=strftime(buffer, sizeof(buffer), "%F %T %Z", &tmBuffer);
+    auto size=strftime(buffer, sizeof(buffer), "%F %T", &tmBuffer);
 
     return std::string(buffer, size);
 }

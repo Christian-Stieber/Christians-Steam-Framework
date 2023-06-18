@@ -88,7 +88,7 @@ namespace SteamBot
         private:
             virtual void wakeup(ItemBase* item) override
             {
-                std::lock_guard<std::mutex>{mutex};	// make sure the intermediate is populated
+                (void)std::lock_guard<std::mutex>{mutex};	// make sure the intermediate is populated
 
                 if (cancelled)
                 {

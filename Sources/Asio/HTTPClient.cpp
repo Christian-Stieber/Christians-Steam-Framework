@@ -107,12 +107,42 @@ boost::asio::ssl::context& Query::getSslContext()
 {
     static boost::asio::ssl::context& sslContext=*([](){
         auto context=new boost::asio::ssl::context(boost::asio::ssl::context::tlsv12_client);
+#ifndef _WIN32
         context->set_default_verify_paths();
         context->set_verify_mode(boost::asio::ssl::verify_peer | boost::asio::ssl::verify_fail_if_no_peer_cert);
+#else
+        // ToDo: Windows-openssl doesn't seem to have certificates?
+        context->set_verify_mode(boost::asio::ssl::verify_none);
+#endif
         return context;
     }());
 
     return sslContext;
+}
+
+/************************************************************************/
+/*
+ * https://stackoverflow.com/questions/9828066/how-to-decipher-a-boost-asio-ssl-error-code
+ */
+
+#include <openssl/err.h>
+#include <boost/lexical_cast.hpp>
+
+static void printSslError(const boost::system::error_code& error)
+{
+    if (error.category() == boost::asio::error::get_ssl_category()) {
+        std::string err = error.message();
+        err = std::string(" (")
+            +boost::lexical_cast<std::string>(ERR_GET_LIB(error.value()))+","
+            //+boost::lexical_cast<std::string>(ERR_GET_FUNC(error.value()))+","
+            +boost::lexical_cast<std::string>(ERR_GET_REASON(error.value()))+") "
+            ;
+        //ERR_PACK /* crypto/err/err.h */
+        char buf[128];
+        ::ERR_error_string_n(error.value(), buf, sizeof(buf));
+        err += buf;
+        BOOST_LOG_TRIVIAL(error) << "ssl error: " << err;
+    }
 }
 
 /************************************************************************/
@@ -123,7 +153,8 @@ void Query::complete(const ErrorCode& error)
 
     if (error)
     {
-        BOOST_LOG_TRIVIAL(debug) << "query has failed with " << error.message() << " (" << error << ")";
+        BOOST_LOG_TRIVIAL(error) << "query has failed with " << error.message() << " (" << error << ")";
+        printSslError(error);
     }
 
     assert(query!=nullptr);
