@@ -50,11 +50,21 @@ Connection::Connection(std::shared_ptr<SteamBot::WaiterBase>&& waiter, std::shar
 
 Connection::~Connection()
 {
+    assert(!writingPackets);
     auto& myConnection=connection;
 
     SteamBot::Asio::post("Connections::disconnect", [connection=std::move(myConnection)]() {
         connection->cancel();
     });
+}
+
+/************************************************************************/
+
+void Connection::install(std::shared_ptr<ItemBase> base)
+{
+    auto item=std::dynamic_pointer_cast<Connection>(base);
+    assert(item);
+    self=item;
 }
 
 /************************************************************************/
@@ -215,6 +225,8 @@ bool Connections::readPacket(ConnectResult::weak_type result)
 
 void Connections::run(ConnectResult::weak_type result)
 {
+    assert(SteamBot::Asio::isThread());
+
     try
     {
         while (readPacket(result))
@@ -305,18 +317,109 @@ void Connections::connect(Connections::ConnectResult result)
 }
 
 /************************************************************************/
+
+void Connection::doWritePackets()
+{
+    assert(SteamBot::Asio::isThread());
+
+    while (peekStatus()==Status::Connected)
+    {
+        std::vector<std::byte> packet;
+        {
+            std::lock_guard<decltype(mutex)> lock(mutex);
+            if (writePackets.empty())
+            {
+                return;
+            }
+            packet=std::move(writePackets.front());
+            writePackets.pop();
+        }
+
+        try
+        {
+            connection->writePacket(packet);
+        }
+        catch(const boost::system::system_error& exception)
+        {
+            logException(exception);
+
+            switch(exception.code().value())
+            {
+            case boost::asio::error::eof:
+                setStatus(Connection::Status::GotEOF);
+                break;
+
+            case boost::asio::error::operation_aborted:
+                assert(false);
+                break;
+
+            default:
+                setStatus(Connection::Status::Error);
+                break;
+            }
+        }
+        catch(...)
+        {
+            BOOST_LOG_TRIVIAL(error) << "exception on Steam connection: " << boost::current_exception_diagnostic_information();
+            setStatus(Connection::Status::Error);
+        }
+    }
+}
+
+/************************************************************************/
 /*
  * This can be called from any thread. It fetches endpoints
  * from Steam, and makes a connection.
+ *
+ * Just delete the connection if you don't need it anymore.
  */
 
 Connections::ConnectResult Connections::connect(std::shared_ptr<SteamBot::WaiterBase> waiter, std::shared_ptr<Client> client)
 {
     auto result=waiter->createWaiter<ConnectResult::element_type>(std::move(client));
 
-    SteamBot::Asio::post("Connections::connect", [result]() mutable {
+    SteamBot::Asio::post("Connections::create", [result]() mutable {
         get().connect(std::move(result));
     });
 
     return result;
+}
+
+/************************************************************************/
+/*
+ * Again, this can be called from any thread. Probably the same thread
+ * that owns the connection, though.
+ *
+ * Note that this keeps a shared_ptr on the connection while writing,
+ * so unless the connection is severed from the remote end, all data
+ * will be written.
+ */
+
+void Connection::writePacket(std::vector<std::byte> packet)
+{
+    {
+        std::lock_guard<decltype(mutex)> lock(mutex);
+        writePackets.emplace(std::move(packet));
+    }
+
+    auto locked=self.lock();
+
+    SteamBot::Asio::post("Connections::writePacket", [locked=std::move(locked)]() mutable {
+        if (locked->writingPackets)
+        {
+            bool empty;
+            {
+                std::lock_guard<decltype(locked->mutex)> lock(locked->mutex);
+                empty=locked->writePackets.empty();
+            }
+            if (!empty)
+            {
+                locked->writingPackets=true;
+                boost::fibers::fiber([locked=std::move(locked)]() {
+                    locked->doWritePackets();
+                    locked->writingPackets=false;
+                });
+            }
+        }
+    });
 }

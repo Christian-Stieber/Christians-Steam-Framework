@@ -81,7 +81,10 @@ namespace SteamBot
  *  - a packet is available for reading
  *  - the connection status has changed
  *
- * Also, you can call writePacket() from other threads.
+ * Also, you can call writePacket() from other threads (i.e., the
+ * client thread, usually).
+ *
+ * The connection will shut down when you destruct this.
  */
 
 class SteamBot::Connections::Connection : public SteamBot::Waiter::ItemBase
@@ -92,9 +95,13 @@ public:
     enum Status { Connecting, Connected, GotEOF, Error };
 
 private:
+    std::weak_ptr<Connection> self;
+
+private:
     // This is owned by the asio-thread
     std::weak_ptr<Client> client;
     std::shared_ptr<SteamBot::Connection::Encrypted> connection;
+    bool writingPackets=false;
 
 private:
     // Get the mutex before using this
@@ -102,8 +109,10 @@ private:
     Status status=Status::Connecting;
     std::queue<std::vector<std::byte>> readPackets;
     bool statusChanged=true;
+    std::queue<std::vector<std::byte>> writePackets;
 
 private:
+    void doWritePackets();
     void setStatus(Status);
 
 private:
@@ -112,6 +121,7 @@ private:
 public:
     Connection(std::shared_ptr<SteamBot::WaiterBase>&& waiter, std::shared_ptr<Client>);	// internal use
     virtual ~Connection();
+    virtual void install(std::shared_ptr<ItemBase>) override;
 
 public:
     Status peekStatus() const;
