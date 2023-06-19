@@ -54,6 +54,8 @@ namespace SteamBot
                     public:
                         AppID appId;
                         std::string name;
+                        std::chrono::system_clock::time_point lastPlayed;
+                        std::chrono::minutes playtimeForever{0};
                     };
 
                 public:

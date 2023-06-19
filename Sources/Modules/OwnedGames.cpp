@@ -21,6 +21,8 @@
 #include "Client/Module.hpp"
 #include "Modules/OwnedGames.hpp"
 #include "Modules/Login.hpp"
+#include "UI/UI.hpp"
+#include "Helpers/Time.hpp"
 
 #include "steamdatabase/protobufs/steam/steammessages_player.steamclient.pb.h"
 
@@ -62,6 +64,14 @@ boost::json::value OwnedGames::GameInfo::toJson() const
     boost::json::object json;
     SteamBot::enumToJson(json, "appId", appId);
     json["name"]=name;
+    if (lastPlayed!=decltype(lastPlayed)())
+    {
+        json["last played"]=SteamBot::Time::toString(lastPlayed, true);
+    }
+    if (playtimeForever.count()!=0)
+    {
+        json["playtime"]=playtimeForever.count();
+    }
     return json;
 }
 
@@ -106,6 +116,14 @@ void OwnedGamesModule::getOwnedGames()
             {
                 game->name=gameData.name();
             }
+            if (gameData.has_rtime_last_played())
+            {
+                game->lastPlayed=std::chrono::system_clock::from_time_t(gameData.rtime_last_played());
+            }
+            if (gameData.has_playtime_forever())
+            {
+                game->playtimeForever=std::chrono::minutes(gameData.playtime_forever());
+            }
             bool success=ownedGames->games.try_emplace(game->appId, std::move(game)).second;
             assert(success);
         }
@@ -132,7 +150,12 @@ void OwnedGamesModule::run()
             if (loginStatus->get(LoginStatus::LoggedOut)==LoginStatus::LoggedIn)
             {
                 getOwnedGames();
-                BOOST_LOG_TRIVIAL(info) << "owned games: " << **(getClient().whiteboard.has<OwnedGames::Ptr>());
+                auto games=getClient().whiteboard.has<OwnedGames::Ptr>();
+                if (games!=nullptr)
+                {
+                    BOOST_LOG_TRIVIAL(info) << "owned games: " << **games;
+                    SteamBot::UI::OutputText() << "account owns " << (*games)->games.size() << " games";
+                }
             }
         }
     });

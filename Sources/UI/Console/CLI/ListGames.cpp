@@ -22,6 +22,7 @@
 #include "Modules/Executor.hpp"
 #include "Modules/OwnedGames.hpp"
 #include "Helpers/StringCompare.hpp"
+#include "Helpers/Time.hpp"
 
 #include <regex>
 
@@ -53,7 +54,16 @@ static void outputGameList(const OwnedGames::Ptr::element_type& ownedGames, std:
 
     for (const auto& game : games)
     {
-        std::cout << std::setw(8) << static_cast<std::underlying_type_t<decltype(game->appId)>>(game->appId) << ": " << game->name << "\n";
+        std::cout << std::setw(8) << static_cast<std::underlying_type_t<decltype(game->appId)>>(game->appId) << ": " << game->name;
+        if (game->lastPlayed!=decltype(game->lastPlayed)())
+        {
+            std::cout << "; last played " << SteamBot::Time::toString(game->lastPlayed);
+        }
+        if (game->playtimeForever.count()!=0)
+        {
+            std::cout << "; playtime " << SteamBot::Time::toString(game->playtimeForever);
+        }
+        std::cout << "\n";
     }
     std::cout << std::flush;
 }

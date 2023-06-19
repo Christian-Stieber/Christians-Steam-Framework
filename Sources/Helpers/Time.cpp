@@ -19,7 +19,10 @@
 
 #include "Helpers/Time.hpp"
 
+#include <sstream>
+
 #include <cassert>
+#include <cmath>
 
 /************************************************************************/
 
@@ -53,4 +56,24 @@ std::string SteamBot::Time::toString(std::chrono::system_clock::time_point when,
     auto size=strftime(buffer, sizeof(buffer), "%F %T", &tmBuffer);
 
     return std::string(buffer, size);
+}
+
+/************************************************************************/
+
+std::string SteamBot::Time::toString(std::chrono::minutes minutes)
+{
+    std::ostringstream string;
+    if (minutes.count()<60)
+    {
+        string << minutes.count() << " minutes";
+    }
+    else if (minutes.count()<10*60)
+    {
+        string << round(10.0*minutes.count()/60.0)/10.0 << " hours";
+    }
+    else
+    {
+        string << round(minutes.count()/60.0) << " hours";
+    }
+    return std::move(string).str();
 }

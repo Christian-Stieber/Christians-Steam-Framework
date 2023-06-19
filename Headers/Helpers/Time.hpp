@@ -29,5 +29,6 @@ namespace SteamBot
     namespace Time
     {
         std::string toString(std::chrono::system_clock::time_point, bool utc=false);
+        std::string toString(std::chrono::minutes);
     }
 }
