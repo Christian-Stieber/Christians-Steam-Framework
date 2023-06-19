@@ -25,6 +25,13 @@
 
 namespace SteamBot
 {
+    class ClientInfo;
+}
+
+/************************************************************************/
+
+namespace SteamBot
+{
     namespace UI
     {
         class ConsoleUI : public SteamBot::UI::Base
@@ -97,15 +104,19 @@ private:
     public:
         std::string_view command;
         std::string_view syntax;
+        std::string_view description;
         bool(CLI::*function)(std::vector<std::string_view>&);
     };
 
     static const Command commands[];
 
 private:
+    SteamBot::ClientInfo* currentAccount=nullptr;
     bool quit=false;
 
 private:
+    SteamBot::ClientInfo* getAccount() const;
+    SteamBot::ClientInfo* getAccount(std::string_view) const;
     void showHelp();
     void command(std::string_view);
 
@@ -116,6 +127,7 @@ public:
     bool command_status(std::vector<std::string_view>&);
     bool command_launch(std::vector<std::string_view>&);
     bool command_create(std::vector<std::string_view>&);
+    bool command_select(std::vector<std::string_view>&);
 
 private:
     ConsoleUI& ui;

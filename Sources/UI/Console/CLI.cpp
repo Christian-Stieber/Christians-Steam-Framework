@@ -108,11 +108,12 @@ static std::vector<std::string_view> getWords(std::string_view line)
 /************************************************************************/
 
 const CLI::Command CLI::commands[]={
-    { "EXIT", "EXIT", &CLI::command_exit },
-    { "help", "help", &CLI::command_help },
-    { "status", "status", &CLI::command_status },
-    { "launch", "launch <account>", &CLI::command_launch },
-    { "create", "create <account>", &CLI::command_create }
+    { "EXIT", "EXIT", "Exit the bot", &CLI::command_exit },
+    { "help", "help", "Show list of commands", &CLI::command_help },
+    { "status", "status", "Show list of known accounts", &CLI::command_status },
+    { "launch", "launch [<account>]", "launch an existing bot", &CLI::command_launch },
+    { "create", "create <account>", "create a new bot", &CLI::command_create },
+    { "select", "select <account>", "select a bot as target for some commands", &CLI::command_select }
 };
 
 /************************************************************************/
@@ -153,20 +154,91 @@ bool CLI::command_status(std::vector<std::string_view>& words)
 }
 
 /************************************************************************/
+/*
+ * Returns currentAccount, or nullptr.
+ *
+ * Outputs a message if none was set.
+ */
 
-bool CLI::command_launch(std::vector<std::string_view>& words)
+SteamBot::ClientInfo* CLI::getAccount() const
 {
-    if (words.size()!=2) return false;
+    if (currentAccount==nullptr)
+    {
+        std::cout << "no current account; select one first or specify an account name" << std::endl;
+    }
+    return currentAccount;
+}
 
-    const auto clientInfo=SteamBot::ClientInfo::find(words[1]);
+/************************************************************************/
+/*
+ * Returns named account, or nullptr.
+ *
+ * Outputs a message if none was found.
+ */
+
+SteamBot::ClientInfo* CLI::getAccount(std::string_view name) const
+{
+    const auto clientInfo=SteamBot::ClientInfo::find(name);
     if (clientInfo==nullptr)
     {
-        std::cout << "unknown account \"" << words[1] << "\"" << std::endl;
+        std::cout << "unknown account \"" << name << "\"" << std::endl;
+    }
+    return clientInfo;
+}
+
+/************************************************************************/
+
+bool CLI::command_select(std::vector<std::string_view>& words)
+{
+    if (words.size()==1)
+    {
+        if (currentAccount==nullptr)
+        {
+            return false;
+        }
+        currentAccount=nullptr;
+        std::cout << "deselected the current account" << std::endl;
+    }
+    else if (words.size()==2)
+    {
+        const auto clientInfo=getAccount(words[1]);
+        if (clientInfo!=nullptr)
+        {
+            currentAccount=clientInfo;
+            std::cout << "your current account is now \"" << currentAccount->accountName << "\"" << std::endl;
+        }
     }
     else
     {
+        return false;
+    }
+    return true;
+}
+
+/************************************************************************/
+
+bool CLI::command_launch(std::vector<std::string_view>& words)
+{
+    SteamBot::ClientInfo* clientInfo=nullptr;
+
+    if (words.size()==1)
+    {
+        clientInfo=getAccount();
+    }
+    else if (words.size()==2)
+    {
+        clientInfo=getAccount(words[1]);
+    }
+    else
+    {
+        return false;
+    }
+
+    if (clientInfo!=nullptr)
+    {
         SteamBot::Client::launch(*clientInfo);
         std::cout << "launched client \"" << clientInfo->accountName << "\"" << std::endl;
+        std::cout << "NOTE: leave command mode to be able to see password/SteamGuard prompts!" << std::endl;
     }
     return true;
 }
@@ -186,6 +258,7 @@ bool CLI::command_create(std::vector<std::string_view>& words)
     {
         SteamBot::Client::launch(*clientInfo);
         std::cout << "launched new client \"" << clientInfo->accountName << "\"" << std::endl;
+        std::cout << "NOTE: leave command mode to be able to see password/SteamGuard prompts!" << std::endl;
     }
     return true;
 }
@@ -197,7 +270,7 @@ void CLI::showHelp()
     std::cout << "valid commands:" << std::endl;
     for (const Command& command : commands)
     {
-        std::cout << "   " << command.syntax << std::endl;
+        std::cout << "   " << command.syntax << " -> " << command.description << std::endl;
     }
 }
 
@@ -234,6 +307,10 @@ void CLI::run()
         std::cout << "End it by entering an empty line." << std::endl;
         while (!quit)
         {
+            if (currentAccount!=nullptr)
+            {
+                std::cout << "[" << currentAccount->accountName << "] ";
+            }
             std::cout << "command> " << std::flush;
             std::string line;
             std::getline(std::cin, line);
