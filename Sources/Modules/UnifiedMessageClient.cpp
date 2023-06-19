@@ -44,7 +44,7 @@ namespace
     public:
         static decltype(messageList)& getMessageList()
         {
-            return SteamBot::Client::getClient().getModule<UnifiedMessageClientModule>().messageList;
+            return SteamBot::Client::getClient().getModule<UnifiedMessageClientModule>()->messageList;
         }
     };
 

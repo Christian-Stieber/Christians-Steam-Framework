@@ -217,7 +217,7 @@ HandlerBase::~HandlerBase() =default;
 
 void HandlerBase::add(SteamBot::Connection::Message::Type type, std::unique_ptr<HandlerBase>&& handler)
 {
-    SteamBot::Client::getClient().getModule<ConnectionModule>().add(type, std::move(handler));
+    SteamBot::Client::getClient().getModule<ConnectionModule>()->add(type, std::move(handler));
 }
 
 /************************************************************************/
@@ -280,5 +280,5 @@ void HandlerBase::handle(SteamBot::Connection::Base::ConstBytes bytes) const
 
 void SteamBot::Modules::Connection::handlePacket(std::span<const std::byte> bytes)
 {
-    SteamBot::Client::getClient().getModule<ConnectionModule>().handlePacket(bytes);
+    SteamBot::Client::getClient().getModule<ConnectionModule>()->handlePacket(bytes);
 }

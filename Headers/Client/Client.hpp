@@ -65,7 +65,9 @@ namespace SteamBot
         void quit(bool restart=false);
 
 	private:
+        mutable boost::fibers::mutex modulesMutex;
         std::unordered_map<std::type_index, std::shared_ptr<Module>> modules;
+
         Counter fiberCounter;
         ClientInfo& clientInfo;
 
@@ -87,11 +89,12 @@ namespace SteamBot
             return clientInfo;
         }
 
-        template <typename T> T& getModule() const
+        template <typename T> std::shared_ptr<T> getModule() const
         {
+            std::lock_guard<decltype(modulesMutex)> lock(modulesMutex);
             auto iterator=modules.find(std::type_index(typeid(T)));
             assert(iterator!=modules.end());
-            return dynamic_cast<T&>(*(iterator->second));
+            return std::dynamic_pointer_cast<T>(iterator->second);
         }
 	};
 }
