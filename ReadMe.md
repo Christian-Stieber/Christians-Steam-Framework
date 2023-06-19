@@ -12,15 +12,11 @@ Currently, the main goals are:
 * making a C++ framework to write Steam bots, similar to projects such as SteamKit
 * making a bot to idle cards
 * making the bot create trades for cards
-* while everything is in one source tree right now, I fully intend to separate the
-actual "bot" from the "framework" eventually.
+* while everything is in one source tree right now, I fully intend to separate the actual "bot" from the "framework" eventually.
 
-As for the time beyond, I don't know yet. This is a one-man spare-time project,
-so I'm trying to stick to a reasonably realistic plan.
+As for the time beyond, I don't know yet. This is a one-man spare-time project, so I'm trying to stick to a reasonably realistic plan.
 
-Note that while there's some intention somewhere in the back of my
-head to allow for other types of UI eventually, current development
-focuses on a simple console-based CLI.
+Note that while there's some intention somewhere in the back of my head to allow for other types of UI eventually, current development focuses on a simple console-based CLI.
 
 # PLATFORMS
 
