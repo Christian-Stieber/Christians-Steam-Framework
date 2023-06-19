@@ -283,3 +283,12 @@ void Thread::wait()
 {
     get().wait_();
 }
+
+/************************************************************************/
+
+SteamBot::UI::OutputText::OutputText() =default;
+
+SteamBot::UI::OutputText::~OutputText()
+{
+    Thread::outputText(std::move(*this).str());
+}

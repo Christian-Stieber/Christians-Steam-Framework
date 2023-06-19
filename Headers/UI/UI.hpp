@@ -164,6 +164,25 @@ namespace SteamBot
 
 /************************************************************************/
 /*
+ * Leverages the "<<" operators to create a string for
+ * Thread::outputText().
+ */
+
+namespace SteamBot
+{
+    namespace UI
+    {
+        class OutputText : public std::ostringstream
+        {
+        public:
+            OutputText();
+            ~OutputText();
+        };
+    }
+}
+
+/************************************************************************/
+/*
  * This operates the thread for the UI.
  *
  * This is also where YOU invoke UI functions.
