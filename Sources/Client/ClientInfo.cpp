@@ -1,4 +1,5 @@
 #include "Client/Client.hpp"
+#include "Helpers/StringCompare.hpp"
 
 #include <filesystem>
 #include <regex>
@@ -52,22 +53,6 @@ void ClientInfo::setClient(std::shared_ptr<SteamBot::Client> client_)
 }
 
 /************************************************************************/
-
-static bool caseInsensitiveCompare(std::string_view left, std::string_view right)
-{
-    if (left.size()!=right.size()) return false;
-    for (size_t i=0; i<left.size(); i++)
-    {
-        char lchar=left[i];
-        if (lchar>='A' && lchar<='Z') lchar+=('a'-'A');
-        char rchar=right[i];
-        if (rchar>='A' && rchar<='Z') rchar+=('a'-'A');
-        if (lchar!=rchar) return false;
-    }
-    return true;
-}
-
-/************************************************************************/
 /*
  * Does not lock the mutex
  */
@@ -76,7 +61,7 @@ static ClientInfo* doFind(std::string_view accountName)
 {
     for (auto info : clients)
     {
-        if (caseInsensitiveCompare(info->accountName, accountName))
+        if (SteamBot::caseInsensitiveStringCompare_equal(info->accountName, accountName))
         {
             return info;
         }

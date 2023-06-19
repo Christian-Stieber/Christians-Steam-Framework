@@ -19,48 +19,22 @@
 
 #pragma once
 
-#include <string>
+#include <string_view>
+#include <compare>
 
 /************************************************************************/
-
-namespace HTMLParser
-{
-    namespace Tree
-    {
-        class Element;
-    }
-}
-
-/************************************************************************/
-/*
- * Checks whether a class name is contained in a class string (space
- * separated list of class names).
- *
- * The Element version gets the class attribute to check.
- */
 
 namespace SteamBot
 {
-    namespace HTML
+    std::weak_ordering caseInsensitiveStringCompare(std::string_view, std::string_view);
+
+    inline bool caseInsensitiveStringCompare_less(std::string_view left, std::string_view right)
     {
-        bool checkClass(std::string_view, const char*);
-        bool checkClass(const HTMLParser::Tree::Element&, const char*);
+        return caseInsensitiveStringCompare(left, right)==std::weak_ordering::less;
     }
-}
 
-/************************************************************************/
-/*
- * Get "clean text" from an element.
- *
- * This does the following things:
- *   - recursively collect and concatenate all text nodes
- *   - cleanup whitespace
- */
-
-namespace SteamBot
-{
-    namespace HTML
+    inline bool caseInsensitiveStringCompare_equal(std::string_view left, std::string_view right)
     {
-        std::string getCleanText(const HTMLParser::Tree::Element&);
+        return caseInsensitiveStringCompare(left, right)==std::weak_ordering::equivalent;
     }
 }
