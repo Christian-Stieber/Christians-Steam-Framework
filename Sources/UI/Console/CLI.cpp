@@ -29,77 +29,39 @@ typedef SteamBot::UI::ConsoleUI::CLI CLI;
  * A simple tokenizer that just looks for whitespace-separated chunks
  * of characters.
  *
- * For now(?), we don't even need quoted strings.
+ * "\" is used as an escape character.
  */
 
-static std::vector<std::string_view> getWords(std::string_view line)
+static std::vector<std::string> getWords(std::string_view line)
 {
-    std::vector<std::string_view> result;
+    std::vector<std::string> result;
+    std::string word;
 
-    class Word
+    bool escaped=false;
+    for (const char c : line)
     {
-    private:
-        const char* start;
-        const char* end;
-
-    public:
-        void clear()
-        {
-            start=nullptr;
-            end=nullptr;
-        }
-
-        Word()
-        {
-            clear();
-        }
-
-        operator std::string_view() const
-        {
-            assert(start!=nullptr);
-            return std::string_view(start, end+1);
-        }
-
-        void append(const char* c)
-        {
-            if (start==nullptr)
-            {
-                start=c;
-            }
-            else
-            {
-                assert(c==end+1);
-            }
-            end=c;
-        }
-
-        bool empty() const
-        {
-            return start==nullptr;
-        }
-    } word;
-
-    const char* const end=line.data()+line.size();
-    for (const char* c=line.data(); c!=end; c++)
-    {
-        if (*c==' ' || *c=='\n' || *c=='\t')
+        if (((c==' ' || c=='\t') && !escaped) || c=='\n')
         {
             if (!word.empty())
             {
-                result.emplace_back(word);
+                result.emplace_back(std::move(word));
                 word.clear();
             }
         }
+        else if (c=='\\' && !escaped)
+        {
+            escaped=true;
+        }
         else
         {
-            word.append(c);
+            word.push_back(c);
+            escaped=false;
         }
     }
 
     if (!word.empty())
     {
-        result.emplace_back(word);
-        word.clear();
+        result.emplace_back(std::move(word));
     }
 
     return result;
@@ -124,7 +86,7 @@ CLI::~CLI() =default;
 
 /************************************************************************/
 
-bool CLI::command_exit(std::vector<std::string_view>& words)
+bool CLI::command_exit(std::vector<std::string>& words)
 {
     if (words.size()>1) return false;
 
@@ -134,7 +96,7 @@ bool CLI::command_exit(std::vector<std::string_view>& words)
 
 /************************************************************************/
 
-bool CLI::command_help(std::vector<std::string_view>&)
+bool CLI::command_help(std::vector<std::string>&)
 {
     showHelp();
     return true;
@@ -142,7 +104,7 @@ bool CLI::command_help(std::vector<std::string_view>&)
 
 /************************************************************************/
 
-bool CLI::command_status(std::vector<std::string_view>& words)
+bool CLI::command_status(std::vector<std::string>& words)
 {
     if (words.size()>1) return false;
 
@@ -189,7 +151,7 @@ SteamBot::ClientInfo* CLI::getAccount(std::string_view name) const
 
 /************************************************************************/
 
-bool CLI::command_select(std::vector<std::string_view>& words)
+bool CLI::command_select(std::vector<std::string>& words)
 {
     if (words.size()==1)
     {
@@ -218,7 +180,7 @@ bool CLI::command_select(std::vector<std::string_view>& words)
 
 /************************************************************************/
 
-bool CLI::command_launch(std::vector<std::string_view>& words)
+bool CLI::command_launch(std::vector<std::string>& words)
 {
     SteamBot::ClientInfo* clientInfo=nullptr;
 
@@ -246,7 +208,7 @@ bool CLI::command_launch(std::vector<std::string_view>& words)
 
 /************************************************************************/
 
-bool CLI::command_create(std::vector<std::string_view>& words)
+bool CLI::command_create(std::vector<std::string>& words)
 {
     if (words.size()!=2) return false;
 

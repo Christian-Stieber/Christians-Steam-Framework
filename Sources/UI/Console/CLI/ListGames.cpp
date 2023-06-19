@@ -60,7 +60,7 @@ static void outputGameList(const OwnedGames::Ptr::element_type& ownedGames, std:
 
 /************************************************************************/
 
-bool SteamBot::UI::ConsoleUI::CLI::command_list_games(std::vector<std::string_view>& words)
+bool SteamBot::UI::ConsoleUI::CLI::command_list_games(std::vector<std::string>& words)
 {
     SteamBot::ClientInfo* clientInfo=nullptr;
     std::string_view pattern;

@@ -105,7 +105,7 @@ private:
         std::string_view command;
         std::string_view syntax;
         std::string_view description;
-        bool(CLI::*function)(std::vector<std::string_view>&);
+        bool(CLI::*function)(std::vector<std::string>&);
 
     public:
         void printSyntax() const;
@@ -125,13 +125,13 @@ private:
 
 public:
     /* Return 'false' from commands to show the syntax line */
-    bool command_exit(std::vector<std::string_view>&);
-    bool command_help(std::vector<std::string_view>&);
-    bool command_status(std::vector<std::string_view>&);
-    bool command_launch(std::vector<std::string_view>&);
-    bool command_create(std::vector<std::string_view>&);
-    bool command_select(std::vector<std::string_view>&);
-    bool command_list_games(std::vector<std::string_view>&);
+    bool command_exit(std::vector<std::string>&);
+    bool command_help(std::vector<std::string>&);
+    bool command_status(std::vector<std::string>&);
+    bool command_launch(std::vector<std::string>&);
+    bool command_create(std::vector<std::string>&);
+    bool command_select(std::vector<std::string>&);
+    bool command_list_games(std::vector<std::string>&);
 
 private:
     ConsoleUI& ui;
