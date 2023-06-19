@@ -51,7 +51,7 @@ namespace SteamBot
 
             BigNum(std::span<const std::byte> bytes)
             {
-                Exception::throwMaybe(BN_bin2bn(static_cast<const unsigned char*>(static_cast<const void*>(bytes.data())), bytes.size(), number));
+                Exception::throwMaybe(BN_bin2bn(static_cast<const unsigned char*>(static_cast<const void*>(bytes.data())), static_cast<int>(bytes.size()), number));
             }
 
             ~BigNum()

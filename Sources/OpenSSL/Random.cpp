@@ -30,5 +30,5 @@
 void SteamBot::OpenSSL::makeRandomBytes(std::span<std::byte> buffer)
 {
     uint8_t* const bufferData=static_cast<uint8_t*>(static_cast<void*>(buffer.data()));
-	Exception::throwMaybe(RAND_bytes(bufferData, buffer.size()));
+	Exception::throwMaybe(RAND_bytes(bufferData, static_cast<int>(buffer.size())));
 }

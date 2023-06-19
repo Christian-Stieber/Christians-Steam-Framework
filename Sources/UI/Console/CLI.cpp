@@ -258,8 +258,9 @@ SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames::Ptr CLI::getOwnedGames(St
 
 bool CLI::parseNumber(std::string_view string, uint64_t& value)
 {
-    const auto result=std::from_chars(string.begin(), string.end(), value);
-    if (result.ec==std::errc() && result.ptr==string.end())
+    const auto last=string.data()+string.size();
+    const auto result=std::from_chars(string.data(), last, value);
+    if (result.ec==std::errc() && result.ptr==last)
     {
         return true;
     }

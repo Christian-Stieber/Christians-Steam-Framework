@@ -63,7 +63,7 @@ RSACrypto::RSACrypto(const SteamBot::Universe& universe)
 	{
 		const uint8_t* key=static_cast<const uint8_t*>(static_cast<const void*>(universe.publicKey.data()));
 		const uint8_t* bytes=key;
-		pkey=Exception::throwMaybe(d2i_PUBKEY(nullptr, &bytes, universe.publicKey.size()));
+		pkey=Exception::throwMaybe(d2i_PUBKEY(nullptr, &bytes, static_cast<long>(universe.publicKey.size())));
 		assert(bytes==key+universe.publicKey.size());
 	}
 
