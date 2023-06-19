@@ -94,8 +94,7 @@ void OwnedGamesModule::getOwnedGames()
         response=SteamBot::Modules::UnifiedMessageClient::execute<GetOwnedGamesInfo::ResultType>("Player.GetOwnedGames#1", std::move(request));
     }
 
-    OwnedGames ownedGames;
-
+    auto ownedGames=std::make_shared<OwnedGames>();
     for (int index=0; index<response->games_size(); index++)
     {
         const auto& gameData=response->games(index);
@@ -107,12 +106,12 @@ void OwnedGamesModule::getOwnedGames()
             {
                 game->name=gameData.name();
             }
-            bool success=ownedGames.games.try_emplace(game->appId, std::move(game)).second;
+            bool success=ownedGames->games.try_emplace(game->appId, std::move(game)).second;
             assert(success);
         }
     }
 
-    getClient().whiteboard.set(std::move(ownedGames));
+    getClient().whiteboard.set<OwnedGames::Ptr>(std::move(ownedGames));
 }
 
 /************************************************************************/
@@ -133,7 +132,7 @@ void OwnedGamesModule::run()
             if (loginStatus->get(LoginStatus::LoggedOut)==LoginStatus::LoggedIn)
             {
                 getOwnedGames();
-                BOOST_LOG_TRIVIAL(info) << "owned games: " << *(getClient().whiteboard.has<OwnedGames>());
+                BOOST_LOG_TRIVIAL(info) << "owned games: " << **(getClient().whiteboard.has<OwnedGames::Ptr>());
             }
         }
     });

@@ -36,8 +36,13 @@ namespace SteamBot
         {
             namespace Whiteboard
             {
+                // Note: the whiteboard actually holds an OwnedGames::Ptr!!!!
+
                 class OwnedGames : public Printable
                 {
+                public:
+                    typedef std::shared_ptr<const OwnedGames> Ptr;
+
                 public:
                     class GameInfo : public Printable
                     {
