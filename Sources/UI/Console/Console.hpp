@@ -106,6 +106,9 @@ private:
         std::string_view syntax;
         std::string_view description;
         bool(CLI::*function)(std::vector<std::string_view>&);
+
+    public:
+        void printSyntax() const;
     };
 
     static const Command commands[];

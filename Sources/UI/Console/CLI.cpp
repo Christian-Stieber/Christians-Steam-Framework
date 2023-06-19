@@ -108,12 +108,12 @@ static std::vector<std::string_view> getWords(std::string_view line)
 /************************************************************************/
 
 const CLI::Command CLI::commands[]={
-    { "EXIT", "EXIT", "Exit the bot", &CLI::command_exit },
-    { "help", "help", "Show list of commands", &CLI::command_help },
-    { "status", "status", "Show list of known accounts", &CLI::command_status },
-    { "launch", "launch [<account>]", "launch an existing bot", &CLI::command_launch },
-    { "create", "create <account>", "create a new bot", &CLI::command_create },
-    { "select", "select <account>", "select a bot as target for some commands", &CLI::command_select }
+    { "EXIT", "", "Exit the bot", &CLI::command_exit },
+    { "help", "", "Show list of commands", &CLI::command_help },
+    { "status", "", "Show list of known accounts", &CLI::command_status },
+    { "launch", "[<account>]", "launch an existing bot", &CLI::command_launch },
+    { "create", "<account>", "create a new bot", &CLI::command_create },
+    { "select", "<account>", "select a bot as target for some commands", &CLI::command_select }
 };
 
 /************************************************************************/
@@ -265,12 +265,25 @@ bool CLI::command_create(std::vector<std::string_view>& words)
 
 /************************************************************************/
 
+void CLI::Command::printSyntax() const
+{
+    std::cout << command;
+    if (syntax.size()!=0)
+    {
+        std::cout << " " << syntax;
+    }
+}
+
+/************************************************************************/
+
 void CLI::showHelp()
 {
     std::cout << "valid commands:" << std::endl;
     for (const Command& command : commands)
     {
-        std::cout << "   " << command.syntax << " -> " << command.description << std::endl;
+        std::cout << "   ";
+        command.printSyntax();
+        std::cout << " -> " << command.description << std::endl;
     }
 }
 
@@ -287,7 +300,9 @@ void CLI::command(std::string_view line)
             {
                 if (!(this->*(command.function))(words))
                 {
-                    std::cout << "command syntax: " << command.syntax << std::endl;
+                    std::cout << "command syntax: ";
+                    command.printSyntax();
+                    std::cout << std::endl;
                 }
                 return;
             }
