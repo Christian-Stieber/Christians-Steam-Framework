@@ -131,6 +131,7 @@ public:
     bool command_launch(std::vector<std::string_view>&);
     bool command_create(std::vector<std::string_view>&);
     bool command_select(std::vector<std::string_view>&);
+    bool command_list_games(std::vector<std::string_view>&);
 
 private:
     ConsoleUI& ui;

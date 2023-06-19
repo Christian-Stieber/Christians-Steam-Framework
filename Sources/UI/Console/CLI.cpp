@@ -113,7 +113,8 @@ const CLI::Command CLI::commands[]={
     { "status", "", "Show list of known accounts", &CLI::command_status },
     { "launch", "[<account>]", "launch an existing bot", &CLI::command_launch },
     { "create", "<account>", "create a new bot", &CLI::command_create },
-    { "select", "<account>", "select a bot as target for some commands", &CLI::command_select }
+    { "select", "<account>", "select a bot as target for some commands", &CLI::command_select },
+    { "list-games", "[<account>] [<regex>]", "list owned games", &CLI::command_list_games }
 };
 
 /************************************************************************/
