@@ -107,7 +107,6 @@ list(APPEND SRCS Modules/PersonaState)
 list(APPEND SRCS Modules/SteamGuard)
 list(APPEND SRCS Modules/WebSession)
 list(APPEND SRCS Modules/PlayGames)
-list(APPEND SRCS Modules/IdleGame)
 list(APPEND SRCS Modules/Login-Auth)
 list(APPEND SRCS Modules/GetBadgeData/ParseBadgePage Modules/GetBadgeData/GetBadgeData Modules/GetBadgeData/Printable)
 
