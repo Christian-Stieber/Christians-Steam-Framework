@@ -25,49 +25,6 @@
 typedef SteamBot::UI::ConsoleUI::CLI CLI;
 
 /************************************************************************/
-/*
- * A simple tokenizer that just looks for whitespace-separated chunks
- * of characters.
- *
- * "\" is used as an escape character.
- */
-
-static std::vector<std::string> getWords(std::string_view line)
-{
-    std::vector<std::string> result;
-    std::string word;
-
-    bool escaped=false;
-    for (const char c : line)
-    {
-        if (((c==' ' || c=='\t') && !escaped) || c=='\n')
-        {
-            if (!word.empty())
-            {
-                result.emplace_back(std::move(word));
-                word.clear();
-            }
-        }
-        else if (c=='\\' && !escaped)
-        {
-            escaped=true;
-        }
-        else
-        {
-            word.push_back(c);
-            escaped=false;
-        }
-    }
-
-    if (!word.empty())
-    {
-        result.emplace_back(std::move(word));
-    }
-
-    return result;
-}
-
-/************************************************************************/
 
 const CLI::Command CLI::commands[]={
     { "EXIT", "", "Exit the bot", &CLI::command_exit },

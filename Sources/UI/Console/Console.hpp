@@ -123,6 +123,8 @@ private:
     void showHelp();
     void command(std::string_view);
 
+    static std::vector<std::string> getWords(std::string_view);
+
 public:
     /* Return 'false' from commands to show the syntax line */
     bool command_exit(std::vector<std::string>&);
