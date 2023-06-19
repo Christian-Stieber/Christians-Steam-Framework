@@ -42,6 +42,7 @@
     <ClCompile Include="Sources\DestructMonitor.cpp" />
     <ClCompile Include="Sources\Exception.cpp" />
     <ClCompile Include="Sources\Helpers\HTML.cpp" />
+    <ClCompile Include="Sources\Helpers\StringCompare.cpp" />
     <ClCompile Include="Sources\Helpers\Time.cpp" />
     <ClCompile Include="Sources\Helpers\URLs.cpp" />
     <ClCompile Include="Sources\JobID.cpp" />
@@ -49,11 +50,11 @@
     <ClCompile Include="Sources\Main.cpp" />
     <ClCompile Include="Sources\Modules\ClientAppList.cpp" />
     <ClCompile Include="Sources\Modules\Connection.cpp" />
+    <ClCompile Include="Sources\Modules\Executor.cpp" />
     <ClCompile Include="Sources\Modules\GetBadgeData\GetBadgeData.cpp" />
     <ClCompile Include="Sources\Modules\GetBadgeData\ParseBadgePage.cpp" />
     <ClCompile Include="Sources\Modules\GetBadgeData\Printable.cpp" />
     <ClCompile Include="Sources\Modules\Heartbeat.cpp" />
-    <ClCompile Include="Sources\Modules\IdleGame.cpp" />
     <ClCompile Include="Sources\Modules\LicenseList.cpp" />
     <ClCompile Include="Sources\Modules\Login-Auth.cpp" />
     <ClCompile Include="Sources\Modules\MultiPacket.cpp" />
@@ -78,6 +79,9 @@
     <ClCompile Include="Sources\Steam\MachineInfo\Windows.cpp" />
     <ClCompile Include="Sources\Steam\OSType.cpp" />
     <ClCompile Include="Sources\UI\Console\CLI.cpp" />
+    <ClCompile Include="Sources\UI\Console\CLI\ListGames.cpp" />
+    <ClCompile Include="Sources\UI\Console\CLI\PlayGame.cpp" />
+    <ClCompile Include="Sources\UI\Console\CLI\TokenizeLine.cpp" />
     <ClCompile Include="Sources\UI\Console\Console.cpp" />
     <ClCompile Include="Sources\UI\Console\Manager_Windows.cpp" />
     <ClCompile Include="Sources\UI\UI.cpp" />
@@ -148,6 +152,7 @@
     <ClInclude Include="Headers\Helpers\Destruct.hpp" />
     <ClInclude Include="Headers\Helpers\HTML.hpp" />
     <ClInclude Include="Headers\Helpers\JSON.hpp" />
+    <ClInclude Include="Headers\Helpers\StringCompare.hpp" />
     <ClInclude Include="Headers\Helpers\Time.hpp" />
     <ClInclude Include="Headers\Helpers\URLs.hpp" />
     <ClInclude Include="Headers\HTTPClient.hpp" />
@@ -156,6 +161,7 @@
     <ClInclude Include="Headers\MiscIDs.hpp" />
     <ClInclude Include="Headers\Modules\Connection.hpp" />
     <ClInclude Include="Headers\Modules\Connection_Internal.hpp" />
+    <ClInclude Include="Headers\Modules\Executor.hpp" />
     <ClInclude Include="Headers\Modules\GetBadgeData.hpp" />
     <ClInclude Include="Headers\Modules\LicenseList.hpp" />
     <ClInclude Include="Headers\Modules\Login.hpp" />
