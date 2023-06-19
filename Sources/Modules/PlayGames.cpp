@@ -22,6 +22,7 @@
 #include "Modules/PlayGames.hpp"
 #include "Steam/OSType.hpp"
 #include "GameID.hpp"
+#include "Vector.hpp"
 
 #include "Steam/ProtoBuf/steammessages_clientserver.hpp"
 
@@ -40,6 +41,7 @@ boost::json::value PlayGame::toJson() const
 {
     boost::json::object json;
     SteamBot::enumToJson(json, "appId", appId);
+    json["action"]=start ? "start" : "stop";
     return json;
 }
 
@@ -50,7 +52,13 @@ namespace
     class PlayGamesModule : public SteamBot::Client::Module
     {
     private:
-        void playGame(std::shared_ptr<const PlayGame>);
+        std::vector<SteamBot::AppID> games;
+
+    private:
+        void sendGames() const;
+
+    public:
+        void handle(std::shared_ptr<const PlayGame>);
 
     public:
         PlayGamesModule() =default;
@@ -64,23 +72,65 @@ namespace
 
 /************************************************************************/
 
-void PlayGamesModule::playGame(std::shared_ptr<const PlayGame> message)
+void PlayGamesModule::sendGames() const
 {
-    auto games=std::make_unique<Steam::CMsgClientGamesPlayedMessageType>();
-    games->content.set_client_os_type(static_cast<std::underlying_type_t<Steam::OSType>>(Steam::getOSType()));
+    auto message=std::make_unique<Steam::CMsgClientGamesPlayedMessageType>();
 
-    auto game=games->content.add_games_played();
+    // ToDo: should we use a different OS type?
+    message->content.set_client_os_type(static_cast<std::underlying_type_t<Steam::OSType>>(Steam::getOSType()));
+
+    for (const auto& appId : games)
     {
-        SteamBot::GameID gameId;
-        gameId.setAppType(SteamBot::GameID::AppType::App);
-        gameId.setAppId(message->appId);
-        game->set_game_id(gameId.getValue());
+        auto gameMessage=message->content.add_games_played();
+
+        {
+            SteamBot::GameID gameId;
+            gameId.setAppType(SteamBot::GameID::AppType::App);
+            gameId.setAppId(appId);
+            gameMessage->set_game_id(gameId.getValue());
+        }
     }
 
-    SteamBot::Modules::Connection::Messageboard::SendSteamMessage::send(std::move(games));
+    SteamBot::Modules::Connection::Messageboard::SendSteamMessage::send(std::move(message));
 }
 
 /************************************************************************/
+
+void PlayGamesModule::handle(std::shared_ptr<const PlayGame> message)
+{
+    BOOST_LOG_TRIVIAL(debug) << "received PlayGame request: " << *message;
+    if (message->start)
+    {
+        for (const auto appId : games)
+        {
+            if (appId==message->appId)
+            {
+                return;
+            }
+        }
+        games.push_back(message->appId);
+    }
+    else
+    {
+        auto count=SteamBot::erase(games, [message](SteamBot::AppID other) {
+            return other==message->appId;
+        });
+
+        assert(count==0 || count==1);
+        if (count==0)
+        {
+            return;
+        }
+    }
+
+    sendGames();
+}
+
+/************************************************************************/
+/*
+ * ToDo: maybe we should monitor the login state, so we don't start
+ * games until after we've logged on?
+ */
 
 void PlayGamesModule::run()
 {
@@ -88,28 +138,23 @@ void PlayGamesModule::run()
         auto waiter=SteamBot::Waiter::create();
         auto cancellation=getClient().cancel.registerObject(*waiter);
 
-        std::shared_ptr<SteamBot::Messageboard::Waiter<PlayGame>> playGameQueue;
-        playGameQueue=waiter->createWaiter<decltype(playGameQueue)::element_type>(getClient().messageboard);
+        std::shared_ptr<SteamBot::Messageboard::Waiter<PlayGame>> playGame;
+        playGame=waiter->createWaiter<decltype(playGame)::element_type>(getClient().messageboard);
 
         while (true)
         {
             waiter->wait();
-            {
-                auto message=playGameQueue->fetch();
-                if (message)
-                {
-                    playGame(std::move(message));
-                }
-            }
+            playGame->handle(this);
         }
     });
 }
 
 /************************************************************************/
 
-void PlayGame::play(SteamBot::AppID appId)
+void PlayGame::play(SteamBot::AppID appId, bool start)
 {
     auto message=std::make_shared<PlayGame>();
     message->appId=appId;
+    message->start=start;
     SteamBot::Client::getClient().messageboard.send(std::move(message));
 }

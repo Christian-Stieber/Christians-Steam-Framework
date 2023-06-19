@@ -36,6 +36,7 @@ namespace SteamBot
                 {
                 public:
                     AppID appId=AppID::None;
+                    bool start=true;
 
                 public:
                     PlayGame();
@@ -43,7 +44,7 @@ namespace SteamBot
                     virtual boost::json::value toJson() const override;
 
                 public:
-                    static void play(AppID);
+                    static void play(AppID, bool);
                 };
             }
         }
