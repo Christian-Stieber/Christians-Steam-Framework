@@ -19,12 +19,12 @@
 
 #include "../Console.hpp"
 
-#include "Modules/Executor.hpp"
-#include "Modules/OwnedGames.hpp"
+#include "Client/Client.hpp"
 #include "Helpers/StringCompare.hpp"
 #include "Helpers/Time.hpp"
 
 #include <regex>
+#include <iomanip>
 
 /************************************************************************/
 
@@ -103,19 +103,7 @@ bool SteamBot::UI::ConsoleUI::CLI::command_list_games(std::vector<std::string>& 
 
     if (clientInfo)
     {
-        OwnedGames::Ptr ownedGames;
-        {
-            if (auto client=clientInfo->getClient())
-            {
-                SteamBot::Modules::Executor::execute(std::move(client), [this, &ownedGames](SteamBot::Client& client) mutable {
-                    if (auto games=client.whiteboard.has<decltype(ownedGames)>())
-                    {
-                        ownedGames=*games;
-                    }
-                });
-            }
-        }
-        if (ownedGames)
+        if (auto ownedGames=getOwnedGames(*clientInfo))
         {
             outputGameList(*ownedGames, pattern);
         }

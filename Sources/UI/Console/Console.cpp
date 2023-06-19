@@ -29,18 +29,21 @@ typedef SteamBot::UI::ConsoleUI ConsoleUI;
 
 /************************************************************************/
 
-namespace
+namespace SteamBot
 {
-    std::ostream& operator<<(std::ostream& stream, const SteamBot::UI::Base::ClientInfo& clientInfo)
+    namespace UI
     {
-        if (!clientInfo.accountName.empty())
+        std::ostream& operator<<(std::ostream& stream, const SteamBot::UI::Base::ClientInfo& clientInfo)
         {
-            stream << clientInfo.accountName << " ";
+            if (!clientInfo.accountName.empty())
+            {
+                stream << clientInfo.accountName << " ";
+            }
+            return stream
+                << '['
+                << SteamBot::Time::toString(clientInfo.when, false)
+                << "]: ";
         }
-        return stream
-            << '['
-            << SteamBot::Time::toString(clientInfo.when, false)
-            << "]: ";
     }
 }
 

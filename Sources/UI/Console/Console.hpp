@@ -20,6 +20,7 @@
 #pragma once
 
 #include "UI/UI.hpp"
+#include "Modules/OwnedGames.hpp"
 
 /************************************************************************/
 
@@ -118,12 +119,20 @@ private:
     bool quit=false;
 
 private:
+    static bool parseNumber(std::string_view, uint64_t&);
+
     SteamBot::ClientInfo* getAccount() const;
     SteamBot::ClientInfo* getAccount(std::string_view) const;
     void showHelp();
     void command(std::string_view);
 
     static std::vector<std::string> getWords(std::string_view);
+
+private:
+    SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames::Ptr getOwnedGames(SteamBot::ClientInfo&);
+
+private:
+    bool game_start_stop(std::vector<std::string>&, bool);
 
 public:
     /* Return 'false' from commands to show the syntax line */
@@ -134,6 +143,8 @@ public:
     bool command_create(std::vector<std::string>&);
     bool command_select(std::vector<std::string>&);
     bool command_list_games(std::vector<std::string>&);
+    bool command_play_game(std::vector<std::string>&);
+    bool command_stop_game(std::vector<std::string>&);
 
 private:
     ConsoleUI& ui;

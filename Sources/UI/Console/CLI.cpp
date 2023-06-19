@@ -19,6 +19,9 @@
 
 #include "Client/Client.hpp"
 #include "./Console.hpp"
+#include "Modules/Executor.hpp"
+
+#include <charconv>
 
 /************************************************************************/
 
@@ -33,7 +36,9 @@ const CLI::Command CLI::commands[]={
     { "launch", "[<account>]", "launch an existing bot", &CLI::command_launch },
     { "create", "<account>", "create a new bot", &CLI::command_create },
     { "select", "<account>", "select a bot as target for some commands", &CLI::command_select },
-    { "list-games", "[<account>] [<regex>]", "list owned games", &CLI::command_list_games }
+    { "list-games", "[<account>] [<regex>]", "list owned games", &CLI::command_list_games },
+    { "play-game", "[<account>] <appid>", "play a game", &CLI::command_play_game },
+    { "stop-game", "[<account>] <appid>", "stop playing", &CLI::command_stop_game }
 };
 
 /************************************************************************/
@@ -230,6 +235,36 @@ void CLI::command(std::string_view line)
         std::cout << "unknown command: \"" << words[0] << "\"" << std::endl;
         showHelp();
     }
+}
+
+/************************************************************************/
+
+SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames::Ptr CLI::getOwnedGames(SteamBot::ClientInfo& clientInfo)
+{
+    SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames::Ptr ownedGames;
+    if (auto client=clientInfo.getClient())
+    {
+        SteamBot::Modules::Executor::execute(std::move(client), [&ownedGames](SteamBot::Client& client) mutable {
+            if (auto games=client.whiteboard.has<decltype(ownedGames)>())
+            {
+                ownedGames=*games;
+            }
+        });
+    }
+    return ownedGames;
+}
+
+/************************************************************************/
+
+bool CLI::parseNumber(std::string_view string, uint64_t& value)
+{
+    const auto result=std::from_chars(string.begin(), string.end(), value);
+    if (result.ec==std::errc() && result.ptr==string.end())
+    {
+        return true;
+    }
+    std::cout << "\"" << string << "\" is not a valid number" << std::endl;
+    return false;
 }
 
 /************************************************************************/
