@@ -20,6 +20,8 @@
 #include "Modules/Connection.hpp"
 #include "Client/Module.hpp"
 #include "Modules/AddFreeLicense.hpp"
+#include "UI/UI.hpp"
+#include "ResultCode.hpp"
 
 #include "Steam/ProtoBuf/steammessages_clientserver_2.hpp"
 
@@ -52,6 +54,50 @@ namespace
 
 void AddFreeLicenseModule::handle(std::shared_ptr<const Steam::CMsgClientRequestFreeLicenseResponseMessageType> message)
 {
+    SteamBot::UI::OutputText output;
+
+    auto eResult=static_cast<SteamBot::ResultCode>(message->content.eresult());
+    output << "license request result: " << SteamBot::enumToString(eResult);
+
+    for (int i=0; i<message->content.granted_packageids_size(); i++)
+    {
+        if (i==0)
+        {
+            if (message->content.granted_packageids_size()>1)
+            {
+                output << "; package ids ";
+            }
+            else
+            {
+                output << "; package id ";
+            }
+        }
+        else
+        {
+            output << ", ";
+        }
+        output << message->content.granted_packageids(i);
+    }
+
+    for (int i=0; i<message->content.granted_appids_size(); i++)
+    {
+        if (i==0)
+        {
+            if (message->content.granted_appids_size()>1)
+            {
+                output << "; app ids ";
+            }
+            else
+            {
+                output << "; app id ";
+            }
+        }
+        else
+        {
+            output << ", ";
+        }
+        output << message->content.granted_appids(i);
+    }
 }
 
 /************************************************************************/
@@ -59,9 +105,12 @@ void AddFreeLicenseModule::handle(std::shared_ptr<const Steam::CMsgClientRequest
 void AddFreeLicenseModule::handle(std::shared_ptr<const AddLicense> message)
 {
     auto request=std::make_unique<Steam::CMsgClientRequestFreeLicenseMessageType>();
-    {
-        request->content.add_appids(static_cast<std::underlying_type_t<decltype(message->appId)>>(message->appId));
-    }
+
+    const auto appId=static_cast<std::underlying_type_t<decltype(message->appId)>>(message->appId);
+    request->content.add_appids(appId);
+
+    SteamBot::UI::OutputText() << "requesting a free license for app id " << appId;
+
     SendSteamMessage::send(std::move(request));
 }
 
