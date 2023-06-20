@@ -20,7 +20,6 @@
 #include "Modules/UnifiedMessageClient.hpp"
 #include "Client/Module.hpp"
 #include "Modules/OwnedGames.hpp"
-#include "Modules/Login.hpp"
 #include "UI/UI.hpp"
 #include "Helpers/Time.hpp"
 
@@ -129,34 +128,23 @@ void OwnedGamesModule::getOwnedGames()
         }
     }
 
+    BOOST_LOG_TRIVIAL(info) << "owned games: " << *ownedGames;
+    SteamBot::UI::OutputText() << "account owns " << ownedGames->games.size() << " games";
+
     getClient().whiteboard.set<OwnedGames::Ptr>(std::move(ownedGames));
 }
 
 /************************************************************************/
+/*
+ * Note: I suspect we'll get some indication that the game list
+ * as changed, so I'll keep the loop for now.
+ */
 
 void OwnedGamesModule::run()
 {
-    getClient().launchFiber("OwnedGamesModule::run", [this](){
-        auto waiter=SteamBot::Waiter::create();
-        auto cancellation=getClient().cancel.registerObject(*waiter);
-
-        typedef SteamBot::Modules::Login::Whiteboard::LoginStatus LoginStatus;
-        std::shared_ptr<SteamBot::Whiteboard::Waiter<LoginStatus>> loginStatus;
-        loginStatus=waiter->createWaiter<decltype(loginStatus)::element_type>(getClient().whiteboard);
-
-        while (true)
-        {
-            waiter->wait();
-            if (loginStatus->get(LoginStatus::LoggedOut)==LoginStatus::LoggedIn)
-            {
-                getOwnedGames();
-                auto games=getClient().whiteboard.has<OwnedGames::Ptr>();
-                if (games!=nullptr)
-                {
-                    BOOST_LOG_TRIVIAL(info) << "owned games: " << **games;
-                    SteamBot::UI::OutputText() << "account owns " << (*games)->games.size() << " games";
-                }
-            }
-        }
-    });
+    while (true)
+    {
+        getOwnedGames();
+        waiter->wait();
+    }
 }
