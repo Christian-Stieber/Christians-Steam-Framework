@@ -444,6 +444,7 @@ void LoginModule::requestCode()
 
     case EAuthSessionGuardType::k_EAuthSessionGuardType_DeviceConfirmation:
         BOOST_LOG_TRIVIAL(info) << "waiting for user to confirm on device...";
+        SteamBot::UI::OutputText() << "Please confirm your login on the mobile app";
         doPollAuthSessionStatus();
         break;
 
