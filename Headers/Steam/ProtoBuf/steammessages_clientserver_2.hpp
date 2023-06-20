@@ -42,3 +42,21 @@ namespace Steam
                                                    SteamBot::Connection::Message::Header::ProtoBuf,
                                                    CMsgClientUpdateMachineAuthResponse> CMsgClientUpdateMachineAuthResponseMessageType;
 }
+
+/************************************************************************/
+
+namespace Steam
+{
+	typedef SteamBot::Connection::Message::Message<SteamBot::Connection::Message::Type::ClientRequestFreeLicense,
+                                                   SteamBot::Connection::Message::Header::ProtoBuf,
+                                                   CMsgClientRequestFreeLicense> CMsgClientRequestFreeLicenseMessageType;
+}
+
+/************************************************************************/
+
+namespace Steam
+{
+	typedef SteamBot::Connection::Message::Message<SteamBot::Connection::Message::Type::ClientRequestFreeLicenseResponse,
+                                                   SteamBot::Connection::Message::Header::ProtoBuf,
+                                                   CMsgClientRequestFreeLicenseResponse> CMsgClientRequestFreeLicenseResponseMessageType;
+}
