@@ -22,6 +22,7 @@
 #include "Client/Module.hpp"
 #include "Modules/LicenseList.hpp"
 #include "EnumString.hpp"
+#include "UI/UI.hpp"
 
 /************************************************************************/
 
@@ -98,6 +99,9 @@ void LicenseListModule::handleMessage(std::shared_ptr<const Steam::CMsgClientLic
         }
     }
 
+    BOOST_LOG_TRIVIAL(info) << "license list: " << licenses;
+    SteamBot::UI::OutputText() << "account has " << licenses.licenses.size() << " licenses";
+
     getClient().whiteboard.set(std::move(licenses));
 }
 
@@ -105,18 +109,12 @@ void LicenseListModule::handleMessage(std::shared_ptr<const Steam::CMsgClientLic
 
 void LicenseListModule::run()
 {
-    getClient().launchFiber("LicenseListModule::run", [this](){
-        auto waiter=SteamBot::Waiter::create();
-        auto cancellation=getClient().cancel.registerObject(*waiter);
+    std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgClientLicenseListMessageType>> cmsgClientLicenseList;
+    cmsgClientLicenseList=waiter->createWaiter<decltype(cmsgClientLicenseList)::element_type>(getClient().messageboard);
 
-        std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgClientLicenseListMessageType>> cmsgClientLicenseList;
-        cmsgClientLicenseList=waiter->createWaiter<decltype(cmsgClientLicenseList)::element_type>(getClient().messageboard);
-
-        while (true)
-        {
-            waiter->wait();
-            handleMessage(cmsgClientLicenseList->fetch());
-            BOOST_LOG_TRIVIAL(info) << "license list: " << *(getClient().whiteboard.has<Licenses>());
-        }
-    });
+    while (true)
+    {
+        waiter->wait();
+        handleMessage(cmsgClientLicenseList->fetch());
+    }
 }
