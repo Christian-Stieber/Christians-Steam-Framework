@@ -63,10 +63,9 @@ bool CLI::game_start_stop(std::vector<std::string>& words, bool start)
                     std::cout << (start ? "started" : "stopped") << " game " << appId;
                     if (auto ownedGames=getOwnedGames(*clientInfo))
                     {
-                        auto iterator=ownedGames->games.find(static_cast<SteamBot::AppID>(appId));
-                        if (iterator!=ownedGames->games.end())
+                        if (auto info=ownedGames->getInfo(static_cast<SteamBot::AppID>(appId)))
                         {
-                            std::cout << " (" << iterator->second->name << ")";
+                            std::cout << " (" << info->name << ")";
                         }
                     }
                     std::cout << " on account " << clientInfo->accountName << std::endl;

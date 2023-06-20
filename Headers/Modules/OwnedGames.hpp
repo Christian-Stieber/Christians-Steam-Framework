@@ -62,6 +62,9 @@ namespace SteamBot
                     std::unordered_map<AppID, std::shared_ptr<const GameInfo>> games;
 
                 public:
+                    const GameInfo* getInfo(AppID) const;
+
+                public:
                     OwnedGames();
                     virtual ~OwnedGames();
                     virtual boost::json::value toJson() const override;

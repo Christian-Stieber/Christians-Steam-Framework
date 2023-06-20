@@ -88,6 +88,18 @@ boost::json::value OwnedGames::toJson() const
 
 /************************************************************************/
 
+const OwnedGames::GameInfo* OwnedGames::getInfo(AppID appId) const
+{
+    auto iterator=games.find(appId);
+    if (iterator!=games.end())
+    {
+        return iterator->second.get();
+    }
+    return nullptr;
+}
+
+/************************************************************************/
+
 void OwnedGamesModule::getOwnedGames()
 {
     typedef SteamBot::Modules::UnifiedMessageClient::ProtobufService::Info<decltype(&::Player::GetOwnedGames)> GetOwnedGamesInfo;
