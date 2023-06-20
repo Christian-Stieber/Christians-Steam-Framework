@@ -36,7 +36,7 @@ namespace
         MultiPacketModule() =default;
         virtual ~MultiPacketModule() =default;
 
-        virtual void run() override;
+        virtual void run(SteamBot::Client&) override;
 
     private:
         void handle(std::shared_ptr<const Steam::CMsgMultiMessageType>);
@@ -102,24 +102,18 @@ void MultiPacketModule::handle(std::shared_ptr<const Steam::CMsgMultiMessageType
 
 /************************************************************************/
 
-void MultiPacketModule::run()
+void MultiPacketModule::run(SteamBot::Client& client)
 {
-    getClient().launchFiber("MultiPacketModule::run", [this](){
-        auto waiter=SteamBot::Waiter::create();
+    std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgMultiMessageType>> multiMessageWaiter;
+    multiMessageWaiter=waiter->createWaiter<decltype(multiMessageWaiter)::element_type>(client.messageboard);
 
-        std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgMultiMessageType>> multiMessageWaiter;
-        multiMessageWaiter=waiter->createWaiter<decltype(multiMessageWaiter)::element_type>(getClient().messageboard);
-
-        auto cancellation=getClient().cancel.registerObject(*waiter);
-
-        while (true)
+    while (true)
+    {
+        waiter->wait();
+        auto message=multiMessageWaiter->fetch();
+        if (message)
         {
-            waiter->wait();
-            auto message=multiMessageWaiter->fetch();
-            if (message)
-            {
-                handle(message);
-            }
+            handle(message);
         }
-    });
+    }
 }
