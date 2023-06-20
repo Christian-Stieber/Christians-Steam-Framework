@@ -53,17 +53,12 @@ void ClientAppListModule::handle(std::shared_ptr<const Steam::CMsgClientGetClien
 
 void ClientAppListModule::run()
 {
-    getClient().launchFiber("ClientAppListModule::run", [this](){
-        auto waiter=SteamBot::Waiter::create();
-        auto cancellation=getClient().cancel.registerObject(*waiter);
+    std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgClientGetClientAppListMessageType>> clientAppListQueue;
+    clientAppListQueue=waiter->createWaiter<decltype(clientAppListQueue)::element_type>(getClient().messageboard);
 
-        std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgClientGetClientAppListMessageType>> clientAppListQueue;
-        clientAppListQueue=waiter->createWaiter<decltype(clientAppListQueue)::element_type>(getClient().messageboard);
-
-        while (true)
-        {
-            waiter->wait();
-            handle(clientAppListQueue->fetch());
-        }
-    });
+    while (true)
+    {
+        waiter->wait();
+        handle(clientAppListQueue->fetch());
+    }
 }
