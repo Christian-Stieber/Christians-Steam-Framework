@@ -32,7 +32,7 @@ typedef SteamBot::Modules::UnifiedMessageClient::ServiceMethodResponseMessage Se
 
 namespace
 {
-    class UnifiedMessageClientModule : public SteamBot::Client::Module
+    class UnifiedMessageClientModule : public SteamBot::Client::ModuleBase
     {
     private:
         std::vector<UnifiedMessageBase*> messageList;
