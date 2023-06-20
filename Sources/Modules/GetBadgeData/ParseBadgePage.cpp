@@ -164,10 +164,6 @@ bool BadgePageParser::extractNumber(const HTMLParser::Tree::Element& element, un
             while (*s>='0' && *s<='9');
             return true;
         }
-        else
-        {
-            s++;
-        }
     }
     return false;
 }
