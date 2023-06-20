@@ -78,9 +78,15 @@ void SteamBot::Client::initModules()
         assert(success);	// only one module per type
     });
 
-    for (auto& module : modules)
+    std::lock_guard<decltype(modulesMutex)> lock(modulesMutex);
+    for (auto& item : modules)
     {
-        module.second->invoke(*this);
+        auto module=item.second;
+        std::string name=boost::typeindex::type_id_runtime(*module).pretty_name();
+        launchFiber(std::move(name), [this, module=std::move(module)](){
+            auto cancellation=cancel.registerObject(*(module->waiter));
+            module->invoke(*this);
+        });
     }
 }
 

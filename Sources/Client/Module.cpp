@@ -32,7 +32,11 @@ static const ModuleBase::InitBase* modulesInit;
 
 /************************************************************************/
 
-ModuleBase::ModuleBase() =default;
+ModuleBase::ModuleBase()
+    : waiter(SteamBot::Waiter::create())
+{
+}
+
 ModuleBase::~ModuleBase() =default;
 
 /************************************************************************/
@@ -72,14 +76,14 @@ void ModuleBase::createAll(std::function<void(std::shared_ptr<SteamBot::Client::
  * them. Most added for the new Client::Module baseclass.
  */
 
-void ModuleBase::invoke(Client&)
+void ModuleBase::invoke(Client& client)
 {
-    run();
+    run(client);
 }
 
 /************************************************************************/
 
-void ModuleBase::run()
+void ModuleBase::run(Client&)
 {
 }
 
@@ -89,33 +93,22 @@ typedef SteamBot::Client::Module Module;
 
 /************************************************************************/
 
-Module::Module()
-    : waiter(SteamBot::Waiter::create())
-{
-}
-
-/************************************************************************/
-
+Module::Module() =default;
 Module::~Module() =default;
 
 /************************************************************************/
 
 void Module::invoke(SteamBot::Client& client)
 {
-    std::string name=boost::typeindex::type_id_runtime(*this).pretty_name();
-    client.launchFiber(std::move(name), [this, &client](){
-        auto cancellation=client.cancel.registerObject(*waiter);
+    {
+        typedef SteamBot::Modules::Login::Whiteboard::LoginStatus LoginStatus;
+        auto loginStatus=waiter->createWaiter<SteamBot::Whiteboard::Waiter<LoginStatus>>(client.whiteboard);
 
+        while (loginStatus->get(LoginStatus::LoggedOut)!=LoginStatus::LoggedIn)
         {
-            typedef SteamBot::Modules::Login::Whiteboard::LoginStatus LoginStatus;
-            auto loginStatus=waiter->createWaiter<SteamBot::Whiteboard::Waiter<LoginStatus>>(client.whiteboard);
-
-            while (loginStatus->get(LoginStatus::LoggedOut)!=LoginStatus::LoggedIn)
-            {
-                waiter->wait();
-            }
+            waiter->wait();
         }
+    }
 
-        run();
-    });
+    run(client);
 }

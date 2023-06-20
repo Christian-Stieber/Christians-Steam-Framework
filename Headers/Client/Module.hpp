@@ -32,8 +32,13 @@
  *    Client::ModuleBase::Init<T>
  * Clients will use this to find and instanciate your module.
  *
- * Also note the Client::Module class, which is likely a better base
- * class for most of your modules.
+ * Client::ModuleBase:
+ *   - each module has a "waiter" instance (with a cancellation
+ *     object attached to it)
+ *   - "run()" is called inside a fiber
+ *
+ * Client::Module;
+ *   - "run()" will be called after the login
  */
 
 /************************************************************************/
@@ -48,6 +53,9 @@ namespace SteamBot
         class InitBase;
         template <ClientModule T> class Init;
 
+    public:
+        const std::shared_ptr<SteamBot::Waiter> waiter;
+
     protected:
         ModuleBase();
 
@@ -59,7 +67,7 @@ namespace SteamBot
     public:
         static SteamBot::Client& getClient() { return SteamBot::Client::getClient(); }
 
-        virtual void run();
+        virtual void run(Client&);
     };
 }
 
@@ -93,25 +101,11 @@ public:
 };
 
 /************************************************************************/
-/*
- * This is now a slightly improved type of module.
- *
- * It adds the following features:
- *   - run() is not called until after a login
- *   - your run() will be called inside a fiber and with a ready-to-use
- *     "waiter" instance variable.
- *
- * This should make things more convenient for the vast majority of
- * modules.
- */
 
 namespace SteamBot
 {
     class Client::Module : public Client::ModuleBase
     {
-    protected:
-        const std::shared_ptr<SteamBot::Waiter> waiter;
-
     protected:
         Module();
 
