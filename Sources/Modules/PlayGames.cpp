@@ -78,19 +78,22 @@ namespace
 void PlayGamesModule::reportGames() const
 {
     SteamBot::UI::OutputText output;
+    output << "(presumably) playing ";
+
+    if (games.size()==0)
+    {
+        output << "no games";
+    }
+    else
     {
         typedef SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames OwnedGames;
         auto ownedGames=getClient().whiteboard.get<OwnedGames::Ptr>(nullptr);
+        const char* separator="";
         for (SteamBot::AppID appId : games)
         {
-            if (output.view().size()==0)
-            {
-                output << "(presumably) playing games ";
-            }
-            else
-            {
-                output << ", ";
-            }
+            output << separator;
+            separator=", ";
+
             output << static_cast<std::underlying_type_t<Steam::OSType>>(appId);
             if (ownedGames)
             {
