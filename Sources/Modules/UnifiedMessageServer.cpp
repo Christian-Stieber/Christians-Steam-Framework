@@ -40,7 +40,7 @@ namespace
         UnifiedMessageServerModule() =default;
         virtual ~UnifiedMessageServerModule() =default;
 
-        virtual void run() override;
+        virtual void run(SteamBot::Client&) override;
     };
 
     UnifiedMessageServerModule::Init<UnifiedMessageServerModule> init;
@@ -94,19 +94,14 @@ namespace
 
 /************************************************************************/
 
-void UnifiedMessageServerModule::run()
+void UnifiedMessageServerModule::run(SteamBot::Client& client)
 {
-    getClient().launchFiber("UnifiedMessageServerModule::run", [this](){
-        auto waiter=SteamBot::Waiter::create();
-        auto cancellation=getClient().cancel.registerObject(*waiter);
+    std::shared_ptr<SteamBot::Messageboard::Waiter<ServiceMethodMessage>> serviceMethodMessage;
+    serviceMethodMessage=waiter->createWaiter<decltype(serviceMethodMessage)::element_type>(client.messageboard);
 
-        std::shared_ptr<SteamBot::Messageboard::Waiter<ServiceMethodMessage>> serviceMethodMessage;
-        serviceMethodMessage=waiter->createWaiter<decltype(serviceMethodMessage)::element_type>(getClient().messageboard);
-
-        while (true)
-        {
-            waiter->wait();
-            serviceMethodMessage->fetch();
-        }
-    });
+    while (true)
+    {
+        waiter->wait();
+        serviceMethodMessage->fetch();
+    }
 }
