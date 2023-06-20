@@ -20,9 +20,11 @@
 #include "Modules/Connection.hpp"
 #include "Client/Module.hpp"
 #include "Modules/PlayGames.hpp"
+#include "Modules/OwnedGames.hpp"
 #include "Steam/OSType.hpp"
 #include "GameID.hpp"
 #include "Vector.hpp"
+#include "UI/UI.hpp"
 
 #include "Steam/ProtoBuf/steammessages_clientserver.hpp"
 
@@ -55,6 +57,7 @@ namespace
         std::vector<SteamBot::AppID> games;
 
     private:
+        void reportGames() const;
         void sendGames() const;
 
     public:
@@ -68,6 +71,36 @@ namespace
     };
 
     PlayGamesModule::Init<PlayGamesModule> init;
+}
+
+/************************************************************************/
+
+void PlayGamesModule::reportGames() const
+{
+    SteamBot::UI::OutputText output;
+    {
+        typedef SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames OwnedGames;
+        auto ownedGames=getClient().whiteboard.get<OwnedGames::Ptr>(nullptr);
+        for (SteamBot::AppID appId : games)
+        {
+            if (output.view().size()==0)
+            {
+                output << "(presumably) playing games ";
+            }
+            else
+            {
+                output << ", ";
+            }
+            output << static_cast<std::underlying_type_t<Steam::OSType>>(appId);
+            if (ownedGames)
+            {
+                if (auto info=ownedGames->getInfo(appId))
+                {
+                    output << " (" << info->name << ")";
+                }
+            }
+        }
+    }
 }
 
 /************************************************************************/
@@ -92,6 +125,8 @@ void PlayGamesModule::sendGames() const
     }
 
     SteamBot::Modules::Connection::Messageboard::SendSteamMessage::send(std::move(message));
+
+    reportGames();
 }
 
 /************************************************************************/
