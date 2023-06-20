@@ -92,7 +92,7 @@ namespace
 
 namespace
 {
-    class ExecutorModule : public SteamBot::Client::Module
+    class ExecutorModule : public SteamBot::Client::ModuleBase
     {
     private:
         boost::fibers::mutex mutex;
