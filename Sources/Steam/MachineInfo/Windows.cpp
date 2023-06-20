@@ -102,22 +102,24 @@ const std::string& Steam::MachineInfo::Provider::getDiskId()
 		assert(windowsDirectryPath[2]=='\\');
 		windowsDirectryPath[3]='\0';
 
-		char volumeName[50];
+		char volumeName[60];
 		if (GetVolumeNameForVolumeMountPointA(windowsDirectryPath, volumeName, sizeof(volumeName))==0)
 		{
 			throw std::runtime_error("GetVolumeNameForVolumeMountPointA() failed");
 		}
 
-		static const char volumeNamePrefix[] = "\\\\?\\Volume{";
-		if (memcmp(volumeName, volumeNamePrefix, strlen(volumeNamePrefix))!=0 || volumeName[48]!='}' || volumeName[49]!='\0')
-		{
-			throw std::runtime_error("GetVolumeNameForVolumeMountPointA() -- unexpected result string");
-		}
+        // "\\?\Volume{963b00fb-9409-4c1e-9b82-5560aec8032d}\"
+        static const char volumeNamePrefix[] = "\\\\?\\Volume{";
+        if (memcmp(volumeName, volumeNamePrefix, strlen(volumeNamePrefix))!=0 || volumeName[47]!='}')
+        {
+            throw std::runtime_error("GetVolumeNameForVolumeMountPointA() -- unexpected result string");
+        }
 
-		volumeName[48]='\0';
-		return volumeName+strlen(volumeNamePrefix);
+		volumeName[47]='\0';
+		auto result=std::string(volumeName+strlen(volumeNamePrefix));
+        BOOST_LOG_TRIVIAL(debug) << "disk-id is " << result;
+        return result;
 	}();
-
 	return diskId;
 }
 
