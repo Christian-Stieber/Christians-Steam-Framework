@@ -59,6 +59,8 @@ void GetBadgeDataModule::handle(std::shared_ptr<const GotURL> message)
 
 void GetBadgeDataModule::run(SteamBot::Client& client)
 {
+    waitForLogin();
+
     std::shared_ptr<SteamBot::Messageboard::Waiter<GotURL>> gotUrl;
     gotUrl=waiter->createWaiter<decltype(gotUrl)::element_type>(client.messageboard);
 

@@ -63,16 +63,9 @@ void PersonaStateModule::setState()
 }
 
 /************************************************************************/
-/*
- * For now, I'll keep the loop in case we want to handle some
- * more stuff here.
- */
 
 void PersonaStateModule::run(SteamBot::Client&)
 {
-    while (true)
-    {
-        setState();
-        waiter->wait();
-    }
+    waitForLogin();
+    setState();
 }

@@ -30,7 +30,7 @@
 
 namespace
 {
-    class MultiPacketModule : public SteamBot::Client::ModuleBase
+    class MultiPacketModule : public SteamBot::Client::Module
     {
     public:
         MultiPacketModule() =default;

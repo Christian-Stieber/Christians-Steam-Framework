@@ -171,6 +171,8 @@ void PlayGamesModule::run(SteamBot::Client& client)
     std::shared_ptr<SteamBot::Messageboard::Waiter<PlayGame>> playGame;
     playGame=waiter->createWaiter<decltype(playGame)::element_type>(client.messageboard);
 
+    waitForLogin();
+
     while (true)
     {
         waiter->wait();

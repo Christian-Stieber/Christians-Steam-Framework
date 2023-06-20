@@ -72,7 +72,7 @@ void SteamBot::Client::quit(bool restart)
 
 void SteamBot::Client::initModules()
 {
-    ModuleBase::createAll([this](std::shared_ptr<Client::ModuleBase> module){
+    Module::createAll([this](std::shared_ptr<Client::Module> module){
         std::lock_guard<decltype(modulesMutex)> lock(modulesMutex);
         bool success=modules.try_emplace(std::type_index(typeid(*module)), std::move(module)).second;
         assert(success);	// only one module per type
@@ -85,7 +85,7 @@ void SteamBot::Client::initModules()
         std::string name=boost::typeindex::type_id_runtime(*module).pretty_name();
         launchFiber(std::move(name), [this, module=std::move(module)](){
             auto cancellation=cancel.registerObject(*(module->waiter));
-            module->invoke(*this);
+            module->run(*this);
         });
     }
 }

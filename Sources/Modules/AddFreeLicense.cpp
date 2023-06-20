@@ -122,6 +122,8 @@ void AddFreeLicenseModule::run(SteamBot::Client& client)
     auto cmsgClientRequestFreeLicenseResponse=waiter->createWaiter<CMsgClientRequestFreeLicenseResponseWaiterType>(client.messageboard);
     auto addLicense=waiter->createWaiter<SteamBot::Messageboard::Waiter<AddLicense>>(client.messageboard);
 
+    waitForLogin();
+
     while (true)
     {
         waiter->wait();

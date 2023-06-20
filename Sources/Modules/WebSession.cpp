@@ -318,6 +318,8 @@ void WebSessionModule::run(SteamBot::Client& client)
     std::shared_ptr<SteamBot::Messageboard::Waiter<GetURL>> getUrl;
     getUrl=waiter->createWaiter<decltype(getUrl)::element_type>(client.messageboard);
 
+    waitForLogin();
+
     while (true)
     {
         waiter->wait();

@@ -137,7 +137,7 @@ namespace
 
 namespace
 {
-    class LoginModule : public SteamBot::Client::ModuleBase
+    class LoginModule : public SteamBot::Client::Module
     {
     public:
         LoginModule() =default;

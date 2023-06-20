@@ -46,6 +46,8 @@ void HeartbeatModule::run(SteamBot::Client& client)
     std::shared_ptr<SteamBot::Whiteboard::Waiter<LastMessageSent>> lastMessageSent;
     lastMessageSent=waiter->createWaiter<decltype(lastMessageSent)::element_type>(client.whiteboard);
 
+    waitForLogin();
+
     while (true)
     {
         bool timeout=false;

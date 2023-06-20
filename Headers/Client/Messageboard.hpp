@@ -66,6 +66,12 @@ namespace SteamBot
 
     public:
         template <typename T> unsigned int send(std::shared_ptr<T>);
+
+    public:
+        template <typename T> std::shared_ptr<Waiter<T>> createWaiter(SteamBot::Waiter& waiter)
+        {
+            return waiter.createWaiter<Waiter<T>>(*this);
+        }
     };
 }
 

@@ -24,24 +24,24 @@
 
 /************************************************************************/
 
-typedef SteamBot::Client::ModuleBase ModuleBase;
+typedef SteamBot::Client::Module Module;
 
 /************************************************************************/
 
-static const ModuleBase::InitBase* modulesInit;
+static const Module::InitBase* modulesInit;
 
 /************************************************************************/
 
-ModuleBase::ModuleBase()
+Module::Module()
     : waiter(SteamBot::Waiter::create())
 {
 }
 
-ModuleBase::~ModuleBase() =default;
+Module::~Module() =default;
 
 /************************************************************************/
 
-ModuleBase::InitBase::InitBase()
+Module::InitBase::InitBase()
     : next(modulesInit)
 {
     modulesInit=this;
@@ -49,7 +49,7 @@ ModuleBase::InitBase::InitBase()
 
 /************************************************************************/
 
-ModuleBase::InitBase::~InitBase()
+Module::InitBase::~InitBase()
 {
     modulesInit=nullptr;	// just in case
 }
@@ -60,7 +60,7 @@ ModuleBase::InitBase::~InitBase()
  * your callback.
  */
 
-void ModuleBase::createAll(std::function<void(std::shared_ptr<SteamBot::Client::ModuleBase>)> callback)
+void Module::createAll(std::function<void(std::shared_ptr<SteamBot::Client::Module>)> callback)
 {
     for (const InitBase* init=modulesInit; init!=nullptr; init=init->next)
     {
@@ -71,44 +71,25 @@ void ModuleBase::createAll(std::function<void(std::shared_ptr<SteamBot::Client::
 }
 
 /************************************************************************/
-/*
- * This is an internal function to prepare modules, and run()
- * them. Most added for the new Client::Module baseclass.
- */
 
-void ModuleBase::invoke(Client& client)
-{
-    run(client);
-}
-
-/************************************************************************/
-
-void ModuleBase::run(Client&)
+void Module::run(Client&)
 {
 }
 
 /************************************************************************/
 
-typedef SteamBot::Client::Module Module;
-
-/************************************************************************/
-
-Module::Module() =default;
-Module::~Module() =default;
-
-/************************************************************************/
-
-void Module::invoke(SteamBot::Client& client)
+void Module::waitForLogin()
 {
+    auto& client=getClient();
+
+    auto myWaiter=SteamBot::Waiter::create();
+    auto cancellation=client.cancel.registerObject(*myWaiter);
+
+    typedef SteamBot::Modules::Login::Whiteboard::LoginStatus LoginStatus;
+    auto loginStatus=client.whiteboard.createWaiter<LoginStatus>(*myWaiter);
+
+    while (loginStatus->get(LoginStatus::LoggedOut)!=LoginStatus::LoggedIn)
     {
-        typedef SteamBot::Modules::Login::Whiteboard::LoginStatus LoginStatus;
-        auto loginStatus=waiter->createWaiter<SteamBot::Whiteboard::Waiter<LoginStatus>>(client.whiteboard);
-
-        while (loginStatus->get(LoginStatus::LoggedOut)!=LoginStatus::LoggedIn)
-        {
-            waiter->wait();
-        }
+        myWaiter->wait();
     }
-
-    run(client);
 }

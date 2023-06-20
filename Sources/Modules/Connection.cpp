@@ -40,7 +40,7 @@ typedef SteamBot::Modules::Connection::Whiteboard::ConnectionStatus ConnectionSt
 
 namespace
 {
-    class ConnectionModule : public SteamBot::Client::ModuleBase
+    class ConnectionModule : public SteamBot::Client::Module
     {
     private:
         std::unordered_map<SteamBot::Connection::Message::Type, std::unique_ptr<HandlerBase>> handlers;

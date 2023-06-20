@@ -29,25 +29,22 @@
  * A client module derives from Client::Module.
  *
  * In your source file, construct a GLOBAL instance of
- *    Client::ModuleBase::Init<T>
+ *    Client::Module::Init<T>
  * Clients will use this to find and instanciate your module.
  *
- * Client::ModuleBase:
+ * Client::Module:
  *   - each module has a "waiter" instance (with a cancellation
  *     object attached to it)
  *   - "run()" is called inside a fiber
- *
- * Client::Module;
- *   - "run()" will be called after the login
  */
 
 /************************************************************************/
 
 namespace SteamBot
 {
-    template<typename T> concept ClientModule=std::is_base_of_v<Client::ModuleBase, T>;
+    template<typename T> concept ClientModule=std::is_base_of_v<Client::Module, T>;
 
-    class Client::ModuleBase : public std::enable_shared_from_this<Client::ModuleBase>
+    class Client::Module : public std::enable_shared_from_this<Client::Module>
     {
     public:
         class InitBase;
@@ -57,12 +54,12 @@ namespace SteamBot
         const std::shared_ptr<SteamBot::Waiter> waiter;
 
     protected:
-        ModuleBase();
+        Module();
+        void waitForLogin();
 
     public:
-        virtual ~ModuleBase();
-        virtual void invoke(Client&);		// internal use
-        static void createAll(std::function<void(std::shared_ptr<Client::ModuleBase>)>);
+        virtual ~Module();
+        static void createAll(std::function<void(std::shared_ptr<Client::Module>)>);
 
     public:
         static SteamBot::Client& getClient() { return SteamBot::Client::getClient(); }
@@ -73,7 +70,7 @@ namespace SteamBot
 
 /************************************************************************/
 
-class SteamBot::Client::ModuleBase::InitBase
+class SteamBot::Client::Module::InitBase
 {
 public:
     const InitBase* const next;
@@ -83,34 +80,19 @@ protected:
     virtual ~InitBase();
 
 public:
-    virtual std::shared_ptr<Client::ModuleBase> create() const =0;
+    virtual std::shared_ptr<Client::Module> create() const =0;
 };
 
 /************************************************************************/
 
-template <SteamBot::ClientModule T> class SteamBot::Client::ModuleBase::Init : public SteamBot::Client::ModuleBase::InitBase
+template <SteamBot::ClientModule T> class SteamBot::Client::Module::Init : public SteamBot::Client::Module::InitBase
 {
 public:
     Init() =default;
     virtual ~Init() =default;
 
-    virtual std::shared_ptr<Client::ModuleBase> create() const override
+    virtual std::shared_ptr<Client::Module> create() const override
     {
         return std::make_shared<T>();
     }
 };
-
-/************************************************************************/
-
-namespace SteamBot
-{
-    class Client::Module : public Client::ModuleBase
-    {
-    protected:
-        Module();
-
-    public:
-        virtual ~Module();
-        virtual void invoke(Client&) override;
-    };
-}
