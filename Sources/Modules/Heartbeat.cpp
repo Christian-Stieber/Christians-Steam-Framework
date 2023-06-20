@@ -42,46 +42,30 @@ namespace
 
 void HeartbeatModule::run()
 {
-    getClient().launchFiber("HeartbeatModule::run", [this](){
-        auto waiter=SteamBot::Waiter::create();
-        auto cancellation=getClient().cancel.registerObject(*waiter);
+    typedef SteamBot::Modules::Connection::Whiteboard::LastMessageSent LastMessageSent;
+    std::shared_ptr<SteamBot::Whiteboard::Waiter<LastMessageSent>> lastMessageSent;
+    lastMessageSent=waiter->createWaiter<decltype(lastMessageSent)::element_type>(getClient().whiteboard);
 
-        typedef SteamBot::Modules::Login::Whiteboard::LoginStatus LoginStatus;
-        std::shared_ptr<SteamBot::Whiteboard::Waiter<LoginStatus>> loginStatus;
-
-        typedef SteamBot::Modules::Connection::Whiteboard::LastMessageSent LastMessageSent;
-        std::shared_ptr<SteamBot::Whiteboard::Waiter<LastMessageSent>> lastMessageSent;
-
+    while (true)
+    {
+        bool timeout=false;
         {
-            auto& whiteboard=SteamBot::Client::getClient().whiteboard;
-            loginStatus=waiter->createWaiter<decltype(loginStatus)::element_type>(whiteboard);
-            lastMessageSent=waiter->createWaiter<decltype(lastMessageSent)::element_type>(whiteboard);
-        }
-
-        while (true)
-        {
-            bool timeout=false;
+            auto delay=getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::HeartbeatInterval>();
+            if (delay!=nullptr)
             {
-                auto delay=getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::HeartbeatInterval>();
-                if (delay!=nullptr)
-                {
-                    timeout=!waiter->wait(*delay);
-                }
-                else
-                {
-                    waiter->wait();
-                }
+                timeout=!waiter->wait(*delay);
             }
-
-            lastMessageSent->has();
-            if (loginStatus->get(LoginStatus::LoggedOut)==LoginStatus::LoggedIn)
+            else
             {
-                if (timeout)
-                {
-                    auto message=std::make_unique<Steam::CMsgClientHeartBeatMessageType>();
-                    SteamBot::Modules::Connection::Messageboard::SendSteamMessage::send(std::move(message));
-                }
+                waiter->wait();
             }
         }
-    });
+        if (timeout)
+        {
+            auto message=std::make_unique<Steam::CMsgClientHeartBeatMessageType>();
+            SteamBot::Modules::Connection::Messageboard::SendSteamMessage::send(std::move(message));
+        }
+
+        lastMessageSent->has();
+    }
 }
