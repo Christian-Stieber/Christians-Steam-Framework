@@ -34,7 +34,7 @@
 
 namespace
 {
-    class UnifiedMessageServerModule : public SteamBot::Client::Module
+    class UnifiedMessageServerModule : public SteamBot::Client::ModuleBase
     {
     public:
         UnifiedMessageServerModule() =default;
