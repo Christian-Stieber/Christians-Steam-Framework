@@ -213,6 +213,8 @@ void Query::write_completed(const ErrorCode& error, size_t bytes)
     BOOST_LOG_TRIVIAL(debug) << "write_completed with " << bytes << " bytes";
 
     // Receive the HTTP response
+    query->responseBuffer=decltype(query->responseBuffer)();
+    query->response=decltype(query->response)();
     boost::beast::http::async_read(stream, query->responseBuffer, query->response, std::bind_front(&Query::read_completed, shared_from_this()));
 }
 
