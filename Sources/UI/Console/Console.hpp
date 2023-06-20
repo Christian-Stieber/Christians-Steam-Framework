@@ -26,6 +26,7 @@
 
 namespace SteamBot
 {
+    class Client;
     class ClientInfo;
 }
 
@@ -129,9 +130,10 @@ private:
     static std::vector<std::string> getWords(std::string_view);
 
 private:
-    SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames::Ptr getOwnedGames(SteamBot::ClientInfo&);
+    SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames::Ptr getOwnedGames(const SteamBot::ClientInfo&);
 
 private:
+    bool simpleCommand(std::vector<std::string>&, std::function<bool(std::shared_ptr<SteamBot::Client>, uint64_t)>);
     bool game_start_stop(std::vector<std::string>&, bool);
 
 public:

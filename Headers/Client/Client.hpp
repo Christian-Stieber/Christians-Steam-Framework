@@ -120,7 +120,7 @@ namespace SteamBot
         void setClient(std::shared_ptr<Client>);	// internal use
 
     public:
-        std::shared_ptr<Client> getClient();
+        std::shared_ptr<Client> getClient() const;
 
         static void init();
 

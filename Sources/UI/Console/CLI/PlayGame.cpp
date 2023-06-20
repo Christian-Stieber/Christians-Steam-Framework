@@ -31,54 +31,24 @@ typedef SteamBot::UI::ConsoleUI::CLI CLI;
 
 bool CLI::game_start_stop(std::vector<std::string>& words, bool start)
 {
-    SteamBot::ClientInfo* clientInfo=nullptr;
-
-    if (words.size()==3)
-    {
-        clientInfo=getAccount(words[1]);
-    }
-    else if (words.size()==2)
-    {
-        clientInfo=getAccount();
-    }
-    else
-    {
-        return false;
-    }
-
-    if (clientInfo!=nullptr)
-    {
-        uint64_t appId;
-        if (parseNumber(words.back(), appId))
+    return simpleCommand(words, [this, start](std::shared_ptr<SteamBot::Client> client, uint64_t appId){
+        bool success=SteamBot::Modules::Executor::execute(client, [appId, start](SteamBot::Client&) mutable {
+            PlayGame::play(static_cast<SteamBot::AppID>(appId), start);
+        });
+        if (success)
         {
-            bool success=false;
-            if (auto client=clientInfo->getClient())
+            std::cout << (start ? "started" : "stopped") << " game " << appId;
+            if (auto ownedGames=getOwnedGames(client->getClientInfo()))
             {
-                success=SteamBot::Modules::Executor::execute(std::move(client), [appId, start](SteamBot::Client&) mutable {
-                    PlayGame::play(static_cast<SteamBot::AppID>(appId), start);
-                });
-
-                if (success)
+                if (auto info=ownedGames->getInfo(static_cast<SteamBot::AppID>(appId)))
                 {
-                    std::cout << (start ? "started" : "stopped") << " game " << appId;
-                    if (auto ownedGames=getOwnedGames(*clientInfo))
-                    {
-                        if (auto info=ownedGames->getInfo(static_cast<SteamBot::AppID>(appId)))
-                        {
-                            std::cout << " (" << info->name << ")";
-                        }
-                    }
-                    std::cout << " on account " << clientInfo->accountName << std::endl;
+                    std::cout << " (" << info->name << ")";
                 }
             }
-            if (!success)
-            {
-                std::cout << "unable to launch game " << appId << " on account " << clientInfo->accountName << std::endl;
-            }
+            std::cout << " on account " << client->getClientInfo().accountName << std::endl;
         }
-    }
-
-    return true;
+        return success;
+    });
 }
 
 /************************************************************************/

@@ -239,7 +239,7 @@ void CLI::command(std::string_view line)
 
 /************************************************************************/
 
-SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames::Ptr CLI::getOwnedGames(SteamBot::ClientInfo& clientInfo)
+SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames::Ptr CLI::getOwnedGames(const SteamBot::ClientInfo& clientInfo)
 {
     SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames::Ptr ownedGames;
     if (auto client=clientInfo.getClient())

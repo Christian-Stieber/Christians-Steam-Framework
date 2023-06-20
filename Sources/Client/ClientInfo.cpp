@@ -38,7 +38,7 @@ ClientInfo::~ClientInfo()
 
 /************************************************************************/
 
-std::shared_ptr<SteamBot::Client> ClientInfo::getClient()
+std::shared_ptr<SteamBot::Client> ClientInfo::getClient() const
 {
     std::lock_guard<decltype(mutex)> lock(mutex);
     return client;
