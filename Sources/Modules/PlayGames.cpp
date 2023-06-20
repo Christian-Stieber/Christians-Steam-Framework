@@ -94,7 +94,7 @@ void PlayGamesModule::reportGames() const
             output << separator;
             separator=", ";
 
-            output << static_cast<std::underlying_type_t<Steam::OSType>>(appId);
+            output << static_cast<std::underlying_type_t<decltype(appId)>>(appId);
             if (ownedGames)
             {
                 if (auto info=ownedGames->getInfo(appId))
