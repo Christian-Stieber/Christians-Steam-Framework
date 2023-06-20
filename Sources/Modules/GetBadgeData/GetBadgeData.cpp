@@ -22,10 +22,19 @@
 #include "Modules/GetBadgeData.hpp"
 #include "Helpers/URLs.hpp"
 
+#include "./Header.hpp"
+
 /************************************************************************/
 
 typedef SteamBot::Modules::WebSession::Messageboard::GetURL GetURL;
 typedef SteamBot::Modules::WebSession::Messageboard::GotURL GotURL;
+
+typedef SteamBot::Modules::GetPageData::Whiteboard::BadgeData BadgeData;
+
+/************************************************************************/
+
+BadgeData::BadgeData() =default;
+BadgeData::~BadgeData() =default;
 
 /************************************************************************/
 
@@ -34,7 +43,15 @@ namespace
     class GetBadgeDataModule : public SteamBot::Client::Module
     {
     public:
+        class ChainLoader;
+        std::unique_ptr<ChainLoader> loader;
+        BadgeData::Ptr collectedData;
+
+    public:
         void handle(std::shared_ptr<const GotURL>);
+
+    private:
+        void requestNextPage();
 
     public:
         GetBadgeDataModule() =default;
@@ -48,11 +65,65 @@ namespace
 
 /************************************************************************/
 
+class GetBadgeDataModule::ChainLoader
+{
+public:
+    boost::urls::url currentLink;
+    unsigned int pageCount=0;
+
+    std::shared_ptr<GetURL> currentQuery;
+
+public:
+    ChainLoader()
+    {
+        currentLink=SteamBot::URLs::getClientCommunityURL();
+        currentLink.segments().push_back("badges");
+    }
+
+public:
+    void loadPage()
+    {
+        pageCount++;
+        currentQuery=std::make_shared<GetURL>();
+        currentQuery->url=currentLink;
+        getClient().messageboard.send(currentQuery);
+    }
+};
+
+/************************************************************************/
+
 void GetBadgeDataModule::handle(std::shared_ptr<const GotURL> message)
 {
-    typedef SteamBot::Modules::GetPageData::Whiteboard::BadgePageData BadgePageData;
-    BadgePageData data(SteamBot::HTTPClient::parseString(*(message->query)));
-    BOOST_LOG_TRIVIAL(debug) << "Got badge page data: " << data;
+    if (!loader || message->initiator!=loader->currentQuery)
+    {
+        return;
+    }
+
+    auto html=SteamBot::HTTPClient::parseString(*(message->query));
+#if 0
+    BOOST_LOG_TRIVIAL(debug) << html;
+#endif
+    if (!collectedData)
+    {
+        collectedData=std::make_shared<BadgeData>();
+    }
+
+    auto nextPage=SteamBot::GetPageData::parseBadgePage(html, *collectedData);
+
+    BOOST_LOG_TRIVIAL(debug) << "next page: \"" << nextPage << "\"";
+    BOOST_LOG_TRIVIAL(debug) << "Current badge data: " << *collectedData;
+}
+
+/************************************************************************/
+
+void GetBadgeDataModule::requestNextPage()
+{
+    if (!loader)
+    {
+        assert(!collectedData);
+        loader=std::make_unique<ChainLoader>();
+    }
+    loader->loadPage();
 }
 
 /************************************************************************/
@@ -64,12 +135,7 @@ void GetBadgeDataModule::run(SteamBot::Client& client)
     std::shared_ptr<SteamBot::Messageboard::Waiter<GotURL>> gotUrl;
     gotUrl=waiter->createWaiter<decltype(gotUrl)::element_type>(client.messageboard);
 
-    {
-        auto getUrl=std::make_shared<GetURL>();
-        getUrl->url=SteamBot::URLs::getClientCommunityURL();
-        getUrl->url.segments().push_back("badges");
-        client.messageboard.send(getUrl);
-    }
+    requestNextPage();
 
     while (true)
     {

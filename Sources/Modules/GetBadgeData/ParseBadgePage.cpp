@@ -1,3 +1,22 @@
+/*
+ * This file is part of "Christians-Steam-Framework"
+ * Copyright (C) 2023- Christian Stieber
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 3, or (at
+ * your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; see the file LICENSE.  If not see
+ * <http://www.gnu.org/licenses/>.
+ */
+
 #include "Modules/GetBadgeData.hpp"
 #include "Modules/Login.hpp"
 #include "Client/Client.hpp"
@@ -9,9 +28,11 @@
 #include <boost/log/trivial.hpp>
 #include <charconv>
 
+#include "./Header.hpp"
+
 /************************************************************************/
 
-typedef SteamBot::Modules::GetPageData::Whiteboard::BadgePageData BadgePageData;
+typedef SteamBot::Modules::GetPageData::Whiteboard::BadgeData BadgeData;
 
 /************************************************************************/
 
@@ -20,7 +41,8 @@ namespace
     class BadgePageParser : public HTMLParser::Parser
     {
     private:
-        BadgePageData& data;
+        BadgeData& data;
+        std::string& pageQuery;
 
         // The root elements for the badge-boxes on the page
         // Basically, we just walk up from lower elements until we find a match
@@ -30,8 +52,8 @@ namespace
         bool stripCardPrefix(std::string_view&);
 
     public:
-        BadgePageParser(std::string_view html, BadgePageData& data_)
-            : Parser(html), data(data_)
+        BadgePageParser(std::string_view html, BadgeData& data_, std::string& pageQuery_)
+            : Parser(html), data(data_), pageQuery(pageQuery_)
         {
         }
 
@@ -39,11 +61,12 @@ namespace
 
     private:
         static bool extractNumber(const HTMLParser::Tree::Element&, unsigned int&);
-        BadgePageData::BadgeInfo* findBadgeInfo(const HTMLParser::Tree::Element&) const;
+        BadgeData::BadgeInfo* findBadgeInfo(const HTMLParser::Tree::Element&) const;
 
     private:
         bool handleStart_badge_row_overlay(const HTMLParser::Tree::Element&);
         bool handleEnd_progress_info_bold(const HTMLParser::Tree::Element&);
+        bool handleEnd_pagebtn(const HTMLParser::Tree::Element&);
 
     private:
         virtual void startElement(const HTMLParser::Tree::Element& element) override
@@ -53,9 +76,8 @@ namespace
 
         virtual void endElement(const HTMLParser::Tree::Element& element) override
         {
-            handleEnd_progress_info_bold(element);
+            handleEnd_progress_info_bold(element) || handleEnd_pagebtn(element);
         }
-
     };
 }
 
@@ -174,7 +196,7 @@ bool BadgePageParser::extractNumber(const HTMLParser::Tree::Element& element, un
  * associated with it. nullptr if not found.
  */
 
-BadgePageData::BadgeInfo* BadgePageParser::findBadgeInfo(const HTMLParser::Tree::Element& element) const
+BadgeData::BadgeInfo* BadgePageParser::findBadgeInfo(const HTMLParser::Tree::Element& element) const
 {
     for (const HTMLParser::Tree::Element* parent=element.parent; parent!=nullptr; parent=parent->parent)
     {
@@ -191,6 +213,27 @@ BadgePageData::BadgeInfo* BadgePageParser::findBadgeInfo(const HTMLParser::Tree:
         }
     }
     return nullptr;
+}
+
+/************************************************************************/
+
+bool BadgePageParser::handleEnd_pagebtn(const HTMLParser::Tree::Element& element)
+{
+    // <a class='pagebtn' href="?p=2">&gt;</a>
+    // <span class="pagebtn disabled">&lt;</span>
+
+    if (element.name=="a" && SteamBot::HTML::checkClass(element, "pagebtn"))
+    {
+        if (SteamBot::HTML::getCleanText(element)==">")
+        {
+            if (auto href=element.getAttribute("href"))
+            {
+                pageQuery=*href;
+            }
+        }
+        return true;
+    }
+    return false;
 }
 
 /************************************************************************/
@@ -215,12 +258,13 @@ bool BadgePageParser::handleEnd_progress_info_bold(const HTMLParser::Tree::Eleme
 }
 
 /************************************************************************/
+/*
+ * Returns the "query" part for the next page, or an empty string
+ */
 
-BadgePageData::BadgePageData(std::string_view html)
+std::string SteamBot::GetPageData::parseBadgePage(std::string_view html, SteamBot::Modules::GetPageData::Whiteboard::BadgeData& data)
 {
-    BadgePageParser(html, *this).parse();
+    std::string pageQuery;
+    BadgePageParser(html, data, pageQuery).parse();
+    return pageQuery;
 }
-
-/************************************************************************/
-
-BadgePageData::~BadgePageData() =default;

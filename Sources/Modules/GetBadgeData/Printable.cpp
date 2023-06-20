@@ -2,15 +2,15 @@
 
 /************************************************************************/
 
-typedef SteamBot::Modules::GetPageData::Whiteboard::BadgePageData BadgePageData;
+typedef SteamBot::Modules::GetPageData::Whiteboard::BadgeData BadgeData;
 
 /************************************************************************/
 
-BadgePageData::BadgeInfo::~BadgeInfo() =default;
+BadgeData::BadgeInfo::~BadgeInfo() =default;
 
 /************************************************************************/
 
-boost::json::value BadgePageData::BadgeInfo::toJson() const
+boost::json::value BadgeData::BadgeInfo::toJson() const
 {
     boost::json::object json;
     if (level) json["Level"]=*level;
@@ -21,7 +21,7 @@ boost::json::value BadgePageData::BadgeInfo::toJson() const
 
 /************************************************************************/
 
-boost::json::value BadgePageData::toJson() const
+boost::json::value BadgeData::toJson() const
 {
     boost::json::array json;
     for (const auto& badge : badges)
