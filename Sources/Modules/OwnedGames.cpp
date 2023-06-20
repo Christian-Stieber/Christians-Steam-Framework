@@ -20,6 +20,7 @@
 #include "Modules/UnifiedMessageClient.hpp"
 #include "Client/Module.hpp"
 #include "Modules/OwnedGames.hpp"
+#include "Modules/LicenseList.hpp"
 #include "UI/UI.hpp"
 #include "Helpers/Time.hpp"
 
@@ -147,16 +148,21 @@ void OwnedGamesModule::getOwnedGames()
 }
 
 /************************************************************************/
-/*
- * Note: I suspect we'll get some indication that the game list
- * as changed, so I'll keep the loop for now.
- */
 
-void OwnedGamesModule::run(SteamBot::Client&)
+void OwnedGamesModule::run(SteamBot::Client& client)
 {
+    typedef SteamBot::Modules::LicenseList::Whiteboard::Licenses Licenses;
+    auto licenseList=client.whiteboard.createWaiter<Licenses::Ptr>(*waiter);
+
     while (true)
     {
-        getOwnedGames();
         waiter->wait();
+        if (licenseList->isWoken())
+        {
+            auto list=licenseList->has();
+            assert(list!=nullptr);
+
+            getOwnedGames();
+        }
     }
 }
