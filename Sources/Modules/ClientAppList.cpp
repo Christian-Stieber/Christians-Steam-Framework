@@ -28,14 +28,14 @@ namespace
 {
     class ClientAppListModule : public SteamBot::Client::Module
     {
-    private:
+    public:
         void handle(std::shared_ptr<const Steam::CMsgClientGetClientAppListMessageType>);
 
     public:
         ClientAppListModule() =default;
         virtual ~ClientAppListModule() =default;
 
-        virtual void run() override;
+        virtual void run(SteamBot::Client&) override;
     };
 
     ClientAppListModule::Init<ClientAppListModule> init;
@@ -51,14 +51,14 @@ void ClientAppListModule::handle(std::shared_ptr<const Steam::CMsgClientGetClien
 
 /************************************************************************/
 
-void ClientAppListModule::run()
+void ClientAppListModule::run(SteamBot::Client& client)
 {
     std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgClientGetClientAppListMessageType>> clientAppListQueue;
-    clientAppListQueue=waiter->createWaiter<decltype(clientAppListQueue)::element_type>(getClient().messageboard);
+    clientAppListQueue=waiter->createWaiter<decltype(clientAppListQueue)::element_type>(client.messageboard);
 
     while (true)
     {
         waiter->wait();
-        handle(clientAppListQueue->fetch());
+        clientAppListQueue->handle(this);
     }
 }

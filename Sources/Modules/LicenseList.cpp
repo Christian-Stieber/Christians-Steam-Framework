@@ -41,7 +41,7 @@ namespace
         LicenseListModule() =default;
         virtual ~LicenseListModule() =default;
 
-        virtual void run() override;
+        virtual void run(SteamBot::Client&) override;
     };
 
     LicenseListModule::Init<LicenseListModule> init;
@@ -107,10 +107,10 @@ void LicenseListModule::handleMessage(std::shared_ptr<const Steam::CMsgClientLic
 
 /************************************************************************/
 
-void LicenseListModule::run()
+void LicenseListModule::run(SteamBot::Client& client)
 {
     std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgClientLicenseListMessageType>> cmsgClientLicenseList;
-    cmsgClientLicenseList=waiter->createWaiter<decltype(cmsgClientLicenseList)::element_type>(getClient().messageboard);
+    cmsgClientLicenseList=waiter->createWaiter<decltype(cmsgClientLicenseList)::element_type>(client.messageboard);
 
     while (true)
     {

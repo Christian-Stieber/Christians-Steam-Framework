@@ -45,7 +45,7 @@ namespace
         PersonaStateModule() =default;
         virtual ~PersonaStateModule() =default;
 
-        virtual void run() override;
+        virtual void run(SteamBot::Client&) override;
     };
 
     PersonaStateModule::Init<PersonaStateModule> init;
@@ -68,7 +68,7 @@ void PersonaStateModule::setState()
  * more stuff here.
  */
 
-void PersonaStateModule::run()
+void PersonaStateModule::run(SteamBot::Client&)
 {
     while (true)
     {

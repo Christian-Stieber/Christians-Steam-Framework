@@ -42,7 +42,7 @@ namespace
         OwnedGamesModule() =default;
         virtual ~OwnedGamesModule() =default;
 
-        virtual void run() override;
+        virtual void run(SteamBot::Client&) override;
     };
 
     OwnedGamesModule::Init<OwnedGamesModule> init;
@@ -152,7 +152,7 @@ void OwnedGamesModule::getOwnedGames()
  * as changed, so I'll keep the loop for now.
  */
 
-void OwnedGamesModule::run()
+void OwnedGamesModule::run(SteamBot::Client&)
 {
     while (true)
     {
