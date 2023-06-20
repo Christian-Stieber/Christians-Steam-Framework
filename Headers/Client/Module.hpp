@@ -110,7 +110,7 @@ namespace SteamBot
     class Client::Module : public Client::ModuleBase
     {
     protected:
-        std::shared_ptr<SteamBot::Waiter> waiter;
+        const std::shared_ptr<SteamBot::Waiter> waiter;
 
     protected:
         Module();
