@@ -29,6 +29,9 @@ typedef SteamBot::Modules::UnifiedMessageClient::Internal::UnifiedMessageBase Un
 typedef SteamBot::Modules::UnifiedMessageClient::ServiceMethodResponseMessage ServiceMethodResponseMessage;
 
 /************************************************************************/
+/*
+ * Why did I make this a module? It's not implementing run()
+ */
 
 namespace
 {
