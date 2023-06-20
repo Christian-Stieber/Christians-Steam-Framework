@@ -143,7 +143,7 @@ namespace
         LoginModule() =default;
         virtual ~LoginModule() =default;
 
-        virtual void run() override;
+        virtual void run(SteamBot::Client&) override;
 
     private:
         static void setStatus(LoginStatus status)
@@ -193,7 +193,6 @@ namespace
         void handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMessageType>);
 
     private:
-        std::shared_ptr<SteamBot::Waiter> const waiter=SteamBot::Waiter::create();
         SteamBot::UI::Base::ResultParam<std::string> steamguardCodeWaiter;
         SteamBot::UI::Base::ResultParam<std::string> passwordWaiter;
 
@@ -685,56 +684,53 @@ void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMes
 
 /************************************************************************/
 
-void LoginModule::run()
+void LoginModule::run(SteamBot::Client& client)
 {
     setStatus(LoginStatus::LoggedOut);
-    getClient().launchFiber("LoginModule::run", [this](){
-        auto cancellation=getClient().cancel.registerObject(*waiter);
 
-        getClient().dataFile.examine([this](const boost::json::value& value) mutable {
-            if (auto string=SteamBot::JSON::getItem(value, Keys::Login, Keys::Data))
-            {
-                refreshToken=string->as_string();
-            }
-        });
-
-        std::shared_ptr<SteamBot::Whiteboard::Waiter<ConnectionStatus>> connectionStatus;
-        connectionStatus=waiter->createWaiter<decltype(connectionStatus)::element_type>(getClient().whiteboard);
-
-        std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgClientLoggedOffMessageType>> cmsgClientLoggedOffMessage;
-        cmsgClientLoggedOffMessage=waiter->createWaiter<decltype(cmsgClientLoggedOffMessage)::element_type>(getClient().messageboard);
-
-        std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgClientLogonResponseMessageType>> cmsgClientLogonResponse;
-        cmsgClientLogonResponse=waiter->createWaiter<decltype(cmsgClientLogonResponse)::element_type>(getClient().messageboard);
-
-        while (true)
+    client.dataFile.examine([this](const boost::json::value& value) mutable {
+        if (auto string=SteamBot::JSON::getItem(value, Keys::Login, Keys::Data))
         {
-            waiter->wait();
+            refreshToken=string->as_string();
+        }
+    });
 
-            while (cmsgClientLoggedOffMessage->fetch())
-                ;
+    std::shared_ptr<SteamBot::Whiteboard::Waiter<ConnectionStatus>> connectionStatus;
+    connectionStatus=waiter->createWaiter<decltype(connectionStatus)::element_type>(client.whiteboard);
 
-            cmsgClientLogonResponse->handle(this);
+    std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgClientLoggedOffMessageType>> cmsgClientLoggedOffMessage;
+    cmsgClientLoggedOffMessage=waiter->createWaiter<decltype(cmsgClientLoggedOffMessage)::element_type>(client.messageboard);
 
-            handleGuardCodeEntry();
-            handlePasswordEntry();
+    std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgClientLogonResponseMessageType>> cmsgClientLogonResponse;
+    cmsgClientLogonResponse=waiter->createWaiter<decltype(cmsgClientLogonResponse)::element_type>(client.messageboard);
 
-            if (connectionStatus->get(ConnectionStatus::Disconnected)==ConnectionStatus::Connected)
+    while (true)
+    {
+        waiter->wait();
+
+        while (cmsgClientLoggedOffMessage->fetch())
+            ;
+
+        cmsgClientLogonResponse->handle(this);
+
+        handleGuardCodeEntry();
+        handlePasswordEntry();
+
+        if (connectionStatus->get(ConnectionStatus::Disconnected)==ConnectionStatus::Connected)
+        {
+            if (client.whiteboard.get(LoginStatus::LoggedOut)==LoginStatus::LoggedOut)
             {
-                if (getClient().whiteboard.get(LoginStatus::LoggedOut)==LoginStatus::LoggedOut)
+                setStatus(LoginStatus::LoggingIn);
+                sendHello();
+                if (refreshToken.empty())
                 {
-                    setStatus(LoginStatus::LoggingIn);
-                    sendHello();
-                    if (refreshToken.empty())
-                    {
-                        startAuthSession();
-                    }
-                    else
-                    {
-                        doLogon();
-                    }
+                    startAuthSession();
+                }
+                else
+                {
+                    doLogon();
                 }
             }
         }
-    });
+    }
 }

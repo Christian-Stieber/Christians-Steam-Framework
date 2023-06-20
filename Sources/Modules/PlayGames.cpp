@@ -67,7 +67,7 @@ namespace
         PlayGamesModule() =default;
         virtual ~PlayGamesModule() =default;
 
-        virtual void run() override;
+        virtual void run(SteamBot::Client&) override;
     };
 
     PlayGamesModule::Init<PlayGamesModule> init;
@@ -163,10 +163,10 @@ void PlayGamesModule::handle(std::shared_ptr<const PlayGame> message)
 
 /************************************************************************/
 
-void PlayGamesModule::run()
+void PlayGamesModule::run(SteamBot::Client& client)
 {
     std::shared_ptr<SteamBot::Messageboard::Waiter<PlayGame>> playGame;
-    playGame=waiter->createWaiter<decltype(playGame)::element_type>(getClient().messageboard);
+    playGame=waiter->createWaiter<decltype(playGame)::element_type>(client.messageboard);
 
     while (true)
     {

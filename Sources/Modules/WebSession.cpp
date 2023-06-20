@@ -92,7 +92,7 @@ namespace
         WebSessionModule() =default;
         virtual ~WebSessionModule() =default;
 
-        virtual void run() override;
+        virtual void run(SteamBot::Client&) override;
     };
 
     WebSessionModule::Init<WebSessionModule> init;
@@ -310,15 +310,13 @@ void WebSessionModule::handleRequests()
 
 /************************************************************************/
 
-void WebSessionModule::run()
+void WebSessionModule::run(SteamBot::Client& client)
 {
     std::shared_ptr<SteamBot::Messageboard::Waiter<NonceMessage>> nonceMessage;
+    nonceMessage=waiter->createWaiter<decltype(nonceMessage)::element_type>(client.messageboard);
+
     std::shared_ptr<SteamBot::Messageboard::Waiter<GetURL>> getUrl;
-    {
-        auto& messageboard=getClient().messageboard;
-        nonceMessage=waiter->createWaiter<decltype(nonceMessage)::element_type>(messageboard);
-        getUrl=waiter->createWaiter<decltype(getUrl)::element_type>(messageboard);
-    }
+    getUrl=waiter->createWaiter<decltype(getUrl)::element_type>(client.messageboard);
 
     while (true)
     {

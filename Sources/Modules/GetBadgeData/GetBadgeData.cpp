@@ -19,7 +19,6 @@
 
 #include "Client/Module.hpp"
 #include "Modules/WebSession.hpp"
-#include "Modules/Login.hpp"
 #include "Modules/GetBadgeData.hpp"
 #include "Helpers/URLs.hpp"
 
@@ -41,7 +40,7 @@ namespace
         GetBadgeDataModule() =default;
         virtual ~GetBadgeDataModule() =default;
 
-        virtual void run() override;
+        virtual void run(SteamBot::Client&) override;
     };
 
     GetBadgeDataModule::Init<GetBadgeDataModule> init;
@@ -58,38 +57,21 @@ void GetBadgeDataModule::handle(std::shared_ptr<const GotURL> message)
 
 /************************************************************************/
 
-void GetBadgeDataModule::run()
+void GetBadgeDataModule::run(SteamBot::Client& client)
 {
-    getClient().launchFiber("GetBadgeDataModule::run", [this](){
-        auto waiter=SteamBot::Waiter::create();
-        auto cancellation=getClient().cancel.registerObject(*waiter);
+    std::shared_ptr<SteamBot::Messageboard::Waiter<GotURL>> gotUrl;
+    gotUrl=waiter->createWaiter<decltype(gotUrl)::element_type>(client.messageboard);
 
-        typedef SteamBot::Modules::Login::Whiteboard::LoginStatus LoginStatus;
-        std::shared_ptr<SteamBot::Whiteboard::Waiter<LoginStatus>> loginStatus;
-        loginStatus=waiter->createWaiter<decltype(loginStatus)::element_type>(getClient().whiteboard);
+    {
+        auto getUrl=std::make_shared<GetURL>();
+        getUrl->url=SteamBot::URLs::getClientCommunityURL();
+        getUrl->url.segments().push_back("badges");
+        client.messageboard.send(getUrl);
+    }
 
-        std::shared_ptr<SteamBot::Messageboard::Waiter<GotURL>> gotUrl;
-        gotUrl=waiter->createWaiter<decltype(gotUrl)::element_type>(getClient().messageboard);
-
-        std::shared_ptr<GetURL> getUrl;
-
-        while (true)
-        {
-            waiter->wait();
-
-            gotUrl->handle(this);
-
-            if (loginStatus->get(LoginStatus::LoggedOut)==LoginStatus::LoggedIn)
-            {
-                if (!getUrl)
-                {
-                    getUrl=std::make_shared<GetURL>();
-                    getUrl->url=SteamBot::URLs::getClientCommunityURL();
-                    getUrl->url.segments().push_back("badges");
-
-                    getClient().messageboard.send(getUrl);
-                }
-            }
-        }
-    });
+    while (true)
+    {
+        waiter->wait();
+        gotUrl->handle(this);
+    }
 }

@@ -138,9 +138,6 @@ void ConnectionModule::body()
 {
     auto& whiteboard=getClient().whiteboard;
 
-    auto waiter=SteamBot::Waiter::create();
-    auto cancellation=getClient().cancel.registerObject(*waiter);
-
     auto connection=SteamBot::Connections::connect(waiter);
     auto sendMessageWaiter=waiter->createWaiter<SteamBot::Messageboard::Waiter<SendSteamMessage>>(getClient().messageboard);
 
