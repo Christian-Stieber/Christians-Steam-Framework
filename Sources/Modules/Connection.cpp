@@ -49,7 +49,7 @@ namespace
         ConnectionModule();
         virtual ~ConnectionModule();
 
-        virtual void run() override;
+        virtual void run(SteamBot::Client&) override;
 
     private:
         void readPackets(SteamBot::Connections::ConnectResult::element_type*);
@@ -171,22 +171,19 @@ void ConnectionModule::body()
 
 /************************************************************************/
 
-void ConnectionModule::run()
+void ConnectionModule::run(SteamBot::Client& client)
 {
-    getClient().launchFiber("ConnectionModule::run", [this](){
-        auto& whiteboard=getClient().whiteboard;
-        whiteboard.set(ConnectionStatus::Disconnected);
-        try
-        {
-            body();
-        }
-        catch(...)
-        {
-            BOOST_LOG_TRIVIAL(debug) << "exception on client: " << boost::current_exception_diagnostic_information();
-        }
-        whiteboard.set(ConnectionStatus::Disconnected);
-        whiteboard.clear<SteamBot::Modules::Connection::Whiteboard::LocalEndpoint>();
-    });
+    client.whiteboard.set(ConnectionStatus::Disconnected);
+    try
+    {
+        body();
+    }
+    catch(...)
+    {
+        BOOST_LOG_TRIVIAL(debug) << "exception on connection: " << boost::current_exception_diagnostic_information();
+    }
+    client.whiteboard.set(ConnectionStatus::Disconnected);
+    client.whiteboard.clear<SteamBot::Modules::Connection::Whiteboard::LocalEndpoint>();
 }
 
 /************************************************************************/
