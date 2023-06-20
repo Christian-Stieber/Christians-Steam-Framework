@@ -122,7 +122,7 @@ namespace
             assert(queue.empty());
         }
 
-        virtual void run() override;
+        virtual void run(SteamBot::Client&) override;
 
     public:
         static bool execute(std::shared_ptr<SteamBot::Client>, FunctionType);
@@ -166,34 +166,30 @@ void ExecutorModule::wait()
 
 /************************************************************************/
 
-void ExecutorModule::run()
+void ExecutorModule::run(SteamBot::Client& client)
 {
-    getClient().launchFiber("ExecutorModule::run", [this](){
-        auto& client=getClient();
-        auto cancellation=client.cancel.registerObject(*this);
-        try
+    try
+    {
+        while (true)
         {
-            while (true)
-            {
-                wait();
-                getFunction()->execute(client);
-            }
+            wait();
+            getFunction()->execute(client);
         }
-        catch(...)
+    }
+    catch(...)
+    {
         {
-            {
-                std::lock_guard<decltype(mutex)> lock(mutex);
-                cancelled=true;
-            }
+            std::lock_guard<decltype(mutex)> lock(mutex);
+            cancelled=true;
+        }
 
-            decltype(queue)::value_type function;
-            while ((function=getFunction()))
-            {
-                function->setStatus(ExecutorFunction::Status::Killed);
-            }
-            throw;
+        decltype(queue)::value_type function;
+        while ((function=getFunction()))
+        {
+            function->setStatus(ExecutorFunction::Status::Killed);
         }
-    });
+        throw;
+    }
 }
 
 /************************************************************************/
