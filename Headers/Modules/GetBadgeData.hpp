@@ -42,7 +42,7 @@ namespace SteamBot
                 class BadgeData : public Printable
                 {
                 public:
-                    typedef std::shared_ptr<BadgeData> Ptr;
+                    typedef std::shared_ptr<const BadgeData> Ptr;
 
                 public:
                     class BadgeInfo : public Printable

@@ -102,7 +102,7 @@ void LicenseListModule::handleMessage(std::shared_ptr<const Steam::CMsgClientLic
     BOOST_LOG_TRIVIAL(info) << "license list: " << *licenses;
     SteamBot::UI::OutputText() << "account has " << licenses->licenses.size() << " licenses";
 
-    getClient().whiteboard.set(std::move(licenses));
+    getClient().whiteboard.set<Licenses::Ptr>(std::move(licenses));
 }
 
 /************************************************************************/

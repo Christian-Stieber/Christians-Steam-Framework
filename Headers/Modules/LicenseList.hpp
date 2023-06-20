@@ -42,7 +42,7 @@ namespace SteamBot
                 class Licenses : public Printable
                 {
                 public:
-                    typedef std::shared_ptr<Licenses> Ptr;
+                    typedef std::shared_ptr<const Licenses> Ptr;
 
                 public:
                     // Note: the server sends more information, so we can add

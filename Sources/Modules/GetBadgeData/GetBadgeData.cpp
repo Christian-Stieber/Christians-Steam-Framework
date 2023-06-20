@@ -69,7 +69,7 @@ class GetBadgeDataModule::ChainLoader
 {
 public:
     boost::urls::url currentUrl;
-    BadgeData::Ptr collectedData;
+    std::shared_ptr<BadgeData> collectedData;
     std::shared_ptr<GetURL> currentQuery;
 
 public:
@@ -114,7 +114,7 @@ void GetBadgeDataModule::handle(std::shared_ptr<const GotURL> message)
     {
         BOOST_LOG_TRIVIAL(debug) << "badge data: " << *(loader->collectedData);
         SteamBot::UI::OutputText() << "got " << loader->collectedData->badges.size() << " records of badge data";
-        getClient().whiteboard.set(std::move(loader->collectedData));
+        getClient().whiteboard.set<BadgeData::Ptr>(std::move(loader->collectedData));
         loader.reset();
     }
     else
