@@ -21,7 +21,6 @@
 #include "Client/Module.hpp"
 #include "Steam/PersonaState.hpp"
 #include "EnumFlags.hpp"
-#include "Modules/Login.hpp"
 
 #include "Steam/ProtoBuf/steammessages_clientserver_friends.hpp"
 
@@ -64,24 +63,16 @@ void PersonaStateModule::setState()
 }
 
 /************************************************************************/
+/*
+ * For now, I'll keep the loop in case we want to handle some
+ * more stuff here.
+ */
 
 void PersonaStateModule::run()
 {
-    getClient().launchFiber("PersonaStateModule::run", [this](){
-        auto waiter=SteamBot::Waiter::create();
-        auto cancellation=getClient().cancel.registerObject(*waiter);
-
-        typedef SteamBot::Modules::Login::Whiteboard::LoginStatus LoginStatus;
-        std::shared_ptr<SteamBot::Whiteboard::Waiter<LoginStatus>> loginStatus;
-        loginStatus=waiter->createWaiter<decltype(loginStatus)::element_type>(getClient().whiteboard);
-
-        while (true)
-        {
-            waiter->wait();
-            if (loginStatus->get(LoginStatus::LoggedOut)==LoginStatus::LoggedIn)
-            {
-                setState();
-            }
-        }
-    });
+    while (true)
+    {
+        setState();
+        waiter->wait();
+    }
 }
