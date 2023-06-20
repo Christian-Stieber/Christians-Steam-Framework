@@ -127,26 +127,17 @@ void PlayGamesModule::handle(std::shared_ptr<const PlayGame> message)
 }
 
 /************************************************************************/
-/*
- * ToDo: maybe we should monitor the login state, so we don't start
- * games until after we've logged on?
- */
 
 void PlayGamesModule::run()
 {
-    getClient().launchFiber("PlayGames::run", [this](){
-        auto waiter=SteamBot::Waiter::create();
-        auto cancellation=getClient().cancel.registerObject(*waiter);
+    std::shared_ptr<SteamBot::Messageboard::Waiter<PlayGame>> playGame;
+    playGame=waiter->createWaiter<decltype(playGame)::element_type>(getClient().messageboard);
 
-        std::shared_ptr<SteamBot::Messageboard::Waiter<PlayGame>> playGame;
-        playGame=waiter->createWaiter<decltype(playGame)::element_type>(getClient().messageboard);
-
-        while (true)
-        {
-            waiter->wait();
-            playGame->handle(this);
-        }
-    });
+    while (true)
+    {
+        waiter->wait();
+        playGame->handle(this);
+    }
 }
 
 /************************************************************************/
