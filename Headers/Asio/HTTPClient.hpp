@@ -29,6 +29,7 @@
 #include <boost/beast/http/string_body.hpp>
 
 #include <boost/url/url_view_base.hpp>
+#include <boost/url/url.hpp>
 
 #include <boost/json/value.hpp>
 
@@ -47,9 +48,13 @@ namespace SteamBot
 
         public:
             // this gets filled in during perform(). Check the error first.
+            boost::urls::url redirectedUrl;
             boost::system::error_code error;
             boost::beast::flat_buffer responseBuffer;
             boost::beast::http::response<boost::beast::http::dynamic_body> response;
+
+        public:
+            const boost::urls::url_view_base& applicableUrl() const;
 
         public:
             Query(boost::beast::http::verb, const boost::urls::url_view_base&);

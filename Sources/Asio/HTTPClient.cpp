@@ -33,6 +33,7 @@
 
 #include <boost/log/trivial.hpp>
 #include <boost/json/stream_parser.hpp>
+#include <boost/exception/diagnostic_information.hpp>
 
 /************************************************************************/
 
@@ -71,13 +72,13 @@ namespace
         Query(HTTPClient::Query& query_, Callback&& callback_)
             : query(&query_),
               callback(std::move(callback_)),
-              host(query->url.host()),
+              host(query->applicableUrl().host()),
               ioContext(SteamBot::Asio::getIoContext()),
               resolver(ioContext),
               stream(ioContext, getSslContext())
         {
             assert(SteamBot::Asio::isThread());
-            BOOST_LOG_TRIVIAL(debug) << "constructed query to " << query->url;
+            BOOST_LOG_TRIVIAL(debug) << "constructed query to " << query->applicableUrl();
         }
 
         ~Query()
@@ -191,7 +192,7 @@ void Query::read_completed(const ErrorCode& error, size_t bytes)
         return complete(error);
     }
 
-    BOOST_LOG_TRIVIAL(info) << "HTTPClient: query for \"" << query->url
+    BOOST_LOG_TRIVIAL(info) << "HTTPClient: query for \"" << query->applicableUrl()
                             << "\" has received a " << query->response.body().size()
                             << " byte response with code " << query->response.result();
 
@@ -226,6 +227,7 @@ void Query::handshake_completed(const ErrorCode& error)
 
     BOOST_LOG_TRIVIAL(debug) << "handshake_completed";
 
+    query->request.target(query->applicableUrl().encoded_target());
     query->request.set(http::field::host, host);
     query->request.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
@@ -275,7 +277,7 @@ void Query::resolve_completed(const ErrorCode& error, Resolver::results_type res
 
 void Query::perform()
 {
-    std::string_view port=query->url.port();
+    std::string_view port=query->applicableUrl().port();
     if (port.empty()) port="443";
 
     // Look up the host name
@@ -285,13 +287,20 @@ void Query::perform()
 /************************************************************************/
 
 HTTPClient::Query::Query(boost::beast::http::verb method, const boost::urls::url_view_base& url_)
-    : url(url_), request(method, url.encoded_target(), 11)
+    : url(url_), request(method, "", 11)
 {
 }
 
 /************************************************************************/
 
 HTTPClient::Query::~Query() =default;
+
+/************************************************************************/
+
+const boost::urls::url_view_base& HTTPClient::Query::applicableUrl() const
+{
+    return redirectedUrl.empty() ? url : redirectedUrl;
+}
 
 /************************************************************************/
 
@@ -345,6 +354,31 @@ HTTPClient::Query::QueryPtr HTTPClient::perform(HTTPClient::Query::QueryPtr quer
 }
 
 /************************************************************************/
+
+static bool checkRetry(HTTPClient::Query& query)
+{
+    auto status=query.response.result();
+    if (status==boost::beast::http::status::found)
+    {
+        auto location=query.response.base()["Location"];
+        if (!location.empty())
+        {
+            BOOST_LOG_TRIVIAL(info) << "we've been redirected from \"" << query.applicableUrl() << "\" to \"" << location << "\"";
+            try
+            {
+                query.redirectedUrl=boost::urls::url(location);
+                return true;
+            }
+            catch(...)
+            {
+                BOOST_LOG_TRIVIAL(info) << "server returned invalid redirection URL: \"" << location << "\": " << boost::current_exception_diagnostic_information();
+            }
+        }
+    }
+    return false;
+}
+
+/************************************************************************/
 /*
  * For some reason, I want to serialize the http queries, and also
  * slow them down a bit.
@@ -384,9 +418,12 @@ namespace
                     auto& item=queue.front();
                     auto query=std::make_shared<::Query>(*(item->setResult()),[this, item]() {
                         lastQuery=decltype(lastQuery)::clock::now();
-                        item->completed();
                         assert(!queue.empty() && queue.front()==item);
-                        queue.pop();
+                        if (!checkRetry(*(item->setResult())))
+                        {
+                            item->completed();
+                            queue.pop();
+                        }
                         performNext();
                     });
                     query->perform();
