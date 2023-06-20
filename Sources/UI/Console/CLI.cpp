@@ -38,7 +38,8 @@ const CLI::Command CLI::commands[]={
     { "select", "<account>", "select a bot as target for some commands", &CLI::command_select },
     { "list-games", "[<account>] [<regex>]", "list owned games", &CLI::command_list_games },
     { "play-game", "[<account>] <appid>", "play a game", &CLI::command_play_game },
-    { "stop-game", "[<account>] <appid>", "stop playing", &CLI::command_stop_game }
+    { "stop-game", "[<account>] <appid>", "stop playing", &CLI::command_stop_game },
+    { "add-license", "[<account>] <appid>", "add a (free) license", &CLI::command_add_license }
 };
 
 /************************************************************************/

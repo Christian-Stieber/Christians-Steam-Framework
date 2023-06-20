@@ -147,6 +147,7 @@ public:
     bool command_list_games(std::vector<std::string>&);
     bool command_play_game(std::vector<std::string>&);
     bool command_stop_game(std::vector<std::string>&);
+    bool command_add_license(std::vector<std::string>&);
 
 private:
     ConsoleUI& ui;
