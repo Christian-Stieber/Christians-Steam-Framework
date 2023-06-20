@@ -32,7 +32,7 @@ namespace
         HeartbeatModule() =default;
         virtual ~HeartbeatModule() =default;
 
-        virtual void run() override;
+        virtual void run(SteamBot::Client&) override;
     };
 
     HeartbeatModule::Init<HeartbeatModule> init;
@@ -40,17 +40,17 @@ namespace
 
 /************************************************************************/
 
-void HeartbeatModule::run()
+void HeartbeatModule::run(SteamBot::Client& client)
 {
     typedef SteamBot::Modules::Connection::Whiteboard::LastMessageSent LastMessageSent;
     std::shared_ptr<SteamBot::Whiteboard::Waiter<LastMessageSent>> lastMessageSent;
-    lastMessageSent=waiter->createWaiter<decltype(lastMessageSent)::element_type>(getClient().whiteboard);
+    lastMessageSent=waiter->createWaiter<decltype(lastMessageSent)::element_type>(client.whiteboard);
 
     while (true)
     {
         bool timeout=false;
         {
-            auto delay=getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::HeartbeatInterval>();
+            auto delay=client.whiteboard.has<SteamBot::Modules::Login::Whiteboard::HeartbeatInterval>();
             if (delay!=nullptr)
             {
                 timeout=!waiter->wait(*delay);
