@@ -21,6 +21,7 @@
 #include "Modules/WebSession.hpp"
 #include "Modules/GetBadgeData.hpp"
 #include "Helpers/URLs.hpp"
+#include "UI/UI.hpp"
 
 #include "./Header.hpp"
 
@@ -45,7 +46,6 @@ namespace
     public:
         class ChainLoader;
         std::unique_ptr<ChainLoader> loader;
-        BadgeData::Ptr collectedData;
 
     public:
         void handle(std::shared_ptr<const GotURL>);
@@ -68,24 +68,23 @@ namespace
 class GetBadgeDataModule::ChainLoader
 {
 public:
-    boost::urls::url currentLink;
-    unsigned int pageCount=0;
-
+    boost::urls::url currentUrl;
+    BadgeData::Ptr collectedData;
     std::shared_ptr<GetURL> currentQuery;
 
 public:
     ChainLoader()
+        : currentUrl(SteamBot::URLs::getClientCommunityURL()),
+          collectedData(std::make_shared<BadgeData>())
     {
-        currentLink=SteamBot::URLs::getClientCommunityURL();
-        currentLink.segments().push_back("badges");
+        currentUrl.segments().push_back("badges");
     }
 
 public:
     void loadPage()
     {
-        pageCount++;
         currentQuery=std::make_shared<GetURL>();
-        currentQuery->url=currentLink;
+        currentQuery->url=currentUrl;
         getClient().messageboard.send(currentQuery);
     }
 };
@@ -99,19 +98,31 @@ void GetBadgeDataModule::handle(std::shared_ptr<const GotURL> message)
         return;
     }
 
+    if (!message->query->redirectedUrl.empty())
+    {
+        loader->currentUrl=message->query->redirectedUrl;
+    }
+
     auto html=SteamBot::HTTPClient::parseString(*(message->query));
 #if 0
     BOOST_LOG_TRIVIAL(debug) << html;
 #endif
-    if (!collectedData)
+
+    auto nextPage=SteamBot::GetPageData::parseBadgePage(html, *(loader->collectedData));
+
+    if (nextPage.empty())
     {
-        collectedData=std::make_shared<BadgeData>();
+        BOOST_LOG_TRIVIAL(debug) << "badge data: " << *(loader->collectedData);
+        SteamBot::UI::OutputText() << "got " << loader->collectedData->badges.size() << " records of badge data";
+        getClient().whiteboard.set(std::move(loader->collectedData));
+        loader.reset();
     }
-
-    auto nextPage=SteamBot::GetPageData::parseBadgePage(html, *collectedData);
-
-    BOOST_LOG_TRIVIAL(debug) << "next page: \"" << nextPage << "\"";
-    BOOST_LOG_TRIVIAL(debug) << "Current badge data: " << *collectedData;
+    else
+    {
+        assert(nextPage[0]=='?');
+        loader->currentUrl.set_encoded_query(std::string_view(nextPage.data()+1, nextPage.size()-1));
+        requestNextPage();
+    }
 }
 
 /************************************************************************/
@@ -120,7 +131,6 @@ void GetBadgeDataModule::requestNextPage()
 {
     if (!loader)
     {
-        assert(!collectedData);
         loader=std::make_unique<ChainLoader>();
     }
     loader->loadPage();

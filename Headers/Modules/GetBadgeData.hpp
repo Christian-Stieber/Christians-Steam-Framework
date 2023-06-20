@@ -37,6 +37,8 @@ namespace SteamBot
         {
             namespace Whiteboard
             {
+                // The whiteboard gets an BadgeData::Ptr
+
                 class BadgeData : public Printable
                 {
                 public:
