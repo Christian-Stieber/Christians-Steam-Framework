@@ -108,9 +108,6 @@ list(APPEND SRCS Modules/WebSession)
 list(APPEND SRCS Modules/PlayGames)
 list(APPEND SRCS Modules/Login-Auth)
 list(APPEND SRCS Modules/GetBadgeData/ParseBadgePage Modules/GetBadgeData/GetBadgeData Modules/GetBadgeData/Printable)
-
-# list(APPEND SRCS Tests/Asio Tests/Whiteboard Tests/Messageboard Tests/HTTPClient Tests/GetCMList)
-
 list(APPEND SRCS WebAPI/WebAPI WebAPI/ISteamDirectory/GetCMList)
 
 include_directories("Headers")
