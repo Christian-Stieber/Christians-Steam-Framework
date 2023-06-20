@@ -72,14 +72,15 @@ void SteamBot::Client::quit(bool restart)
 
 void SteamBot::Client::initModules()
 {
-    Module::createAll([this](std::shared_ptr<Client::Module> module){
+    ModuleBase::createAll([this](std::shared_ptr<Client::ModuleBase> module){
+        std::lock_guard<decltype(modulesMutex)> lock(modulesMutex);
         bool success=modules.try_emplace(std::type_index(typeid(*module)), std::move(module)).second;
         assert(success);	// only one module per type
     });
 
     for (auto& module : modules)
     {
-        module.second->run();
+        module.second->invoke(*this);
     }
 }
 

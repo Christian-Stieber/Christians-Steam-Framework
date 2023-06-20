@@ -44,6 +44,7 @@ namespace SteamBot
     class Client
 	{
     public:
+        class ModuleBase;
         class Module;
 
     public:
@@ -66,7 +67,7 @@ namespace SteamBot
 
 	private:
         mutable boost::fibers::mutex modulesMutex;
-        std::unordered_map<std::type_index, std::shared_ptr<Module>> modules;
+        std::unordered_map<std::type_index, std::shared_ptr<ModuleBase>> modules;
 
         Counter fiberCounter;
         ClientInfo& clientInfo;

@@ -29,36 +29,32 @@
  * A client module derives from Client::Module.
  *
  * In your source file, construct a GLOBAL instance of
- *    Client::Module::Init<T>
+ *    Client::ModuleBase::Init<T>
  * Clients will use this to find and instanciate your module.
- */
-
-/************************************************************************/
-/*
- * After a client has created all modules in unspecified order, it
- * will call run() on each of them, also in unspecified order. There
- * probably isn't much difference between doing your initialization
- * in the constructor or run, so I might remove this eventually.
+ *
+ * Also note the Client::Module class, which is likely a better base
+ * class for most of your modules.
  */
 
 /************************************************************************/
 
 namespace SteamBot
 {
-    template<typename T> concept ClientModule=std::is_base_of_v<Client::Module, T>;
+    template<typename T> concept ClientModule=std::is_base_of_v<Client::ModuleBase, T>;
 
-    class Client::Module : public std::enable_shared_from_this<Client::Module>
+    class Client::ModuleBase : public std::enable_shared_from_this<Client::ModuleBase>
     {
     public:
         class InitBase;
         template <ClientModule T> class Init;
 
     protected:
-        Module();
+        ModuleBase();
 
     public:
-        virtual ~Module();
-        static void createAll(std::function<void(std::shared_ptr<Client::Module>)>);
+        virtual ~ModuleBase();
+        virtual void invoke(Client&);		// internal use
+        static void createAll(std::function<void(std::shared_ptr<Client::ModuleBase>)>);
 
     public:
         static SteamBot::Client& getClient() { return SteamBot::Client::getClient(); }
@@ -69,7 +65,7 @@ namespace SteamBot
 
 /************************************************************************/
 
-class SteamBot::Client::Module::InitBase
+class SteamBot::Client::ModuleBase::InitBase
 {
 public:
     const InitBase* const next;
@@ -79,19 +75,48 @@ protected:
     virtual ~InitBase();
 
 public:
-    virtual std::shared_ptr<Client::Module> create() const =0;
+    virtual std::shared_ptr<Client::ModuleBase> create() const =0;
 };
 
 /************************************************************************/
 
-template <SteamBot::ClientModule T> class SteamBot::Client::Module::Init : public SteamBot::Client::Module::InitBase
+template <SteamBot::ClientModule T> class SteamBot::Client::ModuleBase::Init : public SteamBot::Client::ModuleBase::InitBase
 {
 public:
     Init() =default;
     virtual ~Init() =default;
 
-    virtual std::shared_ptr<Client::Module> create() const override
+    virtual std::shared_ptr<Client::ModuleBase> create() const override
     {
         return std::make_shared<T>();
     }
 };
+
+/************************************************************************/
+/*
+ * This is now a slightly improved type of module.
+ *
+ * It adds the following features:
+ *   - run() is not called until after a login
+ *   - your run() will be called inside a fiber and with a ready-to-use
+ *     "waiter" instance variable.
+ *
+ * This should make things more convenient for the vast majority of
+ * modules.
+ */
+
+namespace SteamBot
+{
+    class Client::Module : public Client::ModuleBase
+    {
+    protected:
+        std::shared_ptr<SteamBot::Waiter> waiter;
+
+    protected:
+        Module();
+
+    public:
+        virtual ~Module();
+        virtual void invoke(Client&) override;
+    };
+}
