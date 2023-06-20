@@ -37,8 +37,13 @@ namespace SteamBot
         {
             namespace Whiteboard
             {
+                // Note: the whiteboard actually holds a Licenses::Ptr!!!!
+
                 class Licenses : public Printable
                 {
+                public:
+                    typedef std::shared_ptr<Licenses> Ptr;
+
                 public:
                     // Note: the server sends more information, so we can add
                     // it if needed. I don't even need the items below, just

@@ -82,7 +82,7 @@ boost::json::value Licenses::toJson() const
 
 void LicenseListModule::handleMessage(std::shared_ptr<const Steam::CMsgClientLicenseListMessageType> message)
 {
-    Licenses licenses;
+    auto licenses=std::make_shared<Licenses>();
 
     for (int index=0; index<message->content.licenses_size(); index++)
     {
@@ -94,13 +94,13 @@ void LicenseListModule::handleMessage(std::shared_ptr<const Steam::CMsgClientLic
             if (licenseData.has_license_type()) license->licenseType=static_cast<SteamBot::LicenseType>(licenseData.license_type());
             if (licenseData.has_payment_method()) license->paymentMethod=static_cast<SteamBot::PaymentMethod>(licenseData.payment_method());
 
-            bool success=licenses.licenses.try_emplace(license->packageId, std::move(license)).second;
+            bool success=licenses->licenses.try_emplace(license->packageId, std::move(license)).second;
             assert(success);
         }
     }
 
-    BOOST_LOG_TRIVIAL(info) << "license list: " << licenses;
-    SteamBot::UI::OutputText() << "account has " << licenses.licenses.size() << " licenses";
+    BOOST_LOG_TRIVIAL(info) << "license list: " << *licenses;
+    SteamBot::UI::OutputText() << "account has " << licenses->licenses.size() << " licenses";
 
     getClient().whiteboard.set(std::move(licenses));
 }
