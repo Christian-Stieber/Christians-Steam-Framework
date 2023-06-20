@@ -312,35 +312,23 @@ void WebSessionModule::handleRequests()
 
 void WebSessionModule::run()
 {
-    getClient().launchFiber("WebSessionModule::run", [this](){
-        auto waiter=SteamBot::Waiter::create();
-        auto cancellation=getClient().cancel.registerObject(*waiter);
+    std::shared_ptr<SteamBot::Messageboard::Waiter<NonceMessage>> nonceMessage;
+    std::shared_ptr<SteamBot::Messageboard::Waiter<GetURL>> getUrl;
+    {
+        auto& messageboard=getClient().messageboard;
+        nonceMessage=waiter->createWaiter<decltype(nonceMessage)::element_type>(messageboard);
+        getUrl=waiter->createWaiter<decltype(getUrl)::element_type>(messageboard);
+    }
 
-        std::shared_ptr<SteamBot::Messageboard::Waiter<NonceMessage>> nonceMessage;
-        std::shared_ptr<SteamBot::Messageboard::Waiter<GetURL>> getUrl;
-        {
-            auto& messageboard=getClient().messageboard;
-            nonceMessage=waiter->createWaiter<decltype(nonceMessage)::element_type>(messageboard);
-            getUrl=waiter->createWaiter<decltype(getUrl)::element_type>(messageboard);
-        }
+    while (true)
+    {
+        waiter->wait();
 
-        typedef SteamBot::Modules::Login::Whiteboard::LoginStatus LoginStatus;
-        std::shared_ptr<SteamBot::Whiteboard::Waiter<LoginStatus>> loginStatus;
-        loginStatus=waiter->createWaiter<decltype(loginStatus)::element_type>(getClient().whiteboard);
+        nonceMessage->handle(this);
+        getUrl->handle(this);
 
-        while (true)
-        {
-            waiter->wait();
+        handleRequests();
 
-            nonceMessage->handle(this);
-            getUrl->handle(this);
-
-            handleRequests();
-
-            if (loginStatus->get(LoginStatus::LoggedOut)==LoginStatus::LoggedIn)
-            {
-                requestNonce();
-            }
-        }
-    });
+        requestNonce();
+    }
 }
