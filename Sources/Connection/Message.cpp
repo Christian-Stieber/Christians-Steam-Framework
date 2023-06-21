@@ -46,14 +46,14 @@ void SteamBot::Connection::Message::Serializeable::deserialize(const std::span<c
 
 /************************************************************************/
 
-size_t SteamBot::Connection::Message::Serializeable::serialize(SteamBot::Connection::Serializer& serializer) const
+size_t SteamBot::Connection::Message::Serializeable::serialize(SteamBot::Connection::Serializer&) const
 {
 	return 0;
 }
 
 /************************************************************************/
 
-void SteamBot::Connection::Message::Serializeable::deserialize(SteamBot::Connection::Deserializer& deserializer)
+void SteamBot::Connection::Message::Serializeable::deserialize(SteamBot::Connection::Deserializer&)
 {
 }
 

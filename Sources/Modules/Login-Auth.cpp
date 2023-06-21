@@ -105,7 +105,7 @@ namespace
         uint32_t secMaxReconnectHint;	// ???
 
 	public:
-		virtual size_t serialize(SteamBot::Connection::Serializer& serializer) const override
+		virtual size_t serialize(SteamBot::Connection::Serializer&) const override
 		{
 			// we are not sending these
 			assert(false);
@@ -358,7 +358,6 @@ void LoginModule::sendGuardCode(std::string code)
     request.set_code_type(confirmation.type);
     request.set_code(std::move(code));
     {
-        auto& whiteboard=getClient().whiteboard;
         request.set_steamid(authSessionData.steamId);
         request.set_client_id(authSessionData.clientId);
     }
@@ -554,6 +553,9 @@ void LoginModule::doPollAuthSessionStatus()
                 SteamBot::sleep(std::chrono::milliseconds(interval));
             }
             break;
+
+        default:
+            assert(false);
         }
     }
     doLogon();
@@ -678,7 +680,11 @@ void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMes
 
         case SteamBot::ResultCode::TryAnotherCM:
             // ToDo: do something great
+            assert(false);
             break;
+
+        default:
+            assert(false);
         }
     }
 }

@@ -128,7 +128,7 @@ namespace SteamBot
             auto result=waiter->createWaiter<typename ResultType::element_type>();
             auto myWaiter=std::make_shared<CallbackWaiterType>();
             myWaiter->self=myWaiter;
-            myWaiter->completer=[result, completer=std::move(completer)](std::shared_ptr<CallbackWaiterType> waiter, SteamBot::Waiter::ItemBase* item){
+            myWaiter->completer=[result, completer=std::move(completer)](std::shared_ptr<CallbackWaiterType> waiter, SteamBot::Waiter::ItemBase*){
                 return completer(waiter->intermediate, result);
             };
             {
@@ -168,7 +168,7 @@ namespace SteamBot
 
             auto myWaiter=std::make_shared<CallbackWaiterType>();
             myWaiter->self=myWaiter;
-            myWaiter->completer=[completer=std::move(completer)](std::shared_ptr<CallbackWaiterType> waiter, SteamBot::Waiter::ItemBase* item){
+            myWaiter->completer=[completer=std::move(completer)](std::shared_ptr<CallbackWaiterType> waiter, SteamBot::Waiter::ItemBase*){
                 return completer(waiter->intermediate);
             };
             {

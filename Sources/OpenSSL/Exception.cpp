@@ -36,6 +36,7 @@ static void logErrors()
         ERR_load_crypto_strings();
         return true;
     }();
+    (void)initialized;
 
     if (ERR_peek_error()!=0)
     {

@@ -255,7 +255,7 @@ void Manager::body()
                 }
                 break;
 
-            defaulr:
+            default:
                 throwErrno();
                 break;
             }

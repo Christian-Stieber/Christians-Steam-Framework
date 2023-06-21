@@ -8,6 +8,8 @@ cmake_minimum_required(VERSION 3.23)
 set (CMAKE_CXX_STANDARD 20)
 project(SteamBot CXX)
 
+add_compile_options(-UNDEBUG)
+
 ######################################################################
 # https://developpaper.com/correct-use-of-protobuf-in-cmake/
 #

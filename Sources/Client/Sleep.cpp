@@ -36,7 +36,7 @@ namespace
         void operator()(std::chrono::milliseconds duration)
         {
             std::unique_lock<decltype(mutex)> lock(mutex);
-            auto result=condition.wait_for(lock, duration, [this]() { return cancelled; });
+            condition.wait_for(lock, duration, [this]() { return cancelled; });
             if (cancelled)
             {
                 throw SteamBot::OperationCancelledException();
