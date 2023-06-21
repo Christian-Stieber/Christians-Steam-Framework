@@ -64,8 +64,8 @@ namespace Steam
             const T value;
 
         public:
-            Value(T value_)
-                : value(std::move(value_))
+            template <typename U> Value(U&& value_)
+                : value(std::forward<U>(value_))
             {
             }
 
@@ -131,6 +131,7 @@ namespace Steam
 		typedef std::vector<std::byte> BinarySerializationType;
 
         BinarySerializationType serialize(const std::string&, const Node&);
+        std::unique_ptr<Node> deserialize(const BinarySerializationType&, std::string&);
 
         // Internal use
         enum class DataType : uint8_t {
