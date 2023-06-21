@@ -108,9 +108,6 @@
     <ClCompile Include="Sources\Modules\PlayGames.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Sources\Modules\SteamGuard.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Sources\Modules\UnifiedMessageClient.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -235,6 +232,18 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Sources\Modules\Executor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Modules\AddFreeLicense.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Modules\CardFarmer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\UI\Console\CLI\AddLicense.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\UI\Console\CLI\SimpleCommand.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -587,6 +596,9 @@
     <ClInclude Include="Headers\Helpers\StringCompare.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Headers\Modules\AddFreeLicense.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -620,6 +632,9 @@
       <Filter>Protobufs\steam</Filter>
     </CustomBuild>
     <CustomBuild Include="steamdatabase\protobufs\steam\enums.proto">
+      <Filter>Protobufs\steam</Filter>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver_2.proto">
       <Filter>Protobufs\steam</Filter>
     </CustomBuild>
   </ItemGroup>

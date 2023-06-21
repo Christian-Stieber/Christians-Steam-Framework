@@ -48,6 +48,8 @@
     <ClCompile Include="Sources\JobID.cpp" />
     <ClCompile Include="Sources\Logging.cpp" />
     <ClCompile Include="Sources\Main.cpp" />
+    <ClCompile Include="Sources\Modules\AddFreeLicense.cpp" />
+    <ClCompile Include="Sources\Modules\CardFarmer.cpp" />
     <ClCompile Include="Sources\Modules\ClientAppList.cpp" />
     <ClCompile Include="Sources\Modules\Connection.cpp" />
     <ClCompile Include="Sources\Modules\Executor.cpp" />
@@ -61,7 +63,6 @@
     <ClCompile Include="Sources\Modules\OwnedGames.cpp" />
     <ClCompile Include="Sources\Modules\PersonaState.cpp" />
     <ClCompile Include="Sources\Modules\PlayGames.cpp" />
-    <ClCompile Include="Sources\Modules\SteamGuard.cpp" />
     <ClCompile Include="Sources\Modules\UnifiedMessageClient.cpp" />
     <ClCompile Include="Sources\Modules\UnifiedMessageServer.cpp" />
     <ClCompile Include="Sources\Modules\WebSession.cpp" />
@@ -79,8 +80,10 @@
     <ClCompile Include="Sources\Steam\MachineInfo\Windows.cpp" />
     <ClCompile Include="Sources\Steam\OSType.cpp" />
     <ClCompile Include="Sources\UI\Console\CLI.cpp" />
+    <ClCompile Include="Sources\UI\Console\CLI\AddLicense.cpp" />
     <ClCompile Include="Sources\UI\Console\CLI\ListGames.cpp" />
     <ClCompile Include="Sources\UI\Console\CLI\PlayGame.cpp" />
+    <ClCompile Include="Sources\UI\Console\CLI\SimpleCommand.cpp" />
     <ClCompile Include="Sources\UI\Console\CLI\TokenizeLine.cpp" />
     <ClCompile Include="Sources\UI\Console\Console.cpp" />
     <ClCompile Include="Sources\UI\Console\Manager_Windows.cpp" />
@@ -159,6 +162,7 @@
     <ClInclude Include="Headers\JobID.hpp" />
     <ClInclude Include="Headers\Logging.hpp" />
     <ClInclude Include="Headers\MiscIDs.hpp" />
+    <ClInclude Include="Headers\Modules\AddFreeLicense.hpp" />
     <ClInclude Include="Headers\Modules\Connection.hpp" />
     <ClInclude Include="Headers\Modules\Connection_Internal.hpp" />
     <ClInclude Include="Headers\Modules\Executor.hpp" />
@@ -240,6 +244,9 @@
       <FileType>Document</FileType>
     </CustomBuild>
     <CustomBuild Include="steamdatabase\protobufs\steam\enums.proto">
+      <FileType>Document</FileType>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver_2.proto">
       <FileType>Document</FileType>
     </CustomBuild>
   </ItemGroup>
@@ -333,7 +340,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
     <Link>
@@ -362,7 +369,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
