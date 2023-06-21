@@ -45,18 +45,48 @@ This list of required packages might be incomplete:
 
 ## Windows
 
-I'm now working on a project for Visual Studio 2022. This is still work-in-progress.
+I'm now maintaining a project for Visual Studio 2022 -- the free edition, whatever it might be called today. It might be a bit behind, but I generally try to update it regularly.
+
 Currently, it uses boch nuget and vcpkg package manegers; make sure you install vcpkg from the Visual Studio tool selection, and run `vcpkg integrate install` in the Visual Studio command prompt.
 
 I think this should do it.
+
+# FEATURES
+
+Again, this list might not be complete/current. But, some things that are there include:
+* multiple clients running concurrently, clients are based around inteernal asynchronicity as well
+* a simple but functional console-based UI
+* modular setup (except for the CLI right now...)
+* for now, only TCP connections are supported.\
+  I guessed it might the easiest of the three, and wanted to get other things done
+* Login:
+    * password-based
+    * Steamguard EMail, Steamguard Device, Device confirmation.\
+      Note that you can't select this; it will prefer device confirmations if they are offered
+* sending/receiving Steam client messages.\
+  Many of those do not have specific support, though.\
+  Protobuf messages in particular (and I've rarely encountered any that aren't) are very easy to work with.
+* some higher level support for Steam client functionality, such as
+     * getting lists of licenses or owned games
+     * registering a free license
+     * "playing" games
+* builtin HTTP support:
+     * an HTTP client (light wrapper around `boost::beast` and integration with the framework)
+     * support for "authenticated" webpage-queries to Steam
+     * a simple HTML parser (can parse the Steam badge page, chokes on the Amazon homepage)
+* module to get badge data
+     * there's also a "fake" farming module that merely lists games that have card drops remaining.\
+       I'm calling that a starting point, as the thing is still work-in-progress
+* support for UnifiedSteamMessages:
+     * client-initiated\
+       Only a "blocking" API right now -- but note that this only blocks the fiber making the call, nothing else.
+     * server-initiated (notifications in particular) are high up on my ToDo-list
 
 # USAGE
 
 ## Using
 
 For now (and the forseeable future) there's only the console UI, and its currently a very basic implementation. Launch the program in a command prompt/terminal window.
-
-I've only recently added the UI, so outputs might be a bit scarce -- but I don't want to spam the window with clutter either.
 
 You can hit the `Return/Enter` or `TAB` key at any time (when there's no input prompt) to enter command mode. There aren't a whole lot of commands yet, but the basic infrastructure works so I'll be adding more as I go along.
 
@@ -68,7 +98,7 @@ Keep in mind that all other console activity will be blocked while in command mo
 
 ## Files
 
-The bot stores data in `%LOCALAPPDATA%\Christian-Stiebeer\Steam-framework` or `~/.SteamBot/`. For now, these are unencrypted, but I'll change that eventually.
+The bot stores data in `%LOCALAPPDATA%\Christian-Stieber\Steam-framework` or `~/.SteamBot/`. For now, these are unencrypted, but I'll change that eventually.
 
 You'll find a logfile there as well -- but I'm not sure whether it's properly flushed on Windows.
 
