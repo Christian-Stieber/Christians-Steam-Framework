@@ -57,12 +57,26 @@ Licenses::LicenseInfo::~LicenseInfo() =default;
 
 /************************************************************************/
 
+const Licenses::LicenseInfo* Licenses::getInfo(PackageID packageId) const
+{
+    auto iterator=licenses.find(packageId);
+    if (iterator!=licenses.end())
+    {
+        return iterator->second.get();
+    }
+    return nullptr;
+}
+
+/************************************************************************/
+
 boost::json::value Licenses::LicenseInfo::toJson() const
 {
     boost::json::object json;
     json["packageId"]=static_cast<std::underlying_type_t<decltype(packageId)>>(packageId);
     SteamBot::enumToJson(json, "licenseType", licenseType);
     SteamBot::enumToJson(json, "paymentMethod", paymentMethod);
+    if (changeNumber!=0) json["change number"]=changeNumber;
+    if (accessToken!=0) json["access token"]=changeNumber;
     return json;
 }
 
@@ -82,17 +96,29 @@ boost::json::value Licenses::toJson() const
 
 void LicenseListModule::handleMessage(std::shared_ptr<const Steam::CMsgClientLicenseListMessageType> message)
 {
+    auto& client=getClient();
+
     auto licenses=std::make_shared<Licenses>();
+
+    auto existingLicenses=client.whiteboard.get<Licenses::Ptr>(nullptr);
 
     for (int index=0; index<message->content.licenses_size(); index++)
     {
         const auto& licenseData=message->content.licenses(index);
         if (licenseData.has_package_id())
         {
+            const auto packageId=static_cast<SteamBot::PackageID>(licenseData.package_id());
+
             auto license=std::make_shared<Licenses::LicenseInfo>();
-            license->packageId=static_cast<SteamBot::PackageID>(licenseData.package_id());
-            if (licenseData.has_license_type()) license->licenseType=static_cast<SteamBot::LicenseType>(licenseData.license_type());
-            if (licenseData.has_payment_method()) license->paymentMethod=static_cast<SteamBot::PaymentMethod>(licenseData.payment_method());
+            {
+                license->packageId=packageId;
+                if (licenseData.has_license_type()) license->licenseType=static_cast<SteamBot::LicenseType>(licenseData.license_type());
+                if (licenseData.has_payment_method()) license->paymentMethod=static_cast<SteamBot::PaymentMethod>(licenseData.payment_method());
+                if (licenseData.has_change_number()) license->changeNumber=licenseData.change_number();
+                if (licenseData.has_access_token()) license->accessToken=licenseData.access_token();
+            }
+
+            client.messageboard.send(license);
 
             bool success=licenses->licenses.try_emplace(license->packageId, std::move(license)).second;
             assert(success);
@@ -102,7 +128,7 @@ void LicenseListModule::handleMessage(std::shared_ptr<const Steam::CMsgClientLic
     BOOST_LOG_TRIVIAL(info) << "license list: " << *licenses;
     SteamBot::UI::OutputText() << "account has " << licenses->licenses.size() << " licenses";
 
-    getClient().whiteboard.set<Licenses::Ptr>(std::move(licenses));
+    client.whiteboard.set<Licenses::Ptr>(std::move(licenses));
 }
 
 /************************************************************************/

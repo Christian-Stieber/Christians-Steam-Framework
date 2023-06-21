@@ -39,6 +39,9 @@ namespace SteamBot
             {
                 // Note: the whiteboard actually holds a Licenses::Ptr!!!!
 
+                // Note: each LicenseInfo is posted to the messagboard as well.
+                // Mostly for internal use, I suppose.
+
                 class Licenses : public Printable
                 {
                 public:
@@ -59,6 +62,9 @@ namespace SteamBot
                         LicenseType licenseType=LicenseType::NoLicense;
                         PaymentMethod paymentMethod=PaymentMethod::None;
 
+                        int32_t changeNumber=0;
+                        uint64_t accessToken=0;
+
                     public:
                         virtual boost::json::value toJson() const override;
                     };
@@ -69,6 +75,8 @@ namespace SteamBot
                 public:
                     Licenses();
                     virtual ~Licenses();
+
+                    const LicenseInfo* getInfo(PackageID) const;
 
                 public:
                     virtual boost::json::value toJson() const override;

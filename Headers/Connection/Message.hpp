@@ -108,6 +108,9 @@ namespace SteamBot
 
                 ClientFSOfflineMessageNotification = 7523,
 
+                ClientPICSProductInfoRequest = 8903,
+                ClientPICSProductInfoResponse = 8904,
+
                 ClientConcurrentSessionsBase = 9600,
                 ClientPlayingSessionState = 9600,
 

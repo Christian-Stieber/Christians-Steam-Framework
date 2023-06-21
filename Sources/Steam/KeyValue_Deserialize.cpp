@@ -19,8 +19,6 @@
 
 #include "Steam/KeyValue.hpp"
 
-#include <span>
-
 #include <boost/log/trivial.hpp>
 #include <boost/endian/buffers.hpp>
 
@@ -28,7 +26,7 @@
 
 typedef Steam::KeyValue::ItemBase ItemBase;
 typedef Steam::KeyValue::Node Node;
-typedef Steam::KeyValue::BinarySerializationType BinarySerializationType;
+typedef Steam::KeyValue::BinaryDeserializationType BinaryDeserializationType;
 typedef Steam::KeyValue::DataType DataType;
 template <typename T> using Value=Steam::KeyValue::Value<T>;
 
@@ -144,7 +142,7 @@ namespace
 
 /************************************************************************/
 
-std::unique_ptr<Node> Steam::KeyValue::deserialize(const BinarySerializationType& bytes_, std::string& name)
+std::unique_ptr<Node> Steam::KeyValue::deserialize(BinaryDeserializationType bytes_, std::string& name)
 {
     std::unique_ptr<Node> result;
     try

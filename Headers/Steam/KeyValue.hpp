@@ -31,6 +31,7 @@
 #include <string>
 #include <memory>
 #include <unordered_map>
+#include <span>
 
 /************************************************************************/
 
@@ -93,8 +94,11 @@ namespace Steam
 
         public:
             Node() =default;
+            Node(Node&&) =default;
             virtual ~Node() =default;
             virtual boost::json::value toJson() const override;
+
+            Node& operator=(Node&&) =default;
 
         public:
             Node* getNode(const std::string&) const;
@@ -129,9 +133,10 @@ namespace Steam
     namespace KeyValue
     {
 		typedef std::vector<std::byte> BinarySerializationType;
-
         BinarySerializationType serialize(const std::string&, const Node&);
-        std::unique_ptr<Node> deserialize(const BinarySerializationType&, std::string&);
+
+        typedef std::span<const std::byte> BinaryDeserializationType;
+        std::unique_ptr<Node> deserialize(BinaryDeserializationType, std::string&);
 
         // Internal use
         enum class DataType : uint8_t {
