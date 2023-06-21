@@ -22,15 +22,9 @@
 /************************************************************************/
 /*
  * SteamKit2/Types/KeyValue.cs
- *
- * I tried to use boost::ptree with my own data type, but that
- * didn't work at all... and it doesn't exactly have any kind
- * of documentation.
- *
- * Note that SteamKit MessageObject only uses binary serialization, so
- * I'm only supporting that. Also, their binary serialization only
- * supports a very limited subset of possible KV trees.
  */
+
+#include "Printable.hpp"
 
 #include <vector>
 #include <cassert>
@@ -42,103 +36,114 @@
 
 namespace Steam
 {
-	namespace KeyValue
-	{
-		class ItemBase;
-		class ValueBase;
-		template <typename T> class Value;
-		class Node;
+    namespace KeyValue
+    {
+        class ItemBase : public SteamBot::Printable
+        {
+        public:
+            typedef std::unique_ptr<ItemBase> Ptr;
 
-		typedef std::vector<std::byte> BinarySerializationType;
+        protected:
+            ItemBase() =default;
 
-		// SteamKit2 can only serialize strings, so I'm putting into a separate template
-		template <typename T> void serializeToBinary(const std::string&, const T&, std::vector<std::byte>&)
-		{
-			assert(false);		// cannot serialize T to binary
-		}
-
-		template <> void serializeToBinary<std::string>(const std::string&, const std::string&, std::vector<std::byte>&);
-
-		typedef Node Tree;
-	}
+        public:
+            virtual ~ItemBase() =default;
+        };
+    }
 }
 
 /************************************************************************/
 
-class Steam::KeyValue::ItemBase
+namespace Steam
 {
-public:
-	typedef std::unique_ptr<ItemBase> Ptr;
+    namespace KeyValue
+    {
+        template <typename T> class Value : public ItemBase
+        {
+        public:
+            const T value;
 
-protected:
-	ItemBase() =default;
+        public:
+            Value(T value_)
+                : value(std::move(value_))
+            {
+            }
 
-public:
-	virtual ~ItemBase() =default;
+            virtual ~Value() =default;
 
-public:
-	virtual void serialize(const std::string&, BinarySerializationType&) const =0;
-};
+        private:
+            virtual boost::json::value toJson() const override
+            {
+                return boost::json::value(value);
+            }
+        };
+    }
+}
 
 /************************************************************************/
 
-class Steam::KeyValue::ValueBase : public Steam::KeyValue::ItemBase
+namespace Steam
 {
-protected:
-	ValueBase() =default;
+    namespace KeyValue
+    {
+        class Node : public ItemBase
+        {
+        public:
+            std::unordered_map<std::string, Ptr> children;
 
-public:
-	virtual ~ValueBase() =default;
+        public:
+            Node() =default;
+            virtual ~Node() =default;
+            virtual boost::json::value toJson() const override;
 
-public:
-	virtual void serialize(const std::string&, BinarySerializationType&) const override =0;
-};
+        public:
+            Node* getNode(const std::string&) const;
+            Node& createNode(std::string);
+
+        public:
+            template <typename T> void setValue(std::string name, T value)
+            {
+                Ptr& child=children[std::move(name)];
+                child.reset(new Value<T>(std::move(value)));
+            }
+
+            template <typename T> const T* getValue(const std::string& name) const
+            {
+                auto iterator=children.find(name);
+                if (iterator!=children.end())
+                {
+                    auto value=dynamic_cast<Value<T>*>(iterator->second.get());
+                    assert(value!=nullptr);
+                    return &value->value;
+                }
+                return nullptr;
+            }
+        };
+    }
+}
 
 /************************************************************************/
 
-template <typename T> class Steam::KeyValue::Value : public Steam::KeyValue::ValueBase
+namespace Steam
 {
-private:
-	T value;
+    namespace KeyValue
+    {
+		typedef std::vector<std::byte> BinarySerializationType;
 
-public:
-	Value(T value_)
-		: value(std::move(value_))
-	{
-	}
+        BinarySerializationType serialize(const std::string&, const Node&);
 
-	virtual ~Value() =default;
-
-public:
-	virtual void serialize(const std::string& name, BinarySerializationType& bytes) const override
-	{
-		serializeToBinary<T>(name, value, bytes);
-	}
-};
-
-/************************************************************************/
-
-class Steam::KeyValue::Node : public Steam::KeyValue::ItemBase
-{
-private:
-	std::unordered_map<std::string, Ptr> children;
-
-public:
-	Node() =default;
-	virtual ~Node() =default;
-
-public:
-	Node& getNode(std::string);
-
-public:
-	template <typename T> void setValue(std::string name, T value)
-	{
-		Ptr& child=children[std::move(name)];
-		child.reset(new Value<T>(std::move(value)));
-	}
-
-public:
-	virtual void serialize(const std::string&, BinarySerializationType&) const override;
-
-	BinarySerializationType serializeToBinary(const std::string&) const;
-};
+        // Internal use
+        enum class DataType : uint8_t {
+            None = 0,
+            String = 1,
+            Int32 = 2,
+            // Float32 = 3,
+            // Pointer = 4,
+            // WideString = 5,
+            // Color = 6,
+            UInt64 = 7,
+            End = 8,
+            Int64 = 10,
+        };
+    }
+}

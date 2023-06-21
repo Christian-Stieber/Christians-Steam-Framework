@@ -103,7 +103,7 @@ namespace Steam
 		class MachineID
 		{
 		private:
-			Steam::KeyValue::Tree tree;
+			Steam::KeyValue::Node tree;
 
 		private:
 			MachineID();

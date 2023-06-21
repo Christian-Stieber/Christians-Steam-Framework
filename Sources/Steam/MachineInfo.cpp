@@ -118,7 +118,7 @@ const Steam::MachineInfo::MachineID& Steam::MachineInfo::MachineID::get()
 const std::vector<std::byte>& Steam::MachineInfo::MachineID::getSerialized()
 {
 	static const std::string name("MessageObject");
-	static const auto serialized=get().tree.serializeToBinary(name);
+	static const auto serialized=Steam::KeyValue::serialize(name, get().tree);
 	return serialized;
 }
 
