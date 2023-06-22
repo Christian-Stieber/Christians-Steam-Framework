@@ -29,5 +29,7 @@ namespace SteamBot
         None=-1
     };
 
-    enum class PackageID : uint32_t { };
+    enum class PackageID : uint32_t {
+        Steam=0		// I think?
+    };
 }

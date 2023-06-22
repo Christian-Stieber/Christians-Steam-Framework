@@ -128,17 +128,19 @@ void LicenseListModule::handleMessage(std::shared_ptr<const Steam::CMsgClientLic
         if (licenseData.has_package_id())
         {
             const auto packageId=static_cast<SteamBot::PackageID>(licenseData.package_id());
-
-            auto license=std::make_shared<Licenses::LicenseInfo>(packageId);
+            if (packageId!=SteamBot::PackageID::Steam)		// we don't need this
             {
-                if (licenseData.has_change_number()) license->changeNumber=licenseData.change_number();
-                if (licenseData.has_license_type()) license->licenseType=static_cast<SteamBot::LicenseType>(licenseData.license_type());
-                if (licenseData.has_payment_method()) license->paymentMethod=static_cast<SteamBot::PaymentMethod>(licenseData.payment_method());
-                if (licenseData.has_access_token()) license->accessToken=licenseData.access_token();
-            }
+                auto license=std::make_shared<Licenses::LicenseInfo>(packageId);
+                {
+                    if (licenseData.has_change_number()) license->changeNumber=licenseData.change_number();
+                    if (licenseData.has_license_type()) license->licenseType=static_cast<SteamBot::LicenseType>(licenseData.license_type());
+                    if (licenseData.has_payment_method()) license->paymentMethod=static_cast<SteamBot::PaymentMethod>(licenseData.payment_method());
+                    if (licenseData.has_access_token()) license->accessToken=licenseData.access_token();
+                }
 
-            bool success=licenses->licenses.try_emplace(license->packageId, std::move(license)).second;
-            assert(success);
+                bool success=licenses->licenses.try_emplace(license->packageId, std::move(license)).second;
+                assert(success);
+            }
         }
     }
 
