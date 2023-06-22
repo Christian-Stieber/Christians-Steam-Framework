@@ -47,23 +47,31 @@ typedef SteamBot::Modules::PackageData::PackageInfoFull PackageInfoFull;
 
 namespace
 {
-    class PackageData
+    class PackageData : public SteamBot::Printable
     {
     private:
         SteamBot::DataFile file{"PackageData", SteamBot::DataFile::FileType::Steam};
 
     public:
-        boost::fibers::mutex mutex;
+        mutable boost::fibers::mutex mutex;
         std::unordered_map<SteamBot::PackageID, std::shared_ptr<const PackageInfo>> data;
+        bool wasUpdated=false;
+
+    private:
+        boost::json::value toJson_noMutex() const;
 
     private:
         PackageData();
-        ~PackageData() =delete;
+        virtual ~PackageData();
+        virtual boost::json::value toJson() const;
 
     public:
         static PackageData& get();
 
         std::vector<std::shared_ptr<const Licenses::LicenseInfo>> flagForUpdates(const Licenses&);
+        void update(const ::CMsgClientPICSProductInfoResponse_PackageInfo&);
+
+        void save();
     };
 };
 
@@ -74,11 +82,11 @@ namespace
     class PackageDataModule : public SteamBot::Client::Module
     {
     private:
-        SteamBot::Messageboard::WaiterType<Licenses> licensesWaiter;
+        SteamBot::Whiteboard::WaiterType<Licenses::Ptr> licensesWaiter;
 
     public:
         void handle(std::shared_ptr<const Steam::CMsgClientPICSProductInfoResponseMessageType>);
-        void handle(std::shared_ptr<const Licenses>);
+        void handle(const Licenses&);
 
     public:
         PackageDataModule();
@@ -96,6 +104,13 @@ PackageData::PackageData()
 {
     file.examine([this](const boost::json::value& json) {
     });
+}
+
+/************************************************************************/
+
+PackageData::~PackageData()
+{
+    assert(false);
 }
 
 /************************************************************************/
@@ -122,10 +137,35 @@ boost::json::value PackageInfoFull::toJson() const
 
 /************************************************************************/
 
+boost::json::value PackageData::toJson_noMutex() const
+{
+    boost::json::object json;
+    for (const auto& item : data)
+    {
+        boost::json::value child;
+        if (item.second)
+        {
+            child=item.second->toJson();
+        }
+        json[std::to_string(static_cast<std::underlying_type_t<decltype(item.first)>>(item.first))]=std::move(child);
+    }
+    return json;
+}
+
+/************************************************************************/
+
+boost::json::value PackageData::toJson() const
+{
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    return toJson_noMutex();
+}
+
+/************************************************************************/
+
 PackageDataModule::PackageDataModule()
 {
     auto& client=getClient();
-    licensesWaiter=client.messageboard.createWaiter<Licenses>(*waiter);
+    licensesWaiter=client.whiteboard.createWaiter<Licenses::Ptr>(*waiter);
 }
 
 /************************************************************************/
@@ -147,69 +187,57 @@ std::vector<std::shared_ptr<const Licenses::LicenseInfo>> PackageData::flagForUp
 {
     std::vector<std::shared_ptr<const Licenses::LicenseInfo>> updateList;
 
-    std::lock_guard<decltype(mutex)> lock(mutex);
-    for (const auto& item : licenses.licenses)
     {
-        const auto& license=*(item.second);
-
-        auto& packageInfo=data[license.packageId];
-        if (packageInfo)
+        std::lock_guard<decltype(mutex)> lock(mutex);
+        for (const auto& item : licenses.licenses)
         {
-            if (static_cast<const LicenseIdentifier&>(license)!=static_cast<const LicenseIdentifier&>(*packageInfo))
+            const auto& license=*(item.second);
+
+            auto& packageInfo=data[license.packageId];
+            if (packageInfo)
             {
-                packageInfo.reset();
+                if (static_cast<const LicenseIdentifier&>(license)!=static_cast<const LicenseIdentifier&>(*packageInfo))
+                {
+                    packageInfo.reset();
+                }
+            }
+            if (!packageInfo)
+            {
+                packageInfo=std::make_shared<PackageInfo>(license);
+                updateList.emplace_back(item.second);
             }
         }
-        if (!packageInfo)
+    }
+
+    {
+        boost::json::array json;
+        for (const auto& licenseInfo : updateList)
         {
-            packageInfo=std::make_shared<PackageInfo>(license);
-            updateList.emplace_back(item.second);
+            json.emplace_back(licenseInfo->toJson());
         }
+        BOOST_LOG_TRIVIAL(info) << "packageData needs to be updated for: " << json;
     }
 
     return updateList;
 }
 
 /************************************************************************/
+/*
+ * Update our database with the new data
+ */
 
-void PackageDataModule::handle(std::shared_ptr<const Licenses> licenses)
+void PackageData::update(const ::CMsgClientPICSProductInfoResponse_PackageInfo& package)
 {
-    auto updateList=PackageData::get().flagForUpdates(*licenses);
-
-
-
-
-
-
-#if 0
-    static bool done=false;
-
-    if (!done && license->packageId==static_cast<SteamBot::PackageID>(130344))
+    if (package.has_packageid())
     {
-        done=true;
-        auto message=std::make_unique<Steam::CMsgClientPICSProductInfoRequestMessageType>();
-        auto& info=*(message->content.add_packages());
-        info.set_packageid(static_cast<std::underlying_type_t<decltype(license->packageId)>>(license->packageId));
-        info.set_access_token(license->accessToken);
-        SteamBot::Modules::Connection::Messageboard::SendSteamMessage::send(std::move(message));
-    }
-#endif
-}
+        auto packageId=static_cast<SteamBot::PackageID>(package.packageid());
+        auto packageInfo=std::make_shared<PackageInfoFull>(packageId);
 
-/************************************************************************/
-
-void PackageDataModule::handle(std::shared_ptr<const Steam::CMsgClientPICSProductInfoResponseMessageType> message)
-{
-    for (int i=0; i<message->content.packages_size(); i++)
-    {
-#if 0
-        auto packageData=std::make_unique<PackageInfo::Data>();
-
-        const auto& package=message->content.packages(i);
         if (package.has_change_number())
         {
-            packageData->changeNumber=package.change_number();
+            packageInfo->changeNumber=package.change_number();
         }
+
         if (package.has_buffer())
         {
             Steam::KeyValue::BinaryDeserializationType bytes(static_cast<const std::byte*>(static_cast<const void*>(package.buffer().data())), package.buffer().size());
@@ -224,23 +252,65 @@ void PackageDataModule::handle(std::shared_ptr<const Steam::CMsgClientPICSProduc
                 std::string name;
                 if (auto tree=Steam::KeyValue::deserialize(bytes, name))
                 {
-                    packageData->data=std::move(*(tree.release()));
-
-                    // This is an example kvTree (named with the packageId):
-                    // {"appitems": {},
-                    //  "depotids": { "1":311732, "0":311731 },
-                    //  "appids": { "0":311730 },
-                    //  "extended": { "allowcrossregiontradingandgifting":"false" },
-                    //  "status": 0,
-                    //  "licensetype": 1,
-                    //  "billingtype": 12,
-                    //  "packageid": 130344
-                    // }
+                    packageInfo->data=std::move(*(tree.release()));
                 }
             }
         }
-#endif
+
+        std::lock_guard<decltype(mutex)> lock(mutex);
+        data[packageId]=std::move(packageInfo);
+        wasUpdated=true;
     }
+}
+
+/************************************************************************/
+/*
+ * ToDo: we should offload this to a thread, and use a timer
+ * to only save if there haven't been updates for some time.
+ *
+ * But, for now, this works too. And it's much simpler.
+ */
+
+void PackageData::save()
+{
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    if (wasUpdated)
+    {
+        file.update([this](boost::json::value& fileData) {
+            fileData=toJson_noMutex();
+        });
+        wasUpdated=false;
+    }
+}
+
+/************************************************************************/
+
+void PackageDataModule::handle(const Licenses& licenses)
+{
+    auto updateList=PackageData::get().flagForUpdates(licenses);
+
+    if (!updateList.empty())
+    {
+        auto message=std::make_unique<Steam::CMsgClientPICSProductInfoRequestMessageType>();
+        for (const auto& licenseInfo : updateList)
+        {
+            auto& package=*(message->content.add_packages());
+            package.set_packageid(static_cast<std::underlying_type_t<decltype(licenseInfo->packageId)>>(licenseInfo->packageId));
+            package.set_access_token(licenseInfo->accessToken);
+        }
+        SteamBot::Modules::Connection::Messageboard::SendSteamMessage::send(std::move(message));
+    }
+}
+
+/************************************************************************/
+
+void PackageDataModule::handle(std::shared_ptr<const Steam::CMsgClientPICSProductInfoResponseMessageType> message)
+{
+    for (int i=0; i<message->content.packages_size(); i++)
+    {
+        PackageData::get().update(message->content.packages(i));
+    }
+    PackageData::get().save();
 }
 
 /************************************************************************/
@@ -252,7 +322,13 @@ void PackageDataModule::run(SteamBot::Client& client)
     while (true)
     {
         waiter->wait();
-        licensesWaiter->handle(this);
+        if (licensesWaiter->isWoken())
+        {
+            if (auto licenses=licensesWaiter->has())
+            {
+                handle(**licenses);
+            }
+        }
         cmsgClientPICSProductInfoResponse->handle(this);
     }
 }

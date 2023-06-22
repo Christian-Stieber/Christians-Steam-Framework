@@ -118,7 +118,12 @@ namespace SteamBot
         template <typename T> T get(T) const requires (std::is_scalar_v<T>);
 
     public:
-        template <typename T> std::shared_ptr<Waiter<T>> createWaiter(SteamBot::Waiter&);
+        template <typename T> using WaiterType=std::shared_ptr<Waiter<T>>;
+
+        template <typename T> WaiterType<T> createWaiter(SteamBot::Waiter& waiter)
+        {
+            return waiter.createWaiter<SteamBot::Whiteboard::Waiter<T>>(*this);
+        }
     };
 }
 
@@ -204,13 +209,6 @@ protected:
 public:
     virtual ~ItemBase() =default;
 };
-
-/************************************************************************/
-
-template <typename T> std::shared_ptr<SteamBot::Whiteboard::Waiter<T>> SteamBot::Whiteboard::createWaiter(SteamBot::Waiter& waiter)
-{
-    return waiter.createWaiter<SteamBot::Whiteboard::Waiter<T>>(*this);
-}
 
 /************************************************************************/
 
