@@ -29,13 +29,16 @@
 #include "Client/Module.hpp"
 #include "Modules/Connection.hpp"
 #include "Modules/PackageData.hpp"
+#include "Client/DataFile.hpp"
 
 #include "Steam/ProtoBuf/steammessages_clientserver_appinfo.hpp"
 
 /************************************************************************/
 
-typedef SteamBot::Modules::LicenseList::Whiteboard::Licenses::LicenseInfo LicenseInfo;
+typedef SteamBot::Modules::LicenseList::Whiteboard::LicenseIdentifier LicenseIdentifier;
+typedef SteamBot::Modules::LicenseList::Whiteboard::Licenses Licenses;
 typedef SteamBot::Modules::PackageData::PackageInfo PackageInfo;
+typedef SteamBot::Modules::PackageData::PackageInfoFull PackageInfoFull;
 
 /************************************************************************/
 /*
@@ -46,16 +49,21 @@ namespace
 {
     class PackageData
     {
+    private:
+        SteamBot::DataFile file{"PackageData", SteamBot::DataFile::FileType::Steam};
+
     public:
         boost::fibers::mutex mutex;
-        std::unordered_map<SteamBot::PackageID, std::shared_ptr<PackageInfo>> data;
+        std::unordered_map<SteamBot::PackageID, std::shared_ptr<const PackageInfo>> data;
 
     private:
-        PackageData() =default;
-        ~PackageData() =default;
+        PackageData();
+        ~PackageData() =delete;
 
     public:
         static PackageData& get();
+
+        std::vector<std::shared_ptr<const Licenses::LicenseInfo>> flagForUpdates(const Licenses&);
     };
 };
 
@@ -65,18 +73,59 @@ namespace
 {
     class PackageDataModule : public SteamBot::Client::Module
     {
-    public:
-        void handle(std::shared_ptr<const Steam::CMsgClientPICSProductInfoResponseMessageType>);
-        void handle(std::shared_ptr<const LicenseInfo>);
+    private:
+        SteamBot::Messageboard::WaiterType<Licenses> licensesWaiter;
 
     public:
-        PackageDataModule() =default;
+        void handle(std::shared_ptr<const Steam::CMsgClientPICSProductInfoResponseMessageType>);
+        void handle(std::shared_ptr<const Licenses>);
+
+    public:
+        PackageDataModule();
         virtual ~PackageDataModule() =default;
 
         virtual void run(SteamBot::Client&) override;
     };
 
     PackageDataModule::Init<PackageDataModule> init;
+}
+
+/************************************************************************/
+
+PackageData::PackageData()
+{
+    file.examine([this](const boost::json::value& json) {
+    });
+}
+
+/************************************************************************/
+
+PackageInfo::~PackageInfo() =default;
+PackageInfoFull::~PackageInfoFull() =default;
+
+/************************************************************************/
+
+PackageInfo::PackageInfo(const LicenseIdentifier& other)
+    : LicenseIdentifier(other)
+{
+}
+
+/************************************************************************/
+
+boost::json::value PackageInfoFull::toJson() const
+{
+    auto parent=PackageInfo::toJson();
+    auto& json=parent.as_object();
+    json["data"]=data.toJson();
+    return json;
+}
+
+/************************************************************************/
+
+PackageDataModule::PackageDataModule()
+{
+    auto& client=getClient();
+    licensesWaiter=client.messageboard.createWaiter<Licenses>(*waiter);
 }
 
 /************************************************************************/
@@ -88,9 +137,51 @@ PackageData& PackageData::get()
 }
 
 /************************************************************************/
+/*
+ * Go through the list of licenses, find out which ones have changed
+ * (including the ones we don't have data for yet). Mark them as
+ * updating in the database, and return a list of them.
+ */
 
-void PackageDataModule::handle(std::shared_ptr<const LicenseInfo> license)
+std::vector<std::shared_ptr<const Licenses::LicenseInfo>> PackageData::flagForUpdates(const Licenses& licenses)
 {
+    std::vector<std::shared_ptr<const Licenses::LicenseInfo>> updateList;
+
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    for (const auto& item : licenses.licenses)
+    {
+        const auto& license=*(item.second);
+
+        auto& packageInfo=data[license.packageId];
+        if (packageInfo)
+        {
+            if (static_cast<const LicenseIdentifier&>(license)!=static_cast<const LicenseIdentifier&>(*packageInfo))
+            {
+                packageInfo.reset();
+            }
+        }
+        if (!packageInfo)
+        {
+            packageInfo=std::make_shared<PackageInfo>(license);
+            updateList.emplace_back(item.second);
+        }
+    }
+
+    return updateList;
+}
+
+/************************************************************************/
+
+void PackageDataModule::handle(std::shared_ptr<const Licenses> licenses)
+{
+    auto updateList=PackageData::get().flagForUpdates(*licenses);
+
+
+
+
+
+
+#if 0
     static bool done=false;
 
     if (!done && license->packageId==static_cast<SteamBot::PackageID>(130344))
@@ -102,6 +193,7 @@ void PackageDataModule::handle(std::shared_ptr<const LicenseInfo> license)
         info.set_access_token(license->accessToken);
         SteamBot::Modules::Connection::Messageboard::SendSteamMessage::send(std::move(message));
     }
+#endif
 }
 
 /************************************************************************/
@@ -110,6 +202,7 @@ void PackageDataModule::handle(std::shared_ptr<const Steam::CMsgClientPICSProduc
 {
     for (int i=0; i<message->content.packages_size(); i++)
     {
+#if 0
         auto packageData=std::make_unique<PackageInfo::Data>();
 
         const auto& package=message->content.packages(i);
@@ -146,6 +239,7 @@ void PackageDataModule::handle(std::shared_ptr<const Steam::CMsgClientPICSProduc
                 }
             }
         }
+#endif
     }
 }
 
@@ -153,13 +247,12 @@ void PackageDataModule::handle(std::shared_ptr<const Steam::CMsgClientPICSProduc
 
 void PackageDataModule::run(SteamBot::Client& client)
 {
-    auto license=client.messageboard.createWaiter<LicenseInfo>(*waiter);
     auto cmsgClientPICSProductInfoResponse=client.messageboard.createWaiter<Steam::CMsgClientPICSProductInfoResponseMessageType>(*waiter);
 
     while (true)
     {
         waiter->wait();
-        license->handle(this);
+        licensesWaiter->handle(this);
         cmsgClientPICSProductInfoResponse->handle(this);
     }
 }

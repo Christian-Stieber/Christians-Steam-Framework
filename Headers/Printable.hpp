@@ -41,6 +41,8 @@ namespace SteamBot
     public:
         virtual ~Printable() =default;
         virtual boost::json::value toJson() const =0;
+
+        constexpr bool operator==(const Printable&) const =default;
     };
 
     inline std::ostream& operator<<(std::ostream& stream, const Printable& printable)

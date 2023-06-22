@@ -26,7 +26,29 @@
 
 /************************************************************************/
 
+typedef SteamBot::Modules::LicenseList::Whiteboard::LicenseIdentifier LicenseIdentifier;
 typedef SteamBot::Modules::LicenseList::Whiteboard::Licenses Licenses;
+
+/************************************************************************/
+
+LicenseIdentifier::LicenseIdentifier(PackageID packageId_)
+    : packageId(packageId_)
+{
+}
+
+LicenseIdentifier::LicenseIdentifier(const LicenseIdentifier&) =default;
+LicenseIdentifier::~LicenseIdentifier() =default;
+LicenseIdentifier& LicenseIdentifier::operator=(const LicenseIdentifier&) =default;
+
+/************************************************************************/
+
+boost::json::value LicenseIdentifier::toJson() const
+{
+    boost::json::object json;
+    json["packageId"]=static_cast<std::underlying_type_t<decltype(packageId)>>(packageId);
+    json["changeNumber"]=changeNumber;
+    return json;
+}
 
 /************************************************************************/
 
@@ -52,7 +74,6 @@ namespace
 Licenses::Licenses() =default;
 Licenses::~Licenses() =default;
 
-Licenses::LicenseInfo::LicenseInfo() =default;
 Licenses::LicenseInfo::~LicenseInfo() =default;
 
 /************************************************************************/
@@ -71,11 +92,10 @@ const Licenses::LicenseInfo* Licenses::getInfo(PackageID packageId) const
 
 boost::json::value Licenses::LicenseInfo::toJson() const
 {
-    boost::json::object json;
-    json["packageId"]=static_cast<std::underlying_type_t<decltype(packageId)>>(packageId);
+    auto parent=LicenseIdentifier::toJson();
+    auto& json=parent.as_object();
     SteamBot::enumToJson(json, "licenseType", licenseType);
     SteamBot::enumToJson(json, "paymentMethod", paymentMethod);
-    if (changeNumber!=0) json["change number"]=changeNumber;
     if (accessToken!=0) json["access token"]=changeNumber;
     return json;
 }
@@ -109,16 +129,13 @@ void LicenseListModule::handleMessage(std::shared_ptr<const Steam::CMsgClientLic
         {
             const auto packageId=static_cast<SteamBot::PackageID>(licenseData.package_id());
 
-            auto license=std::make_shared<Licenses::LicenseInfo>();
+            auto license=std::make_shared<Licenses::LicenseInfo>(packageId);
             {
-                license->packageId=packageId;
+                if (licenseData.has_change_number()) license->changeNumber=licenseData.change_number();
                 if (licenseData.has_license_type()) license->licenseType=static_cast<SteamBot::LicenseType>(licenseData.license_type());
                 if (licenseData.has_payment_method()) license->paymentMethod=static_cast<SteamBot::PaymentMethod>(licenseData.payment_method());
-                if (licenseData.has_change_number()) license->changeNumber=licenseData.change_number();
                 if (licenseData.has_access_token()) license->accessToken=licenseData.access_token();
             }
-
-            client.messageboard.send(license);
 
             bool success=licenses->licenses.try_emplace(license->packageId, std::move(license)).second;
             assert(success);

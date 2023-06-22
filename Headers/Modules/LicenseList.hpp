@@ -37,11 +37,24 @@ namespace SteamBot
         {
             namespace Whiteboard
             {
+                class LicenseIdentifier : public Printable
+                {
+                public:
+                    PackageID packageId;
+                    int32_t changeNumber=0;
+
+                public:
+                    LicenseIdentifier(PackageID);
+                    LicenseIdentifier(const LicenseIdentifier&);
+
+                    LicenseIdentifier& operator=(const LicenseIdentifier&);
+                    constexpr bool operator==(const LicenseIdentifier&) const =default;
+
+                    virtual ~LicenseIdentifier();
+                    virtual boost::json::value toJson() const override;
+                };
+
                 // Note: the whiteboard actually holds a Licenses::Ptr!!!!
-
-                // Note: each LicenseInfo is posted to the messagboard as well.
-                // Mostly for internal use, I suppose.
-
                 class Licenses : public Printable
                 {
                 public:
@@ -51,19 +64,16 @@ namespace SteamBot
                     // Note: the server sends more information, so we can add
                     // it if needed. I don't even need the items below, just
                     // added them to have something.
-                    class LicenseInfo : public Printable
+                    class LicenseInfo : public LicenseIdentifier
                     {
                     public:
-                        LicenseInfo();
+                        using LicenseIdentifier::LicenseIdentifier;
                         virtual ~LicenseInfo();
 
                     public:
-                        PackageID packageId;
+                        uint64_t accessToken=0;
                         LicenseType licenseType=LicenseType::NoLicense;
                         PaymentMethod paymentMethod=PaymentMethod::None;
-
-                        int32_t changeNumber=0;
-                        uint64_t accessToken=0;
 
                     public:
                         virtual boost::json::value toJson() const override;

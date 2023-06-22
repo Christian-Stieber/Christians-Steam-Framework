@@ -36,23 +36,26 @@ namespace SteamBot
     {
         namespace PackageData
         {
-            class PackageInfo
+            class PackageInfo : public SteamBot::Modules::LicenseList::Whiteboard::LicenseIdentifier
             {
             public:
-                std::shared_ptr<SteamBot::Modules::LicenseList::Whiteboard::Licenses::LicenseInfo> license;
-
-            public:
-                class Data
-                {
-                public:
-                    uint32_t changeNumber=0;
-                    Steam::KeyValue::Node data;
-                };
-
-                std::unique_ptr<const Data> data;
+                using LicenseIdentifier::LicenseIdentifier;
+                PackageInfo(const LicenseIdentifier&);
+                virtual ~PackageInfo();
             };
 
-            std::shared_ptr<const PackageInfo> waitPackageInfo(PackageID);
+            class PackageInfoFull : public PackageInfo
+            {
+            public:
+                Steam::KeyValue::Node data;
+
+            public:
+                using PackageInfo::PackageInfo;
+                virtual ~PackageInfoFull();
+                virtual boost::json::value toJson() const override;
+            };
+
+            std::shared_ptr<const PackageInfoFull> waitPackageInfo(const SteamBot::Modules::LicenseList::Whiteboard::LicenseIdentifier&);
         }
     }
 }
