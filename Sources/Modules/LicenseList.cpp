@@ -42,12 +42,31 @@ LicenseIdentifier& LicenseIdentifier::operator=(const LicenseIdentifier&) =defau
 
 /************************************************************************/
 
+static const char packageId_key[]="packageId";
+static const char changeNumber_key[]="changeNumber";
+
+/************************************************************************/
+/*
+ * Make sure this matches the json-based constructtor
+ */
+
 boost::json::value LicenseIdentifier::toJson() const
 {
     boost::json::object json;
-    json["packageId"]=static_cast<std::underlying_type_t<decltype(packageId)>>(packageId);
-    json["changeNumber"]=changeNumber;
+    json[packageId_key]=static_cast<std::underlying_type_t<decltype(packageId)>>(packageId);
+    json[changeNumber_key]=changeNumber;
     return json;
+}
+
+/************************************************************************/
+/*
+ * Make sure this matches the toJson()
+ */
+
+LicenseIdentifier::LicenseIdentifier(const boost::json::value& json)
+{
+    packageId=static_cast<SteamBot::PackageID>(json.at(packageId_key).to_number<std::underlying_type_t<SteamBot::PackageID>>());
+    changeNumber=json.at(changeNumber_key).to_number<decltype(changeNumber)>();
 }
 
 /************************************************************************/

@@ -46,6 +46,7 @@ namespace SteamBot
                 public:
                     LicenseIdentifier(PackageID);
                     LicenseIdentifier(const LicenseIdentifier&);
+                    LicenseIdentifier(const boost::json::value&);
 
                     LicenseIdentifier& operator=(const LicenseIdentifier&);
                     constexpr bool operator==(const LicenseIdentifier&) const =default;

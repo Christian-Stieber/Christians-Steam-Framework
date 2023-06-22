@@ -20,7 +20,6 @@
 #pragma once
 
 #include "Modules/LicenseList.hpp"
-#include "Steam/KeyValue.hpp"
 
 /************************************************************************/
 /*
@@ -47,10 +46,11 @@ namespace SteamBot
             class PackageInfoFull : public PackageInfo
             {
             public:
-                Steam::KeyValue::Node data;
+                boost::json::object data;	// this is the KeyValue data from "buffer"
 
             public:
                 using PackageInfo::PackageInfo;
+                PackageInfoFull(const boost::json::value&);
                 virtual ~PackageInfoFull();
                 virtual boost::json::value toJson() const override;
             };

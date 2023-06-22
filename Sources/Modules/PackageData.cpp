@@ -30,6 +30,7 @@
 #include "Modules/Connection.hpp"
 #include "Modules/PackageData.hpp"
 #include "Client/DataFile.hpp"
+#include "Steam/KeyValue.hpp"
 
 #include "Steam/ProtoBuf/steammessages_clientserver_appinfo.hpp"
 
@@ -103,7 +104,13 @@ namespace
 PackageData::PackageData()
 {
     file.examine([this](const boost::json::value& json) {
+        for (const auto& item : json.as_object())
+        {
+            auto packageInfo=std::make_shared<PackageInfoFull>(item.value());
+            data[packageInfo->packageId]=std::move(packageInfo);
+        }
     });
+    BOOST_LOG_TRIVIAL(debug) << "loaded packageData from file: " << *this;
 }
 
 /************************************************************************/
@@ -127,11 +134,29 @@ PackageInfo::PackageInfo(const LicenseIdentifier& other)
 
 /************************************************************************/
 
+static const char data_key[]="data";
+
+/************************************************************************/
+/*
+ * Make sure this matches the toJson()
+ */
+
+PackageInfoFull::PackageInfoFull(const boost::json::value& json)
+    : PackageInfo(json)
+{
+    data=json.at(data_key).as_object();
+}
+
+/************************************************************************/
+/*
+ * Make sure this matches the json-based constructor
+ */
+
 boost::json::value PackageInfoFull::toJson() const
 {
     auto parent=PackageInfo::toJson();
     auto& json=parent.as_object();
-    json["data"]=data.toJson();
+    json[data_key]=data;
     return json;
 }
 
@@ -164,6 +189,11 @@ boost::json::value PackageData::toJson() const
 
 PackageDataModule::PackageDataModule()
 {
+    // This causes the instance to be created, and the data to be
+    // loaded.  So, any major problems are happening at startup, not
+    // at some random later occasion.
+    PackageData::get();
+
     auto& client=getClient();
     licensesWaiter=client.whiteboard.createWaiter<Licenses::Ptr>(*waiter);
 }
@@ -252,7 +282,7 @@ void PackageData::update(const ::CMsgClientPICSProductInfoResponse_PackageInfo& 
                 std::string name;
                 if (auto tree=Steam::KeyValue::deserialize(bytes, name))
                 {
-                    packageInfo->data=std::move(*(tree.release()));
+                    packageInfo->data=tree->toJson().as_object();
                 }
             }
         }
