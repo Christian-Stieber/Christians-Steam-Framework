@@ -25,7 +25,9 @@
 
 /************************************************************************/
 /*
- * This maintains the data file for one account.
+ * This maintains datafiles. While initially intended to hold
+ * the data for one account (like login-keys), I don't see
+ * why this couldn't be used for other stuff.
  *
  * You can use the examine() call to run a function that gets a
  * const reference to the json; your result will be returned
@@ -44,7 +46,12 @@ namespace SteamBot
 {
 	class DataFile
 	{
+    public:
+        enum class FileType { Account, Steam };
+
 	private:
+        const FileType fileType;
+
 		const std::filesystem::path filename;
 		const std::filesystem::path tempFilename;
 
@@ -53,7 +60,7 @@ namespace SteamBot
 		bool invalid=false;
 
 	public:
-		DataFile(const std::string_view);
+		DataFile(std::string_view, FileType);
 		~DataFile();
 
 	private:

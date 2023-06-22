@@ -28,18 +28,32 @@
 /*
  * Note that Steam account names can only have a-z, A-Z, 0-9 or _ as
  * characters, so we can use them as filenames.
+ *
+ * I'm just applying the same rule to the other filetypes as well.
  */
 
-static std::filesystem::path makeFilename(const std::string_view& accountName)
+static std::filesystem::path makeFilename(const std::string_view& name, SteamBot::DataFile::FileType fileType)
 {
-	for (const char c : accountName)
+	for (const char c : name)
 	{
 		assert((c>='a' && c<='z') || (c>='A' && c<='Z') || (c>='0' && c<='9') || c=='_');
 	}
 
 	std::string result;
-	result+="Data-";
-	result+=accountName;
+    switch(fileType)
+    {
+    case SteamBot::DataFile::FileType::Account:
+        result+="Account-";
+        break;
+
+    case SteamBot::DataFile::FileType::Steam:
+        result+="Steam-";
+        break;
+
+    default:
+        assert(false);
+    }
+	result+=name;
 	result+=".json";
 	return std::filesystem::absolute(result);
 }
@@ -115,9 +129,13 @@ void SteamBot::DataFile::saveFile() const
 }
 
 /************************************************************************/
+/*
+ * "name" needs to be unique within its FileType.
+ */
 
-SteamBot::DataFile::DataFile(const std::string_view accountName)
-	: filename(makeFilename(accountName)),
+SteamBot::DataFile::DataFile(std::string_view name, SteamBot::DataFile::FileType fileType_)
+	: fileType(fileType_),
+      filename(makeFilename(name, fileType)),
 	  tempFilename(makeTempFilename(filename))
 {
 	loadFile();
