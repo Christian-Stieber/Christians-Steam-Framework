@@ -31,6 +31,7 @@
 #include "Modules/PackageData.hpp"
 #include "Client/DataFile.hpp"
 #include "Steam/KeyValue.hpp"
+#include "Exceptions.hpp"
 
 #include "Steam/ProtoBuf/steammessages_clientserver_appinfo.hpp"
 
@@ -42,9 +43,6 @@ typedef SteamBot::Modules::PackageData::PackageInfo PackageInfo;
 typedef SteamBot::Modules::PackageData::PackageInfoFull PackageInfoFull;
 
 /************************************************************************/
-/*
- * ToDo: this should be stored between runs
- */
 
 namespace
 {
@@ -53,13 +51,16 @@ namespace
     private:
         SteamBot::DataFile file{"PackageData", SteamBot::DataFile::FileType::Steam};
 
-    public:
+    private:
         mutable boost::fibers::mutex mutex;
         std::unordered_map<SteamBot::PackageID, std::shared_ptr<const PackageInfo>> data;
         bool wasUpdated=false;
 
+        boost::fibers::condition_variable updateCondition;
+
     private:
         boost::json::value toJson_noMutex() const;
+        std::shared_ptr<const PackageInfoFull> lookup_noLock(const LicenseIdentifier&) const;
 
     private:
         PackageData();
@@ -73,6 +74,8 @@ namespace
         void update(const ::CMsgClientPICSProductInfoResponse_PackageInfo&);
 
         void save();
+
+        std::shared_ptr<const PackageInfoFull> waitPackageInfo(const LicenseIdentifier&);
     };
 };
 
@@ -287,9 +290,12 @@ void PackageData::update(const ::CMsgClientPICSProductInfoResponse_PackageInfo& 
             }
         }
 
-        std::lock_guard<decltype(mutex)> lock(mutex);
-        data[packageId]=std::move(packageInfo);
-        wasUpdated=true;
+        {
+            std::lock_guard<decltype(mutex)> lock(mutex);
+            data[packageId]=std::move(packageInfo);
+            wasUpdated=true;
+        }
+        updateCondition.notify_all();
     }
 }
 
@@ -361,4 +367,95 @@ void PackageDataModule::run(SteamBot::Client& client)
         }
         cmsgClientPICSProductInfoResponse->handle(this);
     }
+}
+
+/************************************************************************/
+/*
+ * Only finds a package if our changeNumber no less than what
+ * the license has. It will find a newer one, as an update
+ * would never happen.
+ *
+ * Verify: Yes, I'm assuming they increase.
+ */
+
+std::shared_ptr<const PackageInfoFull> PackageData::lookup_noLock(const LicenseIdentifier& license) const
+{
+    std::shared_ptr<const PackageInfoFull> result;
+    auto iterator=data.find(license.packageId);
+    if (iterator!=data.end())
+    {
+        if (auto info=std::dynamic_pointer_cast<const PackageInfoFull>(iterator->second))
+        {
+            if (info->changeNumber>=license.changeNumber)
+            {
+                result=std::move(info);
+            }
+        }
+    }
+    return result;
+}
+
+/************************************************************************/
+/*
+ * The "updateCondition" is notified whenever a PackageInfoFull is
+ * stored into the data. So, this is just an elaborate (cancellable)
+ * loop to keep checking until the required data is available.
+ */
+
+std::shared_ptr<const PackageInfoFull> PackageData::waitPackageInfo(const LicenseIdentifier& license)
+
+{
+    class Waiter
+    {
+    private:
+        PackageData& data;
+        std::shared_ptr<const PackageInfoFull> result;
+        bool cancelled=false;
+
+    public:
+        Waiter(PackageData& data_)
+            : data(data_)
+        {
+        }
+
+        void cancel()
+        {
+            cancelled=true;
+            data.updateCondition.notify_all();
+        }
+
+        decltype(result) wait(const LicenseIdentifier& license)
+        {
+            std::unique_lock<decltype(mutex)> lock(data.mutex);
+            data.updateCondition.wait(lock, [this, &license]() -> bool {
+                if (cancelled)
+                {
+                    throw SteamBot::OperationCancelledException();
+                }
+                result=data.lookup_noLock(license);
+                return static_cast<bool>(result);
+            });
+            return std::move(result);
+        }
+    } waiter(*this);
+
+    auto cancellation=SteamBot::Client::getClient().cancel.registerObject(waiter);
+    return waiter.wait(license);
+}
+
+/************************************************************************/
+/*
+ * This is the API funtion, for now(?)
+ *
+ * It looks up the package data for the indicated license.
+ * If necessary, it will wait data to be updated.
+ *
+ * ToDo: yes, this will wait forever if the update doesn't
+ * happen. I don't currently know whether Steam might
+ * not return all requested package data...
+ */
+
+std::shared_ptr<const PackageInfoFull> SteamBot::Modules::PackageData::waitPackageInfo(const LicenseIdentifier& license)
+{
+    return ::PackageData::get().waitPackageInfo(license);
 }
