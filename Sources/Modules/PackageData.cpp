@@ -31,7 +31,7 @@
 #include "Modules/PackageData.hpp"
 #include "Client/DataFile.hpp"
 #include "Steam/KeyValue.hpp"
-#include "Exceptions.hpp"
+#include "JobID.hpp"
 
 #include "Steam/ProtoBuf/steammessages_clientserver_appinfo.hpp"
 
@@ -40,7 +40,6 @@
 typedef SteamBot::Modules::LicenseList::Whiteboard::LicenseIdentifier LicenseIdentifier;
 typedef SteamBot::Modules::LicenseList::Whiteboard::Licenses Licenses;
 typedef SteamBot::Modules::PackageData::PackageInfo PackageInfo;
-typedef SteamBot::Modules::PackageData::PackageInfoFull PackageInfoFull;
 
 /************************************************************************/
 
@@ -56,11 +55,10 @@ namespace
         std::unordered_map<SteamBot::PackageID, std::shared_ptr<const PackageInfo>> data;
         bool wasUpdated=false;
 
-        boost::fibers::condition_variable updateCondition;
+        std::unordered_map<SteamBot::JobID, Licenses::Ptr> updates;
 
     private:
         boost::json::value toJson_noMutex() const;
-        std::shared_ptr<const PackageInfoFull> lookup_noLock(const LicenseIdentifier&) const;
 
     private:
         PackageData();
@@ -70,12 +68,12 @@ namespace
     public:
         static PackageData& get();
 
-        std::vector<std::shared_ptr<const Licenses::LicenseInfo>> flagForUpdates(const Licenses&);
+        std::vector<std::shared_ptr<const Licenses::LicenseInfo>> checkForUpdates(const Licenses&) const;
         void update(const ::CMsgClientPICSProductInfoResponse_PackageInfo&);
 
-        void save();
+        std::shared_ptr<const PackageInfo> lookup(const LicenseIdentifier&) const;
 
-        std::shared_ptr<const PackageInfoFull> waitPackageInfo(const LicenseIdentifier&);
+        void save();
     };
 };
 
@@ -88,9 +86,12 @@ namespace
     private:
         SteamBot::Whiteboard::WaiterType<Licenses::Ptr> licensesWaiter;
 
+        SteamBot::JobID latestJobId{0};
+        Licenses::Ptr latestLicenses;
+
     public:
-        void handle(std::shared_ptr<const Steam::CMsgClientPICSProductInfoResponseMessageType>);
-        void handle(const Licenses&);
+        void handle(std::shared_ptr<const Steam::CMsgClientPICSProductInfoResponseMessageType>) const;
+        void handle(Licenses::Ptr);
 
     public:
         PackageDataModule();
@@ -109,7 +110,7 @@ PackageData::PackageData()
     file.examine([this](const boost::json::value& json) {
         for (const auto& item : json.as_object())
         {
-            auto packageInfo=std::make_shared<PackageInfoFull>(item.value());
+            auto packageInfo=std::make_shared<PackageInfo>(item.value());
             data[packageInfo->packageId]=std::move(packageInfo);
         }
     });
@@ -126,12 +127,11 @@ PackageData::~PackageData()
 /************************************************************************/
 
 PackageInfo::~PackageInfo() =default;
-PackageInfoFull::~PackageInfoFull() =default;
 
 /************************************************************************/
 
-PackageInfo::PackageInfo(const LicenseIdentifier& other)
-    : LicenseIdentifier(other)
+PackageInfo::PackageInfo(SteamBot::PackageID packageId_)
+    : LicenseIdentifier(packageId_)
 {
 }
 
@@ -144,8 +144,8 @@ static const char data_key[]="data";
  * Make sure this matches the toJson()
  */
 
-PackageInfoFull::PackageInfoFull(const boost::json::value& json)
-    : PackageInfo(json)
+PackageInfo::PackageInfo(const boost::json::value& json)
+    : LicenseIdentifier(json)
 {
     data=json.at(data_key).as_object();
 }
@@ -155,9 +155,9 @@ PackageInfoFull::PackageInfoFull(const boost::json::value& json)
  * Make sure this matches the json-based constructor
  */
 
-boost::json::value PackageInfoFull::toJson() const
+boost::json::value PackageInfo::toJson() const
 {
-    auto parent=PackageInfo::toJson();
+    auto parent=LicenseIdentifier::toJson();
     auto& json=parent.as_object();
     json[data_key]=data;
     return json;
@@ -210,13 +210,8 @@ PackageData& PackageData::get()
 }
 
 /************************************************************************/
-/*
- * Go through the list of licenses, find out which ones have changed
- * (including the ones we don't have data for yet). Mark them as
- * updating in the database, and return a list of them.
- */
 
-std::vector<std::shared_ptr<const Licenses::LicenseInfo>> PackageData::flagForUpdates(const Licenses& licenses)
+std::vector<std::shared_ptr<const Licenses::LicenseInfo>> PackageData::checkForUpdates(const Licenses& licenses) const
 {
     std::vector<std::shared_ptr<const Licenses::LicenseInfo>> updateList;
 
@@ -226,17 +221,20 @@ std::vector<std::shared_ptr<const Licenses::LicenseInfo>> PackageData::flagForUp
         {
             const auto& license=*(item.second);
 
-            auto& packageInfo=data[license.packageId];
-            if (packageInfo)
+            bool needsUpdate=true;
             {
-                if (static_cast<const LicenseIdentifier&>(license)!=static_cast<const LicenseIdentifier&>(*packageInfo))
+                auto iterator=data.find(license.packageId);
+                if (iterator!=data.end())
                 {
-                    packageInfo.reset();
+                    if (static_cast<const LicenseIdentifier&>(license)==static_cast<const LicenseIdentifier&>(*(iterator->second)))
+                    {
+                        needsUpdate=false;
+                    }
                 }
             }
-            if (!packageInfo)
+
+            if (needsUpdate)
             {
-                packageInfo=std::make_shared<PackageInfo>(license);
                 updateList.emplace_back(item.second);
             }
         }
@@ -263,8 +261,7 @@ void PackageData::update(const ::CMsgClientPICSProductInfoResponse_PackageInfo& 
 {
     if (package.has_packageid())
     {
-        auto packageId=static_cast<SteamBot::PackageID>(package.packageid());
-        auto packageInfo=std::make_shared<PackageInfoFull>(packageId);
+        auto packageInfo=std::make_shared<PackageInfo>(static_cast<SteamBot::PackageID>(package.packageid()));
 
         if (package.has_change_number())
         {
@@ -290,12 +287,15 @@ void PackageData::update(const ::CMsgClientPICSProductInfoResponse_PackageInfo& 
             }
         }
 
+        std::lock_guard<decltype(mutex)> lock(mutex);
+
+        // Verify: we are assuming that changeNumber increases
+        auto iterator=data.find(packageInfo->packageId);
+        if (iterator==data.end() || iterator->second->changeNumber<packageInfo->changeNumber)
         {
-            std::lock_guard<decltype(mutex)> lock(mutex);
-            data[packageId]=std::move(packageInfo);
+            data[packageInfo->packageId]=std::move(packageInfo);
             wasUpdated=true;
         }
-        updateCondition.notify_all();
     }
 }
 
@@ -321,9 +321,9 @@ void PackageData::save()
 
 /************************************************************************/
 
-void PackageDataModule::handle(const Licenses& licenses)
+void PackageDataModule::handle(Licenses::Ptr licenses)
 {
-    auto updateList=PackageData::get().flagForUpdates(licenses);
+    auto updateList=PackageData::get().checkForUpdates(*licenses);
 
     if (!updateList.empty())
     {
@@ -334,19 +334,36 @@ void PackageDataModule::handle(const Licenses& licenses)
             package.set_packageid(static_cast<std::underlying_type_t<decltype(licenseInfo->packageId)>>(licenseInfo->packageId));
             package.set_access_token(licenseInfo->accessToken);
         }
+
+        latestLicenses=licenses;
+        latestJobId=SteamBot::JobID();
+        message->header.proto.set_jobid_source(latestJobId.getValue());
+
         SteamBot::Modules::Connection::Messageboard::SendSteamMessage::send(std::move(message));
     }
 }
 
 /************************************************************************/
 
-void PackageDataModule::handle(std::shared_ptr<const Steam::CMsgClientPICSProductInfoResponseMessageType> message)
+SteamBot::Modules::PackageData::Whiteboard::PackageData::PackageData(Licenses::Ptr licenses_)
+    : licenses(std::move(licenses_))
+{
+}
+
+/************************************************************************/
+
+void PackageDataModule::handle(std::shared_ptr<const Steam::CMsgClientPICSProductInfoResponseMessageType> message) const
 {
     for (int i=0; i<message->content.packages_size(); i++)
     {
         PackageData::get().update(message->content.packages(i));
     }
     PackageData::get().save();
+
+    if (message->header.proto.jobid_target()==latestJobId.getValue())
+    {
+        getClient().whiteboard.set<SteamBot::Modules::PackageData::Whiteboard::PackageData>(latestLicenses);
+    }
 }
 
 /************************************************************************/
@@ -362,7 +379,7 @@ void PackageDataModule::run(SteamBot::Client& client)
         {
             if (auto licenses=licensesWaiter->has())
             {
-                handle(**licenses);
+                handle(*licenses);
             }
         }
         cmsgClientPICSProductInfoResponse->handle(this);
@@ -378,17 +395,17 @@ void PackageDataModule::run(SteamBot::Client& client)
  * Verify: Yes, I'm assuming they increase.
  */
 
-std::shared_ptr<const PackageInfoFull> PackageData::lookup_noLock(const LicenseIdentifier& license) const
+std::shared_ptr<const PackageInfo> PackageData::lookup(const LicenseIdentifier& license) const
 {
-    std::shared_ptr<const PackageInfoFull> result;
-    auto iterator=data.find(license.packageId);
-    if (iterator!=data.end())
+    std::shared_ptr<const PackageInfo> result;
     {
-        if (auto info=std::dynamic_pointer_cast<const PackageInfoFull>(iterator->second))
+        std::lock_guard<decltype(mutex)> lock(mutex);
+        auto iterator=data.find(license.packageId);
+        if (iterator!=data.end())
         {
-            if (info->changeNumber>=license.changeNumber)
+            if (iterator->second->changeNumber>=license.changeNumber)
             {
-                result=std::move(info);
+                result=iterator->second;
             }
         }
     }
@@ -396,66 +413,8 @@ std::shared_ptr<const PackageInfoFull> PackageData::lookup_noLock(const LicenseI
 }
 
 /************************************************************************/
-/*
- * The "updateCondition" is notified whenever a PackageInfoFull is
- * stored into the data. So, this is just an elaborate (cancellable)
- * loop to keep checking until the required data is available.
- */
 
-std::shared_ptr<const PackageInfoFull> PackageData::waitPackageInfo(const LicenseIdentifier& license)
-
+std::shared_ptr<const PackageInfo> SteamBot::Modules::PackageData::getPackageInfo(const LicenseIdentifier& license)
 {
-    class Waiter
-    {
-    private:
-        PackageData& data;
-        std::shared_ptr<const PackageInfoFull> result;
-        bool cancelled=false;
-
-    public:
-        Waiter(PackageData& data_)
-            : data(data_)
-        {
-        }
-
-        void cancel()
-        {
-            cancelled=true;
-            data.updateCondition.notify_all();
-        }
-
-        decltype(result) wait(const LicenseIdentifier& license)
-        {
-            std::unique_lock<decltype(mutex)> lock(data.mutex);
-            data.updateCondition.wait(lock, [this, &license]() -> bool {
-                if (cancelled)
-                {
-                    throw SteamBot::OperationCancelledException();
-                }
-                result=data.lookup_noLock(license);
-                return static_cast<bool>(result);
-            });
-            return std::move(result);
-        }
-    } waiter(*this);
-
-    auto cancellation=SteamBot::Client::getClient().cancel.registerObject(waiter);
-    return waiter.wait(license);
-}
-
-/************************************************************************/
-/*
- * This is the API funtion, for now(?)
- *
- * It looks up the package data for the indicated license.
- * If necessary, it will wait data to be updated.
- *
- * ToDo: yes, this will wait forever if the update doesn't
- * happen. I don't currently know whether Steam might
- * not return all requested package data...
- */
-
-std::shared_ptr<const PackageInfoFull> SteamBot::Modules::PackageData::waitPackageInfo(const LicenseIdentifier& license)
-{
-    return ::PackageData::get().waitPackageInfo(license);
+    return ::PackageData::get().lookup(license);
 }

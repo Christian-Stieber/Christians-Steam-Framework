@@ -23,10 +23,14 @@
 
 /************************************************************************/
 /*
- * This is the package information.
+ * Note: a ... Whiteboard::PackageData will be posted when all the
+ * updates are completed. You'll need to use the getPackageInfo() to
+ * actually get any data.
  *
- * waitPackageInfo will look up the package info for you, and also
- * block during an update.
+ * Note that this should not cause problems with threads -- each
+ * client should only be interested in the licenses that it gets from
+ * Steam, and that follows the strict flow where we receive license
+ * data, then update the package data, and then we're done.
  */
 
 namespace SteamBot
@@ -38,24 +42,30 @@ namespace SteamBot
             class PackageInfo : public SteamBot::Modules::LicenseList::Whiteboard::LicenseIdentifier
             {
             public:
-                using LicenseIdentifier::LicenseIdentifier;
-                PackageInfo(const LicenseIdentifier&);
-                virtual ~PackageInfo();
-            };
-
-            class PackageInfoFull : public PackageInfo
-            {
-            public:
                 boost::json::object data;	// this is the KeyValue data from "buffer"
 
             public:
-                using PackageInfo::PackageInfo;
-                PackageInfoFull(const boost::json::value&);
-                virtual ~PackageInfoFull();
+                PackageInfo(const boost::json::value&);
+                PackageInfo(PackageID);
+                virtual ~PackageInfo();
+
                 virtual boost::json::value toJson() const override;
             };
 
-            std::shared_ptr<const PackageInfoFull> waitPackageInfo(const SteamBot::Modules::LicenseList::Whiteboard::LicenseIdentifier&);
+            std::shared_ptr<const PackageInfo> getPackageInfo(const SteamBot::Modules::LicenseList::Whiteboard::LicenseIdentifier&);
+
+            namespace Whiteboard
+            {
+                class PackageData
+                {
+                public:
+                    typedef SteamBot::Modules::LicenseList::Whiteboard::Licenses::Ptr LicensePtr;
+                    LicensePtr licenses;
+
+                public:
+                    PackageData(LicensePtr);
+                };
+            }
         }
     }
 }
