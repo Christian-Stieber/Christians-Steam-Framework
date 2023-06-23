@@ -246,6 +246,18 @@
     <ClCompile Include="Sources\UI\Console\CLI\SimpleCommand.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Sources\Modules\PackageData.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\UI\Console\CLI\Status.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Steam\KeyValue_Deserialize.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Steam\KeyValue_Serialize.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Sources\OpenSSL\XCrypt.hpp">
@@ -599,6 +611,9 @@
     <ClInclude Include="Headers\Modules\AddFreeLicense.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Headers\Modules\PackageData.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -635,6 +650,9 @@
       <Filter>Protobufs\steam</Filter>
     </CustomBuild>
     <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver_2.proto">
+      <Filter>Protobufs\steam</Filter>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver_appinfo.proto">
       <Filter>Protobufs\steam</Filter>
     </CustomBuild>
   </ItemGroup>

@@ -61,6 +61,7 @@
     <ClCompile Include="Sources\Modules\Login-Auth.cpp" />
     <ClCompile Include="Sources\Modules\MultiPacket.cpp" />
     <ClCompile Include="Sources\Modules\OwnedGames.cpp" />
+    <ClCompile Include="Sources\Modules\PackageData.cpp" />
     <ClCompile Include="Sources\Modules\PersonaState.cpp" />
     <ClCompile Include="Sources\Modules\PlayGames.cpp" />
     <ClCompile Include="Sources\Modules\UnifiedMessageClient.cpp" />
@@ -76,6 +77,8 @@
     <ClCompile Include="Sources\Printable.cpp" />
     <ClCompile Include="Sources\Random.cpp" />
     <ClCompile Include="Sources\Steam\KeyValue.cpp" />
+    <ClCompile Include="Sources\Steam\KeyValue_Deserialize.cpp" />
+    <ClCompile Include="Sources\Steam\KeyValue_Serialize.cpp" />
     <ClCompile Include="Sources\Steam\MachineInfo.cpp" />
     <ClCompile Include="Sources\Steam\MachineInfo\Windows.cpp" />
     <ClCompile Include="Sources\Steam\OSType.cpp" />
@@ -84,6 +87,7 @@
     <ClCompile Include="Sources\UI\Console\CLI\ListGames.cpp" />
     <ClCompile Include="Sources\UI\Console\CLI\PlayGame.cpp" />
     <ClCompile Include="Sources\UI\Console\CLI\SimpleCommand.cpp" />
+    <ClCompile Include="Sources\UI\Console\CLI\Status.cpp" />
     <ClCompile Include="Sources\UI\Console\CLI\TokenizeLine.cpp" />
     <ClCompile Include="Sources\UI\Console\Console.cpp" />
     <ClCompile Include="Sources\UI\Console\Manager_Windows.cpp" />
@@ -170,6 +174,7 @@
     <ClInclude Include="Headers\Modules\LicenseList.hpp" />
     <ClInclude Include="Headers\Modules\Login.hpp" />
     <ClInclude Include="Headers\Modules\OwnedGames.hpp" />
+    <ClInclude Include="Headers\Modules\PackageData.hpp" />
     <ClInclude Include="Headers\Modules\PlayGames.hpp" />
     <ClInclude Include="Headers\Modules\SteamGuard.hpp" />
     <ClInclude Include="Headers\Modules\UnifiedMessageClient.hpp" />
@@ -247,6 +252,9 @@
       <FileType>Document</FileType>
     </CustomBuild>
     <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver_2.proto">
+      <FileType>Document</FileType>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver_appinfo.proto">
       <FileType>Document</FileType>
     </CustomBuild>
   </ItemGroup>

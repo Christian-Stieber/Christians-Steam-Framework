@@ -26,6 +26,8 @@
  *  - kept in a data file
  */
 
+#include "Steam/ProtoBuf/steammessages_clientserver_appinfo.hpp"
+
 #include "Client/Module.hpp"
 #include "Modules/Connection.hpp"
 #include "Modules/PackageData.hpp"
@@ -33,8 +35,6 @@
 #include "Steam/KeyValue.hpp"
 #include "JobID.hpp"
 #include "Vector.hpp"
-
-#include "Steam/ProtoBuf/steammessages_clientserver_appinfo.hpp"
 
 /************************************************************************/
 
