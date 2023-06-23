@@ -20,6 +20,10 @@
 #include "../Console.hpp"
 
 #include "Client/Client.hpp"
+#include "Modules/Executor.hpp"
+#include "Modules/PlayGames.hpp"
+#include "Modules/Login.hpp"
+#include "Modules/OwnedGames.hpp"
 
 /************************************************************************/
 
@@ -27,9 +31,54 @@ bool SteamBot::UI::ConsoleUI::CLI::command_status(std::vector<std::string>& word
 {
     if (words.size()>1) return false;
 
-    for (auto client: SteamBot::ClientInfo::getClients())
+    for (auto clientInfo: SteamBot::ClientInfo::getClients())
     {
-        std::cout << "   " << client->accountName << std::endl;
+        std::ostringstream output;
+        output << "   " << clientInfo->accountName;
+        if (auto client=clientInfo->getClient())
+        {
+            SteamBot::Modules::Executor::execute(std::move(client), [&output](SteamBot::Client& client) mutable {
+                typedef SteamBot::Modules::Login::Whiteboard::LoginStatus LoginStatus;
+                typedef SteamBot::Modules::PlayGames::Whiteboard::PlayingGames PlayingGames;
+                typedef SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames OwnedGames;
+                switch (client.whiteboard.get<LoginStatus>(LoginStatus::LoggedOut))
+                {
+                case LoginStatus::LoggedOut:
+                    break;
+
+                case LoginStatus::LoggingIn:
+                    output << "; logging in";
+                    break;
+
+                case LoginStatus::LoggedIn:
+                    if (auto playing=client.whiteboard.has<PlayingGames>())
+                    {
+                        assert(!playing->empty());
+
+                        auto ownedGames=client.whiteboard.has<OwnedGames::Ptr>();
+                        const char* separator="; playing ";
+                        for (SteamBot::AppID appId : *playing)
+                        {
+                            output << separator << static_cast<std::underlying_type_t<decltype(appId)>>(appId);
+                            if (ownedGames)
+                            {
+                                if (auto info=(*ownedGames)->getInfo(appId))
+                                {
+                                    output << " (" << info->name << ")";
+                                }
+                            }
+                            separator=", ";
+                        }
+                    }
+                    else
+                    {
+                        output << "; logged in";
+                    }
+                    break;
+                }
+            });
+        }
+        std::cout << output.view() << std::endl;
     }
 
     return true;
