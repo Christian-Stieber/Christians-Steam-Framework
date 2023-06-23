@@ -52,8 +52,6 @@ namespace SteamBot
                 virtual boost::json::value toJson() const override;
             };
 
-            std::shared_ptr<const PackageInfo> getPackageInfo(const SteamBot::Modules::LicenseList::Whiteboard::LicenseIdentifier&);
-
             namespace Whiteboard
             {
                 class PackageData
@@ -66,6 +64,9 @@ namespace SteamBot
                     PackageData(LicensePtr);
                 };
             }
+
+            std::shared_ptr<const PackageInfo> getPackageInfo(const SteamBot::Modules::LicenseList::Whiteboard::LicenseIdentifier&);
+            std::vector<std::shared_ptr<const PackageInfo>> getPackageInfo(SteamBot::AppID);
         }
     }
 }

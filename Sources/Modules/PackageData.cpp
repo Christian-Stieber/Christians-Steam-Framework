@@ -32,6 +32,7 @@
 #include "Client/DataFile.hpp"
 #include "Steam/KeyValue.hpp"
 #include "JobID.hpp"
+#include "Vector.hpp"
 
 #include "Steam/ProtoBuf/steammessages_clientserver_appinfo.hpp"
 
@@ -53,6 +54,7 @@ namespace
     private:
         mutable boost::fibers::mutex mutex;
         std::unordered_map<SteamBot::PackageID, std::shared_ptr<const PackageInfo>> data;
+        std::unordered_map<SteamBot::AppID, std::vector<SteamBot::PackageID>> appData;
         bool wasUpdated=false;
 
         std::unordered_map<SteamBot::JobID, Licenses::Ptr> updates;
@@ -70,8 +72,10 @@ namespace
 
         std::vector<std::shared_ptr<const Licenses::LicenseInfo>> checkForUpdates(const Licenses&) const;
         void update(const ::CMsgClientPICSProductInfoResponse_PackageInfo&);
+        void storeNew_noLock(std::shared_ptr<PackageInfo>);
 
         std::shared_ptr<const PackageInfo> lookup(const LicenseIdentifier&) const;
+        std::vector<std::shared_ptr<const PackageInfo>> lookup(SteamBot::AppID) const;
 
         void save();
     };
@@ -105,13 +109,71 @@ namespace
 
 /************************************************************************/
 
+static void iterateOverAppids(const PackageInfo& package, std::function<void(SteamBot::AppID)> function)
+{
+    if (auto appidsValue=package.data.if_contains("appids"))
+    {
+        if (auto appids=appidsValue->if_object())
+        {
+            for (const auto& item : *appids)
+            {
+                // ToDo: does the name actually mean something?
+                // This was a KeyValue, which doesn't have arrays -- but that
+                // doesn't mean the name can't have any meaning
+
+                auto appId=item.value().to_number<std::underlying_type_t<SteamBot::AppID>>();
+                function(static_cast<SteamBot::AppID>(appId));
+            }
+        }
+    }
+}
+
+/************************************************************************/
+
+void PackageData::storeNew_noLock(std::shared_ptr<PackageInfo> packageInfo)
+{
+    // If we have a previous item, unlink it from the apps
+    {
+        auto iterator=data.find(packageInfo->packageId);
+        if (iterator!=data.end())
+        {
+            iterateOverAppids(*(iterator->second), [this, packageId=packageInfo->packageId](SteamBot::AppID appId) {
+                auto iterator=appData.find(appId);
+                if (iterator!=appData.end())
+                {
+                    auto count=SteamBot::erase(iterator->second, [packageId](SteamBot::PackageID item) { return item==packageId; });
+                    assert(count==0 || count==1);
+                }
+            });
+        }
+    }
+
+    // Link the new package to the apps
+    {
+        iterateOverAppids(*packageInfo, [this, packageId=packageInfo->packageId](SteamBot::AppID appId) {
+            auto& items=appData[appId];
+            for (SteamBot::PackageID item : items)
+            {
+                if (item==packageId)
+                {
+                    return;
+                }
+            }
+            items.push_back(packageId);
+        });
+    }
+    data[packageInfo->packageId]=std::move(packageInfo);
+}
+
+/************************************************************************/
+
 PackageData::PackageData()
 {
     file.examine([this](const boost::json::value& json) {
         for (const auto& item : json.as_object())
         {
             auto packageInfo=std::make_shared<PackageInfo>(item.value());
-            data[packageInfo->packageId]=std::move(packageInfo);
+            storeNew_noLock(std::move(packageInfo));
         }
     });
     BOOST_LOG_TRIVIAL(debug) << "loaded packageData from file: " << *this;
@@ -293,7 +355,7 @@ void PackageData::update(const ::CMsgClientPICSProductInfoResponse_PackageInfo& 
         auto iterator=data.find(packageInfo->packageId);
         if (iterator==data.end() || iterator->second->changeNumber<packageInfo->changeNumber)
         {
-            data[packageInfo->packageId]=std::move(packageInfo);
+            storeNew_noLock(std::move(packageInfo));
             wasUpdated=true;
         }
     }
@@ -414,7 +476,38 @@ std::shared_ptr<const PackageInfo> PackageData::lookup(const LicenseIdentifier& 
 
 /************************************************************************/
 
+std::vector<std::shared_ptr<const PackageInfo>> PackageData::lookup(SteamBot::AppID appId) const
+{
+    std::vector<std::shared_ptr<const PackageInfo>> result;
+    {
+        std::lock_guard<decltype(mutex)> lock(mutex);
+        auto appIterator=appData.find(appId);
+        if (appIterator!=appData.end())
+        {
+            result.reserve(appIterator->second.size());
+            for (SteamBot::PackageID packageId : appIterator->second)
+            {
+                auto packageIterator=data.find(packageId);
+                if (packageIterator!=data.end())
+                {
+                    result.emplace_back(packageIterator->second);
+                }
+            }
+        }
+    }
+    return result;
+}
+
+/************************************************************************/
+
 std::shared_ptr<const PackageInfo> SteamBot::Modules::PackageData::getPackageInfo(const LicenseIdentifier& license)
 {
     return ::PackageData::get().lookup(license);
+}
+
+/************************************************************************/
+
+std::vector<std::shared_ptr<const PackageInfo>> SteamBot::Modules::PackageData::getPackageInfo(SteamBot::AppID appId)
+{
+    return ::PackageData::get().lookup(appId);
 }
