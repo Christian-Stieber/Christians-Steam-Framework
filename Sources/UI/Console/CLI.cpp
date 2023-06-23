@@ -67,20 +67,6 @@ bool CLI::command_help(std::vector<std::string>&)
 }
 
 /************************************************************************/
-
-bool CLI::command_status(std::vector<std::string>& words)
-{
-    if (words.size()>1) return false;
-
-    for (auto client: SteamBot::ClientInfo::getClients())
-    {
-        std::cout << "   " << client->accountName << std::endl;
-    }
-
-    return true;
-}
-
-/************************************************************************/
 /*
  * Returns currentAccount, or nullptr.
  *
