@@ -21,6 +21,7 @@
 
 #include "UI/UI.hpp"
 #include "Modules/OwnedGames.hpp"
+#include "Modules/LicenseList.hpp"
 
 /************************************************************************/
 
@@ -129,8 +130,9 @@ private:
 
     static std::vector<std::string> getWords(std::string_view);
 
-private:
-    SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames::Ptr getOwnedGames(const SteamBot::ClientInfo&);
+public:
+    static SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames::Ptr getOwnedGames(const SteamBot::ClientInfo&);
+    static std::vector<std::shared_ptr<const SteamBot::Modules::LicenseList::Whiteboard::Licenses::LicenseInfo>> getLicenseInfo(const SteamBot::ClientInfo&, SteamBot::AppID);
 
 private:
     bool simpleCommand(std::vector<std::string>&, std::function<bool(std::shared_ptr<SteamBot::Client>, uint64_t)>);

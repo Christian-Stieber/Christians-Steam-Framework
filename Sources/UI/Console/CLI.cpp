@@ -20,6 +20,7 @@
 #include "Client/Client.hpp"
 #include "./Console.hpp"
 #include "Modules/Executor.hpp"
+#include "Modules/PackageData.hpp"
 
 #include <charconv>
 
@@ -236,6 +237,27 @@ void CLI::command(std::string_view line)
         std::cout << "unknown command: \"" << words[0] << "\"" << std::endl;
         showHelp();
     }
+}
+
+/************************************************************************/
+
+std::vector<std::shared_ptr<const SteamBot::Modules::LicenseList::Whiteboard::Licenses::LicenseInfo>> CLI::getLicenseInfo(const SteamBot::ClientInfo& clientInfo, SteamBot::AppID appId)
+{
+    std::vector<std::shared_ptr<const SteamBot::Modules::LicenseList::Whiteboard::Licenses::LicenseInfo>> result;
+    if (auto client=clientInfo.getClient())
+    {
+        SteamBot::Modules::Executor::execute(std::move(client), [appId, &result](SteamBot::Client& client) mutable {
+            auto packages=SteamBot::Modules::PackageData::getPackageInfo(appId);
+            for (const auto& package : packages)
+            {
+                if (auto licenseInfo=SteamBot::Modules::LicenseList::getLicenseInfo(package->packageId))
+                {
+                    result.emplace_back(std::move(licenseInfo));
+                }
+            }
+        });
+    }
+    return result;
 }
 
 /************************************************************************/

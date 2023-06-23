@@ -22,6 +22,7 @@
 #include "Client/Client.hpp"
 #include "Helpers/StringCompare.hpp"
 #include "Helpers/Time.hpp"
+#include "Modules/PackageData.hpp"
 
 #include <regex>
 #include <iomanip>
@@ -32,7 +33,16 @@ typedef SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames OwnedGames;
 
 /************************************************************************/
 
-static void outputGameList(const OwnedGames::Ptr::element_type& ownedGames, std::string_view pattern)
+static void print(const SteamBot::Modules::LicenseList::Whiteboard::Licenses::LicenseInfo& license)
+{
+    auto packageIdValue=static_cast<std::underlying_type_t<decltype(license.packageId)>>(license.packageId);
+    std::cout << "pkg " << packageIdValue
+              << " purchased " << SteamBot::Time::toString(license.timeCreated, false);
+}
+
+/************************************************************************/
+
+static void outputGameList(SteamBot::ClientInfo& clientInfo, const OwnedGames::Ptr::element_type& ownedGames, std::string_view pattern)
 {
     typedef std::shared_ptr<const OwnedGames::GameInfo> ItemType;
 
@@ -62,6 +72,21 @@ static void outputGameList(const OwnedGames::Ptr::element_type& ownedGames, std:
         if (game->playtimeForever.count()!=0)
         {
             std::cout << "; playtime " << SteamBot::Time::toString(game->playtimeForever);
+        }
+
+        auto licenses=SteamBot::UI::ConsoleUI::CLI::getLicenseInfo(clientInfo, game->appId);
+        if (licenses.size()==1)
+        {
+            std::cout << "; ";
+            print(*(licenses.front()));
+        }
+        else
+        {
+            for (auto& license : licenses)
+            {
+                std::cout << "\n          ";
+                print(*license);
+            }
         }
         std::cout << "\n";
     }
@@ -105,7 +130,7 @@ bool SteamBot::UI::ConsoleUI::CLI::command_list_games(std::vector<std::string>& 
     {
         if (auto ownedGames=getOwnedGames(*clientInfo))
         {
-            outputGameList(*ownedGames, pattern);
+            outputGameList(*clientInfo, *ownedGames, pattern);
         }
         else
         {
