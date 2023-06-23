@@ -50,3 +50,24 @@ namespace SteamBot
         }
     }
 }
+
+/************************************************************************/
+
+namespace SteamBot
+{
+    namespace Modules
+    {
+        namespace PlayGames
+        {
+            namespace Whiteboard
+            {
+                class PlayingGames : public std::vector<SteamBot::AppID>
+                {
+                public:
+                    PlayingGames(const std::vector<SteamBot::AppID>&);
+                    ~PlayingGames();
+                };
+            }
+        }
+    }
+}

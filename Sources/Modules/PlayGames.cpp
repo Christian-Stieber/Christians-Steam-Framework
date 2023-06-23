@@ -31,6 +31,7 @@
 /************************************************************************/
 
 typedef SteamBot::Modules::PlayGames::Messageboard::PlayGame PlayGame;
+typedef SteamBot::Modules::PlayGames::Whiteboard::PlayingGames PlayingGames;
 
 /************************************************************************/
 
@@ -108,6 +109,15 @@ void PlayGamesModule::reportGames() const
 
 /************************************************************************/
 
+PlayingGames::PlayingGames(const std::vector<SteamBot::AppID>& other)
+    : std::vector<SteamBot::AppID>(other)
+{
+}
+
+PlayingGames::~PlayingGames() =default;
+
+/************************************************************************/
+
 void PlayGamesModule::sendGames() const
 {
     auto message=std::make_unique<Steam::CMsgClientGamesPlayedMessageType>();
@@ -128,6 +138,15 @@ void PlayGamesModule::sendGames() const
     }
 
     SteamBot::Modules::Connection::Messageboard::SendSteamMessage::send(std::move(message));
+
+    if (games.empty())
+    {
+        getClient().whiteboard.clear<PlayingGames>();
+    }
+    else
+    {
+        getClient().whiteboard.set<PlayingGames>(games);
+    }
 
     reportGames();
 }
