@@ -23,6 +23,7 @@
 #include "Modules/LicenseList.hpp"
 #include "EnumString.hpp"
 #include "UI/UI.hpp"
+#include "Helpers/Time.hpp"
 
 /************************************************************************/
 
@@ -97,17 +98,67 @@ Licenses::LicenseInfo::~LicenseInfo() =default;
 
 /************************************************************************/
 
-const Licenses::LicenseInfo* Licenses::getInfo(PackageID packageId) const
+Licenses::LicenseInfo::LicenseInfo(const CMsgClientLicenseList_License& data)
+    : LicenseIdentifier(static_cast<SteamBot::PackageID>(data.package_id()))
 {
-    auto iterator=licenses.find(packageId);
-    if (iterator!=licenses.end())
-    {
-        return iterator->second.get();
-    }
-    return nullptr;
+    if (data.has_change_number())
+        changeNumber=data.change_number();
+
+    if (data.has_license_type())
+        licenseType=static_cast<SteamBot::LicenseType>(data.license_type());
+
+    if (data.has_payment_method())
+        paymentMethod=static_cast<SteamBot::PaymentMethod>(data.payment_method());
+
+    if (data.has_access_token())
+        accessToken=data.access_token();
+
+    if (data.has_time_created())
+        timeCreated=Licenses::LicenseInfo::Clock::from_time_t(data.time_created());
+
+    if (data.has_time_next_process())
+        timeNextProcess=Licenses::LicenseInfo::Clock::from_time_t(data.time_next_process());
 }
 
 /************************************************************************/
+
+std::shared_ptr<const Licenses::LicenseInfo> Licenses::getInfo(PackageID packageId) const
+{
+    std::shared_ptr<const Licenses::LicenseInfo> result;
+    auto iterator=licenses.find(packageId);
+    if (iterator!=licenses.end())
+    {
+        result=iterator->second;
+    }
+    return result;
+}
+
+/************************************************************************/
+
+std::shared_ptr<const Licenses::LicenseInfo> SteamBot::Modules::LicenseList::getLicenseInfo(PackageID packageId)
+{
+    std::shared_ptr<const Licenses::LicenseInfo> result;
+    if (auto licenses=SteamBot::Client::getClient().whiteboard.has<Licenses::Ptr>())
+    {
+        result=(*licenses)->getInfo(packageId);
+    }
+    return result;
+}
+
+/************************************************************************/
+
+static void timeToJson(boost::json::object& json, std::string_view key, const Licenses::LicenseInfo::Clock::time_point& time)
+{
+    if (time.time_since_epoch().count()!=0)
+    {
+        json[key]=SteamBot::Time::toString(time, true);
+    }
+}
+
+/************************************************************************/
+/*
+ * Not meant to be read by anything other than human eyes.
+ */
 
 boost::json::value Licenses::LicenseInfo::toJson() const
 {
@@ -116,6 +167,8 @@ boost::json::value Licenses::LicenseInfo::toJson() const
     SteamBot::enumToJson(json, "licenseType", licenseType);
     SteamBot::enumToJson(json, "paymentMethod", paymentMethod);
     if (accessToken!=0) json["access token"]=changeNumber;
+    timeToJson(json, "timeCreated", timeCreated);
+    timeToJson(json, "timeNextProcess", timeNextProcess);
     return json;
 }
 
@@ -149,14 +202,7 @@ void LicenseListModule::handleMessage(std::shared_ptr<const Steam::CMsgClientLic
             const auto packageId=static_cast<SteamBot::PackageID>(licenseData.package_id());
             if (packageId!=SteamBot::PackageID::Steam)		// we don't need this
             {
-                auto license=std::make_shared<Licenses::LicenseInfo>(packageId);
-                {
-                    if (licenseData.has_change_number()) license->changeNumber=licenseData.change_number();
-                    if (licenseData.has_license_type()) license->licenseType=static_cast<SteamBot::LicenseType>(licenseData.license_type());
-                    if (licenseData.has_payment_method()) license->paymentMethod=static_cast<SteamBot::PaymentMethod>(licenseData.payment_method());
-                    if (licenseData.has_access_token()) license->accessToken=licenseData.access_token();
-                }
-
+                auto license=std::make_shared<Licenses::LicenseInfo>(licenseData);
                 bool success=licenses->licenses.try_emplace(license->packageId, std::move(license)).second;
                 assert(success);
             }

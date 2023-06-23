@@ -29,6 +29,10 @@
 
 /************************************************************************/
 
+class CMsgClientLicenseList_License;		// protobuf
+
+/************************************************************************/
+
 namespace SteamBot
 {
     namespace Modules
@@ -68,13 +72,18 @@ namespace SteamBot
                     class LicenseInfo : public LicenseIdentifier
                     {
                     public:
-                        using LicenseIdentifier::LicenseIdentifier;
+                        typedef std::chrono::system_clock Clock;
+
+                    public:
+                        LicenseInfo(const CMsgClientLicenseList_License&);
                         virtual ~LicenseInfo();
 
                     public:
                         uint64_t accessToken=0;
                         LicenseType licenseType=LicenseType::NoLicense;
                         PaymentMethod paymentMethod=PaymentMethod::None;
+                        Clock::time_point timeCreated;
+                        Clock::time_point timeNextProcess;
 
                     public:
                         virtual boost::json::value toJson() const override;
@@ -87,12 +96,14 @@ namespace SteamBot
                     Licenses();
                     virtual ~Licenses();
 
-                    const LicenseInfo* getInfo(PackageID) const;
+                    std::shared_ptr<const Licenses::LicenseInfo> getInfo(PackageID) const;
 
                 public:
                     virtual boost::json::value toJson() const override;
                 };
             }
+
+            std::shared_ptr<const Whiteboard::Licenses::LicenseInfo> getLicenseInfo(PackageID);
         }
     }
 }
