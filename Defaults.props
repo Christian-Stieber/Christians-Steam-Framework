@@ -6,13 +6,13 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <PreprocessorDefinitions>_WIN32_WINNT=0x0601;_SILENCE_CXX20_IS_POD_DEPRECATION_WARNING;_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)Headers;$(OutputPath);$(ProjectDir)Christians-HTML-Parser\Headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Headers;$(IntDir);$(ProjectDir)Christians-HTML-Parser\Headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/bigobj /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
     </ClCompile>
     <CustomBuild>
-      <Command>$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\tools\protobuf\protoc.exe --proto_path=%(RelativeDir) --proto_path=steamdatabase\protobufs --cpp_out=$(IntDir)%(RelativeDir) %(Identity)</Command>
+      <Command>vcpkg_installed\x64-windows\tools\protobuf\protoc.exe --proto_path=%(RelativeDir) --proto_path=steamdatabase\protobufs --cpp_out=$(IntDir)%(RelativeDir) %(Identity)</Command>
     </CustomBuild>
     <CustomBuild>
       <Message>Protobuf Compiler %(Identity)</Message>

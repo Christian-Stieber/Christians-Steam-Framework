@@ -257,6 +257,7 @@
     <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver_appinfo.proto">
       <FileType>Document</FileType>
     </CustomBuild>
+    <None Include="vcpkg.json" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

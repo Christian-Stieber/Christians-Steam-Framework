@@ -5,5 +5,5 @@
   "dependencies": [
     "openssl", "protobuf"
   ],
-  "builtin-baseline": "6172c4b5a08aecf5755f753c6338fa74103d39cf"
+  "builtin-baseline": "8be970aaeaf19fd2663aaf5888478483f9742e55"
 }
