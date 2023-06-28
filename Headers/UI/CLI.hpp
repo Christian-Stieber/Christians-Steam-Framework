@@ -77,6 +77,7 @@ namespace SteamBot
 
             // added by useCommonCommands()
             static void useHelpCommand();
+            static void useExitCommand();
             static void useStatusCommand();
             static void useLaunchCommand();
             static void useSelectCommand();
