@@ -17,7 +17,9 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "../Console.hpp"
+#include "UI/CLI.hpp"
+
+#include "../Helpers.hpp"
 
 #include "Client/Client.hpp"
 #include "Helpers/StringCompare.hpp"
@@ -29,7 +31,28 @@
 
 /************************************************************************/
 
-typedef SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames OwnedGames;
+typedef CLI::Helpers::OwnedGames OwnedGames;
+
+/************************************************************************/
+
+namespace
+{
+    class ListGamesCommand : public CLI::CLICommandBase
+    {
+    public:
+        ListGamesCommand(CLI& cli_)
+            : CLICommandBase(cli_, "list-games", "[<account>] [<regex>]", "list owned games")
+        {
+        }
+
+        virtual ~ListGamesCommand() =default;
+
+    public:
+        virtual bool execute(std::vector<std::string>&) override;
+    };
+
+    ListGamesCommand::InitClass<ListGamesCommand> init;
+}
 
 /************************************************************************/
 
@@ -74,7 +97,7 @@ static void outputGameList(SteamBot::ClientInfo& clientInfo, const OwnedGames::P
             std::cout << "; playtime " << SteamBot::Time::toString(game->playtimeForever);
         }
 
-        auto licenses=SteamBot::UI::ConsoleUI::CLI::getLicenseInfo(clientInfo, game->appId);
+        auto licenses=CLI::Helpers::getLicenseInfo(clientInfo, game->appId);
         if (licenses.size()==1)
         {
             std::cout << "; ";
@@ -95,7 +118,7 @@ static void outputGameList(SteamBot::ClientInfo& clientInfo, const OwnedGames::P
 
 /************************************************************************/
 
-bool SteamBot::UI::ConsoleUI::CLI::command_list_games(std::vector<std::string>& words)
+bool ListGamesCommand::execute(std::vector<std::string>& words)
 {
     SteamBot::ClientInfo* clientInfo=nullptr;
     std::string_view pattern;
@@ -103,7 +126,7 @@ bool SteamBot::UI::ConsoleUI::CLI::command_list_games(std::vector<std::string>& 
     if (words.size()==3)
     {
         // list-games accountname pattern
-        clientInfo=getAccount(words[1]);
+        clientInfo=cli.getAccount(words[1]);
         pattern=words[2];
     }
     else if (words.size()==2)
@@ -113,13 +136,13 @@ bool SteamBot::UI::ConsoleUI::CLI::command_list_games(std::vector<std::string>& 
         clientInfo=SteamBot::ClientInfo::find(words[1]);
         if (clientInfo==nullptr)
         {
-            clientInfo=getAccount();
+            clientInfo=cli.getAccount();
             pattern=words[1];
         }
     }
     else if (words.size()==1)
     {
-        clientInfo=getAccount();
+        clientInfo=cli.getAccount();
     }
     else
     {
@@ -128,7 +151,7 @@ bool SteamBot::UI::ConsoleUI::CLI::command_list_games(std::vector<std::string>& 
 
     if (clientInfo)
     {
-        if (auto ownedGames=getOwnedGames(*clientInfo))
+        if (auto ownedGames=CLI::Helpers::getOwnedGames(*clientInfo))
         {
             outputGameList(*clientInfo, *ownedGames, pattern);
         }
@@ -139,4 +162,10 @@ bool SteamBot::UI::ConsoleUI::CLI::command_list_games(std::vector<std::string>& 
     }
 
     return true;
+}
+
+/************************************************************************/
+
+void SteamBot::UI::CLI::useListGamesCommand()
+{
 }

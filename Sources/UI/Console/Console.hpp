@@ -20,6 +20,7 @@
 #pragma once
 
 #include "UI/UI.hpp"
+#include "UI/CLI.hpp"
 #include "Modules/OwnedGames.hpp"
 #include "Modules/LicenseList.hpp"
 
@@ -39,10 +40,11 @@ namespace SteamBot
     {
         class ConsoleUI : public SteamBot::UI::Base
         {
+            friend class SteamBot::UI::CLI;
+
         public:
             class ManagerBase;
             class Manager;
-            class CLI;
 
         private:
             std::unique_ptr<ManagerBase> manager;
@@ -95,69 +97,4 @@ protected:
 public:
     static std::unique_ptr<ManagerBase> create(ConsoleUI&);
     virtual ~ManagerBase();
-};
-
-/************************************************************************/
-
-class SteamBot::UI::ConsoleUI::CLI
-{
-private:
-    class Command
-    {
-    public:
-        std::string_view command;
-        std::string_view syntax;
-        std::string_view description;
-        bool(CLI::*function)(std::vector<std::string>&);
-
-    public:
-        void printSyntax() const;
-    };
-
-    static const Command commands[];
-
-private:
-    SteamBot::ClientInfo* currentAccount=nullptr;
-    bool quit=false;
-
-private:
-    static bool parseNumber(std::string_view, uint64_t&);
-
-    SteamBot::ClientInfo* getAccount() const;
-    SteamBot::ClientInfo* getAccount(std::string_view) const;
-    void showHelp();
-    void command(std::string_view);
-
-    static std::vector<std::string> getWords(std::string_view);
-
-public:
-    static SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames::Ptr getOwnedGames(const SteamBot::ClientInfo&);
-    static std::vector<std::shared_ptr<const SteamBot::Modules::LicenseList::Whiteboard::Licenses::LicenseInfo>> getLicenseInfo(const SteamBot::ClientInfo&, SteamBot::AppID);
-
-private:
-    bool simpleCommand(std::vector<std::string>&, std::function<bool(std::shared_ptr<SteamBot::Client>, uint64_t)>);
-    bool game_start_stop(std::vector<std::string>&, bool);
-
-public:
-    /* Return 'false' from commands to show the syntax line */
-    bool command_exit(std::vector<std::string>&);
-    bool command_help(std::vector<std::string>&);
-    bool command_status(std::vector<std::string>&);
-    bool command_launch(std::vector<std::string>&);
-    bool command_create(std::vector<std::string>&);
-    bool command_select(std::vector<std::string>&);
-    bool command_list_games(std::vector<std::string>&);
-    bool command_play_game(std::vector<std::string>&);
-    bool command_stop_game(std::vector<std::string>&);
-    bool command_add_license(std::vector<std::string>&);
-
-private:
-    ConsoleUI& ui;
-
-public:
-    CLI(ConsoleUI&);
-    ~CLI();
-
-public:
-    void run();
 };

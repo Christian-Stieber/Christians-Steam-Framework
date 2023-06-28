@@ -23,6 +23,8 @@
 #include <memory>
 #include <type_traits>
 
+#include <boost/log/trivial.hpp>
+
 /************************************************************************/
 /*
  * This is crapton of template for very little code... not sure

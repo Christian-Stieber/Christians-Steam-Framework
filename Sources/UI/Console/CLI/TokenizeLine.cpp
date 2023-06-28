@@ -112,7 +112,7 @@ static bool isWhitespace(char c)
  *  - we support quoted strings
  */
 
-std::vector<std::string> SteamBot::UI::ConsoleUI::CLI::getWords(std::string_view line)
+std::vector<std::string> SteamBot::UI::CLI::getWords(std::string_view line)
 {
     WordList word;
     Buffer buffer(line);

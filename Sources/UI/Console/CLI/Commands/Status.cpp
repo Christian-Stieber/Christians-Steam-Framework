@@ -17,7 +17,9 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "../Console.hpp"
+#include "UI/CLI.hpp"
+
+#include "../Helpers.hpp"
 
 #include "Client/Client.hpp"
 #include "Modules/Executor.hpp"
@@ -27,7 +29,28 @@
 
 /************************************************************************/
 
-bool SteamBot::UI::ConsoleUI::CLI::command_status(std::vector<std::string>& words)
+namespace
+{
+    class StatusCommand : public CLI::CLICommandBase
+    {
+    public:
+        StatusCommand(CLI& cli_)
+            : CLICommandBase(cli_, "status", "", "Show list of known accounts")
+        {
+        }
+
+        virtual ~StatusCommand() =default;
+
+    public:
+        virtual bool execute(std::vector<std::string>&) override;
+    };
+
+    StatusCommand::InitClass<StatusCommand> init;
+}
+
+/************************************************************************/
+
+bool StatusCommand::execute(std::vector<std::string>& words)
 {
     if (words.size()>1) return false;
 
@@ -82,4 +105,10 @@ bool SteamBot::UI::ConsoleUI::CLI::command_status(std::vector<std::string>& word
     }
 
     return true;
+}
+
+/************************************************************************/
+
+void SteamBot::UI::CLI::useStatusCommand()
+{
 }
