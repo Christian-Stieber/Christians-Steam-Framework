@@ -1,0 +1,40 @@
+######################################################################
+#
+# Use with a command like
+#   cmake -S . -B build/Debug -D CMAKE_BUILD_TYPE=Debug
+#   cmake --build build/Debug
+
+##############################
+
+set (CMAKE_CXX_STANDARD 20)
+
+add_compile_options(-UNDEBUG)
+
+##############################
+
+SET(Boost_USE_STATIC_LIBS ON)
+find_package(Boost 1.81.0 REQUIRED COMPONENTS context coroutine system log log_setup iostreams fiber)
+include_directories(${Boost_INCLUDE_DIRS})
+
+##############################
+
+find_package(OpenSSL 3 REQUIRED)
+find_package(Protobuf REQUIRED)
+
+##############################
+
+if(EXISTS "${CMAKE_SOURCE_DIR}/Christians-Steam-Framework/Headers")
+   include_directories("${CMAKE_SOURCE_DIR}/Christians-Steam-Framework/Headers")
+endif()
+
+##############################
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")	#  -fsanitize=address
+
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
+
+target_link_libraries(${PROJECT_NAME} pthread systemd ${Boost_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${Protobuf_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${OPENSSL_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} z)
+target_link_libraries(${PROJECT_NAME} atomic)

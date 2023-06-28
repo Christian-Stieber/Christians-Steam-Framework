@@ -1,14 +1,9 @@
-######################################################################
-#
-# Use with a command like
-#   cmake -S . -B build/Debug -D CMAKE_BUILD_TYPE=Debug
-#   cmake --build build/Debug
-
 cmake_minimum_required(VERSION 3.23)
-set (CMAKE_CXX_STANDARD 20)
-project(SteamBot CXX)
 
-add_compile_options(-UNDEBUG)
+project(ChristiansSteamFramework CXX)
+add_library(${PROJECT_NAME} STATIC)
+
+include(CMakefile.Common)
 
 ######################################################################
 # https://developpaper.com/correct-use-of-protobuf-in-cmake/
@@ -16,7 +11,6 @@ add_compile_options(-UNDEBUG)
 # ToDo: does it really have to be that complicated?
 # Took hours to set up...
 
-find_package(Protobuf REQUIRED)
 include_directories(${Protobuf_INCLUDE_DIRS})
 
 cmake_path(SET protoDir "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -69,19 +63,11 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 ######################################################################
 
-SET(Boost_USE_STATIC_LIBS ON)
-find_package(Boost 1.81.0 REQUIRED COMPONENTS context coroutine system log log_setup iostreams fiber)
-include_directories(${Boost_INCLUDE_DIRS})
-
 list(APPEND SRCS Boost)
 
 ######################################################################
 
-find_package(OpenSSL 3 REQUIRED)
-
-######################################################################
-
-list(APPEND SRCS Main Logging WorkingDir Universe Random Base64 DestructMonitor JobID)
+list(APPEND SRCS Logging WorkingDir Universe Random Base64 DestructMonitor JobID)
 list(APPEND SRCS Asio/Asio Asio/HTTPClient Asio/Fiber Asio/Connections)
 list(APPEND SRCS Client/Client Client/Waiter Client/Whiteboard Client/Messageboard Client/Module Client/DataFile Client/Sleep Client/ClientInfo)
 list(APPEND SRCS Connection/Endpoint Connection/Serialize Connection/Base Connection/TCP Connection/Message Connection/Encrypted)
@@ -116,25 +102,11 @@ list(APPEND SRCS Modules/CardFarmer)
 list(APPEND SRCS Modules/GetBadgeData/ParseBadgePage Modules/GetBadgeData/GetBadgeData Modules/GetBadgeData/Printable)
 list(APPEND SRCS WebAPI/WebAPI WebAPI/ISteamDirectory/GetCMList)
 
-include_directories("Headers")
 include_directories("Christians-HTML-Parser/Headers")
 
 ######################################################################
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")	#  -fsanitize=address
-
-######################################################################
-
-message("${SRCS}")
-
 list(TRANSFORM SRCS PREPEND "Sources/")
 list(TRANSFORM SRCS APPEND ".cpp")
 
-add_executable(SteamBot ${SRCS} ${PROTO_SRCS})
-target_compile_features(SteamBot PUBLIC cxx_std_20)
-
-target_link_libraries(SteamBot pthread systemd ${Boost_LIBRARIES})
-target_link_libraries(SteamBot ${Protobuf_LIBRARIES})
-target_link_libraries(SteamBot ${OPENSSL_LIBRARIES})
-target_link_libraries(SteamBot z)
-target_link_libraries(SteamBot atomic)
+target_sources(${PROJECT_NAME} PRIVATE ${SRCS} ${PROTO_SRCS})
