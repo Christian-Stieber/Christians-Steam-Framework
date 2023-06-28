@@ -22,6 +22,8 @@
 #include "Modules/DiscoveryQueue.hpp"
 #include "Helpers/URLs.hpp"
 #include "Web/URLEncode.hpp"
+#include "UI/UI.hpp"
+#include "MiscIDs.hpp"
 
 #include <boost/url/url_view.hpp>
 
@@ -39,14 +41,17 @@ namespace
     private:
         enum class State {
             None,
-            GenerateQueue
+            GenerateQueue,
+            ClearingQueue
         };
 
         State state=State::None;
 
         std::shared_ptr<Request> currentRequest;
+        std::vector<SteamBot::AppID> queue;
 
     private:
+        void processNewQueue(std::shared_ptr<const Response>);
         void generateQueue();
 
     public:
@@ -64,11 +69,65 @@ namespace
 
 /************************************************************************/
 
+void DiscoveryQueueModule::processNewQueue(std::shared_ptr<const Response> response)
+{
+    auto data=SteamBot::HTTPClient::parseJson(*(response->query));
+    BOOST_LOG_TRIVIAL(debug) << data;
+    try
+    {
+        {
+            auto& array=data.at("queue").as_array();
+            queue.reserve(array.size());
+            for (auto iterator=array.crbegin(); iterator!=array.crend(); ++iterator)
+            {
+                auto value=iterator->to_number<std::underlying_type_t<SteamBot::AppID>>();
+                queue.push_back(static_cast<SteamBot::AppID>(value));
+            }
+        }
+
+        {
+            auto& appData=data.at("rgAppData").as_object();
+            assert(appData.size()==queue.size());
+
+            SteamBot::UI::OutputText output;
+            output << "discovery queue: ";
+            const char* separator="";
+            for (const auto& item : appData)
+            {
+                output << separator << item.key() << " (" << item.value().at("name").as_string() << ")";
+                separator=", ";
+            }
+        }
+
+        return;
+    }
+    catch(std::invalid_argument&)
+    {
+    }
+    catch(std::out_of_range&)
+    {
+    }
+    state=State::None;
+}
+
+/************************************************************************/
+
 void DiscoveryQueueModule::handle(std::shared_ptr<const Response> response)
 {
     if (response->initiator==currentRequest)
     {
-        BOOST_LOG_TRIVIAL(debug) << SteamBot::HTTPClient::parseString(*(response->query));
+        switch(state)
+        {
+        case State::GenerateQueue:
+            processNewQueue(std::move(response));
+            break;
+
+        case State::ClearingQueue:
+            break;
+
+        default:
+            assert(false);
+        }
     }
 }
 
