@@ -23,7 +23,7 @@
 
 CLI::CLI(ConsoleUI& ui_)
     : ui(ui_),
-      helpers(std::make_unique<Helpers>())
+      helpers(std::make_unique<Helpers>(*this))
 {
     SteamBot::Startup::InitBase<CLICommandBase, CLI&>::initAll([this](std::unique_ptr<CLICommandBase> command){
         commands.emplace_back(std::move(command));

@@ -49,11 +49,10 @@ namespace SteamBot
 
         private:
             ConsoleUI& ui;
-            std::unique_ptr<Helpers> helpers;
-
             std::vector<std::unique_ptr<CLICommandBase>> commands;
 
         public:
+            std::unique_ptr<Helpers> helpers;
             SteamBot::ClientInfo* currentAccount=nullptr;
             bool quit=false;
 
@@ -85,6 +84,7 @@ namespace SteamBot
 
             // you must add these individually
             static void useListGamesCommand();
+            static void usePlayStopGameCommands();
         };
     }
 }

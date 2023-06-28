@@ -29,8 +29,15 @@ typedef SteamBot::UI::CLI CLI;
 
 /************************************************************************/
 
-class SteamBot::UI::CLI::Helpers
+class CLI::Helpers
 {
+private:
+    CLI& cli;
+
+public:
+    Helpers(CLI&);
+    ~Helpers();
+
 public:
     typedef SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames OwnedGames;
     static OwnedGames::Ptr getOwnedGames(const SteamBot::ClientInfo&);
@@ -42,5 +49,4 @@ public:
 
 public:
     bool simpleCommand(std::vector<std::string>&, std::function<bool(std::shared_ptr<SteamBot::Client>, uint64_t)>);
-    bool game_start_stop(std::vector<std::string>&, bool);
 };

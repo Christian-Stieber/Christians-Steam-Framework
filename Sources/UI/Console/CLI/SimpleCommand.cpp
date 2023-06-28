@@ -17,7 +17,7 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "../Console.hpp"
+#include "./Helpers.hpp"
 
 #include "Client/Client.hpp"
 
@@ -32,17 +32,17 @@
  * message about the client not being available.
  */
 
-bool SteamBot::UI::ConsoleUI::CLI::simpleCommand(std::vector<std::string>& words, std::function<bool(std::shared_ptr<SteamBot::Client>, uint64_t)> callback)
+bool CLI::Helpers::simpleCommand(std::vector<std::string>& words, std::function<bool(std::shared_ptr<SteamBot::Client>, uint64_t)> callback)
 {
     SteamBot::ClientInfo* clientInfo=nullptr;
 
     if (words.size()==3)
     {
-        clientInfo=getAccount(words[1]);
+        clientInfo=cli.getAccount(words[1]);
     }
     else if (words.size()==2)
     {
-        clientInfo=getAccount();
+        clientInfo=cli.getAccount();
     }
     else
     {

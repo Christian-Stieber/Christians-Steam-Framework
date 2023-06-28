@@ -30,6 +30,15 @@ typedef CLI::Helpers Helpers;
 
 /************************************************************************/
 
+Helpers::Helpers(CLI& cli_)
+    : cli(cli_)
+{
+}
+
+Helpers::~Helpers() =default;
+
+/************************************************************************/
+
 std::vector<std::shared_ptr<const Helpers::LicenseInfo>> Helpers::getLicenseInfo(const SteamBot::ClientInfo& clientInfo, SteamBot::AppID appId)
 {
     std::vector<std::shared_ptr<const LicenseInfo>> result;
