@@ -75,10 +75,14 @@ namespace SteamBot
         public:
             static void useCommonCommands();
 
+            // added by useCommonCommands()
+            static void useHelpCommand();
             static void useStatusCommand();
-            static void useListGamesCommand();
             static void useLaunchCommand();
             static void useSelectCommand();
+
+            // you must add these individually
+            static void useListGamesCommand();
         };
     }
 }
