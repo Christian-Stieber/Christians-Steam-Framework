@@ -23,6 +23,8 @@
 #include "Exceptions.hpp"
 #include "EnumString.hpp"
 #include "UI/UI.hpp"
+#include "Modules/MultiPacket.hpp"
+#include "Modules/Login.hpp"
 
 #include <thread>
 #include <boost/log/trivial.hpp>
@@ -72,6 +74,10 @@ void SteamBot::Client::quit(bool restart)
 
 void SteamBot::Client::initModules()
 {
+    // pull in some modules
+    SteamBot::Modules::MultiPacket::use();
+    SteamBot::Modules::Login::use();
+
     Module::createAll([this](std::shared_ptr<Client::Module> module){
         std::lock_guard<decltype(modulesMutex)> lock(modulesMutex);
         bool success=modules.try_emplace(std::type_index(typeid(*module)), std::move(module)).second;

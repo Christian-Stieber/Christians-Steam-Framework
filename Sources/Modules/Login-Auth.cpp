@@ -741,3 +741,9 @@ void LoginModule::run(SteamBot::Client& client)
         }
     }
 }
+
+/************************************************************************/
+
+void SteamBot::Modules::Login::use()
+{
+}

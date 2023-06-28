@@ -19,43 +19,15 @@
 
 #pragma once
 
-#include "SteamID.hpp"
-
-#include <optional>
-#include <utility>
-#include <chrono>
-
 /************************************************************************/
 
 namespace SteamBot
 {
     namespace Modules
     {
-        namespace Login
+        namespace MultiPacket
         {
             void use();
-
-            namespace Whiteboard
-            {
-                enum class LoginStatus {
-                    LoggedOut,
-                    LoggingIn,
-                    LoggedIn
-                };
-
-                enum class ClientSessionID : int32_t { };
-                enum class CellID : uint32_t { };
-                typedef SteamBot::SteamID SteamID;
-
-                class HeartbeatInterval : public std::chrono::milliseconds
-                {
-                public:
-                    template <typename ...ARGS> HeartbeatInterval(ARGS&&... args)
-                        : std::chrono::milliseconds(std::forward<ARGS>(args)...)
-                    {
-                    }
-                };
-            }
         }
     }
 }

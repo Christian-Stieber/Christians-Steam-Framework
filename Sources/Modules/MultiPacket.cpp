@@ -18,6 +18,7 @@
  */
 
 #include "Modules/Connection.hpp"
+#include "Modules/MultiPacket.hpp"
 #include "Client/Module.hpp"
 
 #include "Steam/ProtoBuf/steammessages_base.hpp"
@@ -116,4 +117,10 @@ void MultiPacketModule::run(SteamBot::Client& client)
             handle(message);
         }
     }
+}
+
+/************************************************************************/
+
+void SteamBot::Modules::MultiPacket::use()
+{
 }
