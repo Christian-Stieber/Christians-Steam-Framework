@@ -53,7 +53,7 @@ namespace SteamBot
 
             std::vector<std::unique_ptr<CLICommandBase>> commands;
 
-        private:
+        public:
             SteamBot::ClientInfo* currentAccount=nullptr;
             bool quit=false;
 
@@ -78,6 +78,7 @@ namespace SteamBot
             static void useStatusCommand();
             static void useListGamesCommand();
             static void useLaunchCommand();
+            static void useSelectCommand();
         };
     }
 }
