@@ -80,6 +80,7 @@ namespace SteamBot
             static void useExitCommand();
             static void useStatusCommand();
             static void useLaunchCommand();
+            static void useCreateCommand();
             static void useSelectCommand();
 
             // you must add these individually

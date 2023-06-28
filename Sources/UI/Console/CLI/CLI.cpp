@@ -166,4 +166,5 @@ void SteamBot::UI::CLI::useCommonCommands()
     useStatusCommand();
     useSelectCommand();
     useLaunchCommand();
+    useCreateCommand();
 }
