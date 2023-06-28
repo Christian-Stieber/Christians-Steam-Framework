@@ -17,7 +17,8 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "../Console.hpp"
+#include "UI/CLI.hpp"
+#include "../Helpers.hpp"
 
 #include "Modules/Executor.hpp"
 #include "Modules/AddFreeLicense.hpp"
@@ -25,13 +26,33 @@
 /************************************************************************/
 
 typedef SteamBot::Modules::AddFreeLicense::Messageboard::AddLicense AddLicense;
-typedef SteamBot::UI::ConsoleUI::CLI CLI;
 
 /************************************************************************/
 
-bool CLI::command_add_license(std::vector<std::string>& words)
+namespace
 {
-    return simpleCommand(words, [](std::shared_ptr<SteamBot::Client> client, uint64_t appId){
+    class AddLicenseCommand : public CLI::CLICommandBase
+    {
+    public:
+        AddLicenseCommand(CLI& cli_)
+            : CLICommandBase(cli_, "add-license", "[<account>] <appid>", "add a (free) license")
+        {
+        }
+
+        virtual ~AddLicenseCommand() =default;
+
+    public:
+        virtual bool execute(std::vector<std::string>&) override;
+    };
+
+    AddLicenseCommand::InitClass<AddLicenseCommand> init;
+}
+
+/************************************************************************/
+
+bool AddLicenseCommand::execute(std::vector<std::string>& words)
+{
+    return cli.helpers->simpleCommand(words, [](std::shared_ptr<SteamBot::Client> client, uint64_t appId){
         bool success=SteamBot::Modules::Executor::execute(client, [appId](SteamBot::Client&) mutable {
             AddLicense::add(static_cast<SteamBot::AppID>(appId));
         });
@@ -41,4 +62,10 @@ bool CLI::command_add_license(std::vector<std::string>& words)
         }
         return success;
     });
+}
+
+/************************************************************************/
+
+void SteamBot::UI::CLI::useAddLicenseCommand()
+{
 }
