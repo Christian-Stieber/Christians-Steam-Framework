@@ -28,31 +28,12 @@ typedef SteamBot::Client::Module Module;
 
 /************************************************************************/
 
-static const Module::InitBase* modulesInit;
-
-/************************************************************************/
-
 Module::Module()
     : waiter(SteamBot::Waiter::create())
 {
 }
 
 Module::~Module() =default;
-
-/************************************************************************/
-
-Module::InitBase::InitBase()
-    : next(modulesInit)
-{
-    modulesInit=this;
-}
-
-/************************************************************************/
-
-Module::InitBase::~InitBase()
-{
-    modulesInit=nullptr;	// just in case
-}
 
 /************************************************************************/
 /*
@@ -62,12 +43,13 @@ Module::InitBase::~InitBase()
 
 void Module::createAll(std::function<void(std::shared_ptr<SteamBot::Client::Module>)> callback)
 {
-    for (const InitBase* init=modulesInit; init!=nullptr; init=init->next)
-    {
-        auto module=init->create();
-        BOOST_LOG_TRIVIAL(debug) << "created client module: " << boost::typeindex::type_id_runtime(*module).pretty_name();
+    SteamBot::Startup::InitBase<Module>::initAll(std::move(callback));
+    /*
+
+      [&callback](std::unique_ptr<Module> module){
         callback(std::move(module));
-    }
+    });
+    */
 }
 
 /************************************************************************/

@@ -20,9 +20,7 @@
 #pragma once
 
 #include "Client.hpp"
-
-#include <memory>
-#include <type_traits>
+#include "Startup.hpp"
 
 /************************************************************************/
 /*
@@ -47,8 +45,7 @@ namespace SteamBot
     class Client::Module : public std::enable_shared_from_this<Client::Module>
     {
     public:
-        class InitBase;
-        template <ClientModule T> class Init;
+        template <typename T> using Init=SteamBot::Startup::Init<Module, T>;
 
     public:
         const std::shared_ptr<SteamBot::Waiter> waiter;
@@ -67,32 +64,3 @@ namespace SteamBot
         virtual void run(Client&);
     };
 }
-
-/************************************************************************/
-
-class SteamBot::Client::Module::InitBase
-{
-public:
-    const InitBase* const next;
-
-protected:
-    InitBase();
-    virtual ~InitBase();
-
-public:
-    virtual std::shared_ptr<Client::Module> create() const =0;
-};
-
-/************************************************************************/
-
-template <SteamBot::ClientModule T> class SteamBot::Client::Module::Init : public SteamBot::Client::Module::InitBase
-{
-public:
-    Init() =default;
-    virtual ~Init() =default;
-
-    virtual std::shared_ptr<Client::Module> create() const override
-    {
-        return std::make_shared<T>();
-    }
-};
