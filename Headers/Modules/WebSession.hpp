@@ -10,6 +10,17 @@
  * queries to Steam.
  */
 
+/***********************************************************************
+ *
+ * Note: I don't know whether I really like the "queryMaker" approach
+ * here, but it seems the discovery queue wants a cookie value in
+ * the request body, so I'm must delaying the request generation.
+ *
+ * Also, HTTTPClient request are usually stored in a unique_ptr, and
+ * passed around like that, but the whole thing is a messageboard
+ * message and that can't be modified...
+ */
+
 namespace SteamBot
 {
     namespace Modules
@@ -18,17 +29,53 @@ namespace SteamBot
         {
             namespace Messageboard
             {
-                class GetURL
+                typedef SteamBot::HTTPClient::Query::QueryPtr QueryPtr;
+
+                class Request
                 {
                 public:
-                    boost::urls::url url;
+                    std::function<QueryPtr()> queryMaker;
+
+                public:
+                    Request();
+                    ~Request();
                 };
 
-                class GotURL
+                class Response
                 {
                 public:
-                    std::shared_ptr<const GetURL> initiator;
+                    std::shared_ptr<const Request> initiator;
                     SteamBot::HTTPClient::Query::QueryPtr query;
+
+                public:
+                    Response();
+                    ~Response();
+                };
+            }
+        }
+    }
+}
+
+/************************************************************************/
+
+namespace SteamBot
+{
+    namespace Modules
+    {
+        namespace WebSession
+        {
+            namespace Whiteboard
+            {
+                class Cookies
+                {
+                public:
+                    std::string steamLogin;
+                    std::string steamLoginSecure;
+                    std::string sessionid;
+
+                public:
+                    Cookies();
+                    ~Cookies();
                 };
             }
         }

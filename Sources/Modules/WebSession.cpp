@@ -51,7 +51,11 @@
 /************************************************************************/
 
 typedef Steam::CMsgClientRequestWebAPIAuthenticateUserNonceResponseMessageType NonceMessage;
-typedef SteamBot::Modules::WebSession::Messageboard::GetURL GetURL;
+
+typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
+typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
+
+typedef SteamBot::Modules::WebSession::Whiteboard::Cookies Cookies;
 
 /************************************************************************/
 
@@ -69,7 +73,7 @@ namespace
 
         Status status=Status::None;
 
-        std::queue<std::shared_ptr<const GetURL>> requests;
+        std::queue<std::shared_ptr<const Request>> requests;
 
     private:
         std::chrono::steady_clock::time_point timestamp;
@@ -86,7 +90,7 @@ namespace
 
     public:
         void handle(std::shared_ptr<const NonceMessage>);
-        void handle(std::shared_ptr<const GetURL>);
+        void handle(std::shared_ptr<const Request>);
 
     public:
         WebSessionModule() =default;
@@ -97,6 +101,17 @@ namespace
 
     WebSessionModule::Init<WebSessionModule> init;
 }
+
+/************************************************************************/
+
+Request::Request() =default;
+Request::~Request() =default;
+
+Response::Response() =default;
+Response::~Response() =default;
+
+Cookies::Cookies() =default;
+Cookies::~Cookies() =default;
 
 /************************************************************************/
 
@@ -174,13 +189,14 @@ SteamBot::HTTPClient::Query::QueryPtr WebSessionModule::performAuthUserRequest(s
 
 std::string WebSessionModule::createCookies(SteamBot::HTTPClient::Query::QueryPtr query)
 {
-    std::string cookies;
+    Cookies cookies;
 
-    auto json=SteamBot::HTTPClient::parseJson(*query);
-
-    boost::json::object& authenticateuser=json.as_object().at("authenticateuser").as_object();
-    SteamBot::Web::setCookie(cookies, "steamLogin", authenticateuser.at("token").as_string());
-    SteamBot::Web::setCookie(cookies, "steamLoginSecure", authenticateuser.at("tokensecure").as_string());
+    {
+        auto json=SteamBot::HTTPClient::parseJson(*query);
+        boost::json::object& authenticateuser=json.as_object().at("authenticateuser").as_object();
+        cookies.steamLogin=authenticateuser.at("token").as_string();
+        cookies.steamLoginSecure=authenticateuser.at("tokensecure").as_string();
+    }
 
     {
         auto steamId=getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::SteamID>();
@@ -188,11 +204,18 @@ std::string WebSessionModule::createCookies(SteamBot::HTTPClient::Query::QueryPt
 
         auto steamIdString=std::to_string(steamId->getValue());
         static auto bytes=static_cast<const std::byte*>(static_cast<const void*>(steamIdString.data()));
-        SteamBot::Web::setCookie(cookies, "sessionid", SteamBot::Base64::encode(std::span<const std::byte>(bytes, steamIdString.size())));
+        cookies.sessionid=SteamBot::Base64::encode(std::span<const std::byte>(bytes, steamIdString.size()));
     }
 
-    BOOST_LOG_TRIVIAL(debug) << "new cookie string: \"" << cookies << "\"";
-    return cookies;
+    std::string cookiesHeader;
+    SteamBot::Web::setCookie(cookiesHeader, "steamLogin", cookies.steamLogin);
+    SteamBot::Web::setCookie(cookiesHeader, "steamLoginSecure", cookies.steamLoginSecure);
+    SteamBot::Web::setCookie(cookiesHeader, "sessionid", cookies.sessionid);
+
+    getClient().whiteboard.set(std::move(cookies));
+
+    BOOST_LOG_TRIVIAL(debug) << "new cookie string: \"" << cookiesHeader << "\"";
+    return cookiesHeader;
 }
 
 /************************************************************************/
@@ -278,7 +301,7 @@ void WebSessionModule::handle(std::shared_ptr<const Steam::CMsgClientRequestWebA
 
 /************************************************************************/
 
-void WebSessionModule::handle(std::shared_ptr<const GetURL> message)
+void WebSessionModule::handle(std::shared_ptr<const Request> message)
 {
     requests.push(std::move(message));
 }
@@ -291,7 +314,7 @@ void WebSessionModule::handleRequests()
     {
         auto& front=requests.front();
 
-        auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, front->url);
+        auto query=front->queryMaker();
         {
             std::string myCookies=cookies;
             setTimezoneCookie(myCookies);
@@ -300,7 +323,7 @@ void WebSessionModule::handleRequests()
 
         query=SteamBot::HTTPClient::perform(std::move(query));
 
-        auto reply=std::make_shared<SteamBot::Modules::WebSession::Messageboard::GotURL>();
+        auto reply=std::make_shared<Response>();
         reply->initiator=std::move(front);
         reply->query=std::move(query);
         requests.pop();
@@ -315,8 +338,8 @@ void WebSessionModule::run(SteamBot::Client& client)
     std::shared_ptr<SteamBot::Messageboard::Waiter<NonceMessage>> nonceMessage;
     nonceMessage=waiter->createWaiter<decltype(nonceMessage)::element_type>(client.messageboard);
 
-    std::shared_ptr<SteamBot::Messageboard::Waiter<GetURL>> getUrl;
-    getUrl=waiter->createWaiter<decltype(getUrl)::element_type>(client.messageboard);
+    std::shared_ptr<SteamBot::Messageboard::Waiter<Request>> requestWaiter;
+    requestWaiter=waiter->createWaiter<decltype(requestWaiter)::element_type>(client.messageboard);
 
     waitForLogin();
 
@@ -325,7 +348,7 @@ void WebSessionModule::run(SteamBot::Client& client)
         waiter->wait();
 
         nonceMessage->handle(this);
-        getUrl->handle(this);
+        requestWaiter->handle(this);
 
         handleRequests();
 

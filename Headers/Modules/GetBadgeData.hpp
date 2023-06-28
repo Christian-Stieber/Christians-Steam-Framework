@@ -35,6 +35,8 @@ namespace SteamBot
     {
         namespace GetPageData
         {
+            void use();
+
             namespace Whiteboard
             {
                 // The whiteboard gets an BadgeData::Ptr

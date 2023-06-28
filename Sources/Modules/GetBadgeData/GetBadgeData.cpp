@@ -27,8 +27,8 @@
 
 /************************************************************************/
 
-typedef SteamBot::Modules::WebSession::Messageboard::GetURL GetURL;
-typedef SteamBot::Modules::WebSession::Messageboard::GotURL GotURL;
+typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
+typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
 
 typedef SteamBot::Modules::GetPageData::Whiteboard::BadgeData BadgeData;
 
@@ -48,7 +48,7 @@ namespace
         std::unique_ptr<ChainLoader> loader;
 
     public:
-        void handle(std::shared_ptr<const GotURL>);
+        void handle(std::shared_ptr<const Response>);
 
     private:
         void requestNextPage();
@@ -70,7 +70,7 @@ class GetBadgeDataModule::ChainLoader
 public:
     boost::urls::url currentUrl;
     std::shared_ptr<BadgeData> collectedData;
-    std::shared_ptr<GetURL> currentQuery;
+    std::shared_ptr<Request> currentQuery;
 
 public:
     ChainLoader()
@@ -83,15 +83,17 @@ public:
 public:
     void loadPage()
     {
-        currentQuery=std::make_shared<GetURL>();
-        currentQuery->url=currentUrl;
+        currentQuery=std::make_shared<Request>();
+        currentQuery->queryMaker=[&url=currentUrl](){
+            return std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, url);
+        };
         getClient().messageboard.send(currentQuery);
     }
 };
 
 /************************************************************************/
 
-void GetBadgeDataModule::handle(std::shared_ptr<const GotURL> message)
+void GetBadgeDataModule::handle(std::shared_ptr<const Response> message)
 {
     if (!loader || message->initiator!=loader->currentQuery)
     {
@@ -142,14 +144,20 @@ void GetBadgeDataModule::run(SteamBot::Client& client)
 {
     waitForLogin();
 
-    std::shared_ptr<SteamBot::Messageboard::Waiter<GotURL>> gotUrl;
-    gotUrl=waiter->createWaiter<decltype(gotUrl)::element_type>(client.messageboard);
+    std::shared_ptr<SteamBot::Messageboard::Waiter<Response>> response;
+    response=waiter->createWaiter<decltype(response)::element_type>(client.messageboard);
 
     requestNextPage();
 
     while (true)
     {
         waiter->wait();
-        gotUrl->handle(this);
+        response->handle(this);
     }
+}
+
+/************************************************************************/
+
+void SteamBot::Modules::GetPageData::use()
+{
 }

@@ -20,6 +20,7 @@
 #include "Client/Module.hpp"
 #include "Modules/GetBadgeData.hpp"
 #include "Modules/OwnedGames.hpp"
+#include "Modules/CardFarmer.hpp"
 #include "UI/UI.hpp"
 
 /************************************************************************/
@@ -106,4 +107,11 @@ void CardFarmerModule::run(SteamBot::Client& client)
             }
         }
     }
+}
+
+/************************************************************************/
+
+void SteamBot::Modules::CardFarmer::use()
+{
+    SteamBot::Modules::GetPageData::use();
 }
