@@ -18,6 +18,7 @@
  */
 
 #include "Modules/Connection.hpp"
+#include "Modules/PersonaState.hpp"
 #include "Client/Module.hpp"
 #include "Steam/PersonaState.hpp"
 #include "EnumFlags.hpp"
@@ -68,4 +69,10 @@ void PersonaStateModule::run(SteamBot::Client&)
 {
     waitForLogin();
     setState();
+}
+
+/************************************************************************/
+
+void SteamBot::Modules::PersonaState::use()
+{
 }
