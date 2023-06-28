@@ -67,7 +67,7 @@ list(APPEND SRCS Boost)
 
 ######################################################################
 
-list(APPEND SRCS Logging WorkingDir Universe Random Base64 DestructMonitor JobID)
+list(APPEND SRCS Main Logging WorkingDir Universe Random Base64 DestructMonitor JobID)
 list(APPEND SRCS Asio/Asio Asio/HTTPClient Asio/Fiber Asio/Connections)
 list(APPEND SRCS Client/Client Client/Waiter Client/Whiteboard Client/Messageboard Client/Module Client/DataFile Client/Sleep Client/ClientInfo)
 list(APPEND SRCS Connection/Endpoint Connection/Serialize Connection/Base Connection/TCP Connection/Message Connection/Encrypted)
