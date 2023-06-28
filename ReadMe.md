@@ -12,7 +12,6 @@ Currently, the main goals are:
 * making a C++ framework to write Steam bots, similar to projects such as SteamKit
 * making a bot to idle cards
 * making the bot create trades for cards
-* while everything is in one source tree right now, I fully intend to separate the actual "bot" from the "framework" eventually.
 
 As for the time beyond, I don't know yet. This is a one-man spare-time project, so I'm trying to stick to a reasonably realistic plan.
 
@@ -20,11 +19,7 @@ Note that while there's some intention somewhere in the back of my head to allow
 
 # PLATFORMS
 
-If, for whatever reaason, you are stupid enough to want to try this:
-while the code is meant to be portable, there are a couple of
-platform-specific items such as getting information about the current
-machine. Code might not exist yet for all platforms, and if it does
-exist then it certainly hasn't been tested.
+If, for whatever reaason, you are stupid enough to want to try this: while the code is meant to be portable, there are a couple of platform-specific items such as getting information about the current machine. Code might not exist yet for all platforms, and if it does exist then it certainly hasn't been tested.
 
 ## Linux
 
@@ -54,9 +49,9 @@ I think this should do it.
 # FEATURES
 
 Again, this list might not be complete/current. But, some things that are there include:
-* multiple clients running concurrently, clients are based around inteernal asynchronicity as well
+* multiple clients running concurrently, clients are based around internal asynchronicity as well
 * a simple but functional console-based UI
-* modular setup (except for the CLI right now...)
+* modular setup
 * for now, only TCP connections are supported.\
   I guessed it might the easiest of the three, and wanted to get other things done
 * Login:
