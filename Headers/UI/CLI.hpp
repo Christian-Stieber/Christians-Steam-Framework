@@ -77,6 +77,7 @@ namespace SteamBot
 
             static void useStatusCommand();
             static void useListGamesCommand();
+            static void useLaunchCommand();
         };
     }
 }
