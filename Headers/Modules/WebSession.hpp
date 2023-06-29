@@ -52,6 +52,8 @@ namespace SteamBot
                     ~Response();
                 };
             }
+
+            std::shared_ptr<const Messageboard::Response> makeQuery(std::shared_ptr<Messageboard::Request>);
         }
     }
 }

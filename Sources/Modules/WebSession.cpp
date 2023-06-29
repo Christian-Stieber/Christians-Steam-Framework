@@ -355,3 +355,34 @@ void WebSessionModule::run(SteamBot::Client& client)
         requestNonce();
     }
 }
+
+/************************************************************************/
+/*
+ * This is a blocking call.
+ */
+
+std::shared_ptr<const Response> SteamBot::Modules::WebSession::makeQuery(std::shared_ptr<Request> request)
+{
+    auto& client=SteamBot::Client::getClient();
+
+    auto waiter=SteamBot::Waiter::create();
+    auto cancellation=client.cancel.registerObject(*waiter);
+
+    std::shared_ptr<SteamBot::Messageboard::Waiter<Response>> response;
+    response=waiter->createWaiter<decltype(response)::element_type>(client.messageboard);
+
+    client.messageboard.send(request);
+
+    while (true)
+    {
+        waiter->wait();
+
+        if (auto message=response->fetch())
+        {
+            if (message->initiator==request)
+            {
+                return message;
+            }
+        }
+    }
+}
