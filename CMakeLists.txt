@@ -103,6 +103,7 @@ list(APPEND SRCS Modules/Login-Auth)
 list(APPEND SRCS Modules/AddFreeLicense)
 list(APPEND SRCS Modules/CardFarmer)
 list(APPEND SRCS Modules/DiscoveryQueue)
+list(APPEND SRCS Modules/SaleQueue)
 list(APPEND SRCS Modules/GetBadgeData/ParseBadgePage Modules/GetBadgeData/GetBadgeData Modules/GetBadgeData/Printable)
 list(APPEND SRCS WebAPI/WebAPI WebAPI/ISteamDirectory/GetCMList)
 
