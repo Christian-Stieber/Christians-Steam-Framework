@@ -18,6 +18,7 @@
  */
 
 #include "Modules/Connection.hpp"
+#include "Modules/Heartbeat.hpp"
 #include "Client/Module.hpp"
 #include "Modules/Login.hpp"
 #include "Steam/ProtoBuf/steammessages_clientserver_login.hpp"
@@ -70,4 +71,10 @@ void HeartbeatModule::run(SteamBot::Client& client)
 
         lastMessageSent->has();
     }
+}
+
+/************************************************************************/
+
+void SteamBot::Modules::Heartbeat::use()
+{
 }

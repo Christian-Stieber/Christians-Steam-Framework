@@ -18,6 +18,7 @@
  */
 
 #include "Modules/Connection.hpp"
+#include "Modules/Heartbeat.hpp"
 #include "ResultCode.hpp"
 #include "Client/Module.hpp"
 #include "Modules/Login.hpp"
@@ -746,4 +747,5 @@ void LoginModule::run(SteamBot::Client& client)
 
 void SteamBot::Modules::Login::use()
 {
+    SteamBot::Modules::Heartbeat::use();
 }
