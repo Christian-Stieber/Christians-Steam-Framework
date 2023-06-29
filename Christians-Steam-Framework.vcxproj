@@ -47,10 +47,12 @@
     <ClCompile Include="Sources\Helpers\URLs.cpp" />
     <ClCompile Include="Sources\JobID.cpp" />
     <ClCompile Include="Sources\Logging.cpp" />
+    <ClCompile Include="Sources\Main.cpp" />
     <ClCompile Include="Sources\Modules\AddFreeLicense.cpp" />
     <ClCompile Include="Sources\Modules\CardFarmer.cpp" />
     <ClCompile Include="Sources\Modules\ClientAppList.cpp" />
     <ClCompile Include="Sources\Modules\Connection.cpp" />
+    <ClCompile Include="Sources\Modules\DiscoveryQueue.cpp" />
     <ClCompile Include="Sources\Modules\Executor.cpp" />
     <ClCompile Include="Sources\Modules\GetBadgeData\GetBadgeData.cpp" />
     <ClCompile Include="Sources\Modules\GetBadgeData\ParseBadgePage.cpp" />
@@ -63,6 +65,7 @@
     <ClCompile Include="Sources\Modules\PackageData.cpp" />
     <ClCompile Include="Sources\Modules\PersonaState.cpp" />
     <ClCompile Include="Sources\Modules\PlayGames.cpp" />
+    <ClCompile Include="Sources\Modules\SaleQueue.cpp" />
     <ClCompile Include="Sources\Modules\UnifiedMessageClient.cpp" />
     <ClCompile Include="Sources\Modules\UnifiedMessageServer.cpp" />
     <ClCompile Include="Sources\Modules\WebSession.cpp" />
@@ -81,12 +84,19 @@
     <ClCompile Include="Sources\Steam\MachineInfo.cpp" />
     <ClCompile Include="Sources\Steam\MachineInfo\Windows.cpp" />
     <ClCompile Include="Sources\Steam\OSType.cpp" />
-    <ClCompile Include="Sources\UI\Console\CLI.cpp" />
-    <ClCompile Include="Sources\UI\Console\CLI\AddLicense.cpp" />
-    <ClCompile Include="Sources\UI\Console\CLI\ListGames.cpp" />
-    <ClCompile Include="Sources\UI\Console\CLI\PlayGame.cpp" />
+    <ClCompile Include="Sources\UI\Console\CLI\CLI.cpp" />
+    <ClCompile Include="Sources\UI\Console\CLI\Commands\AddLicense.cpp" />
+    <ClCompile Include="Sources\UI\Console\CLI\Commands\Create.cpp" />
+    <ClCompile Include="Sources\UI\Console\CLI\Commands\DiscoveryQueue.cpp" />
+    <ClCompile Include="Sources\UI\Console\CLI\Commands\Exit.cpp" />
+    <ClCompile Include="Sources\UI\Console\CLI\Commands\Help.cpp" />
+    <ClCompile Include="Sources\UI\Console\CLI\Commands\Launch.cpp" />
+    <ClCompile Include="Sources\UI\Console\CLI\Commands\ListGames.cpp" />
+    <ClCompile Include="Sources\UI\Console\CLI\Commands\PlayStopGame.cpp" />
+    <ClCompile Include="Sources\UI\Console\CLI\Commands\Select.cpp" />
+    <ClCompile Include="Sources\UI\Console\CLI\Commands\Status.cpp" />
+    <ClCompile Include="Sources\UI\Console\CLI\Helpers.cpp" />
     <ClCompile Include="Sources\UI\Console\CLI\SimpleCommand.cpp" />
-    <ClCompile Include="Sources\UI\Console\CLI\Status.cpp" />
     <ClCompile Include="Sources\UI\Console\CLI\TokenizeLine.cpp" />
     <ClCompile Include="Sources\UI\Console\Console.cpp" />
     <ClCompile Include="Sources\UI\Console\Manager_Windows.cpp" />
@@ -166,15 +176,21 @@
     <ClInclude Include="Headers\Logging.hpp" />
     <ClInclude Include="Headers\MiscIDs.hpp" />
     <ClInclude Include="Headers\Modules\AddFreeLicense.hpp" />
+    <ClInclude Include="Headers\Modules\CardFarmer.hpp" />
     <ClInclude Include="Headers\Modules\Connection.hpp" />
     <ClInclude Include="Headers\Modules\Connection_Internal.hpp" />
+    <ClInclude Include="Headers\Modules\DiscoveryQueue.hpp" />
     <ClInclude Include="Headers\Modules\Executor.hpp" />
     <ClInclude Include="Headers\Modules\GetBadgeData.hpp" />
+    <ClInclude Include="Headers\Modules\Heartbeat.hpp" />
     <ClInclude Include="Headers\Modules\LicenseList.hpp" />
     <ClInclude Include="Headers\Modules\Login.hpp" />
+    <ClInclude Include="Headers\Modules\MultiPacket.hpp" />
     <ClInclude Include="Headers\Modules\OwnedGames.hpp" />
     <ClInclude Include="Headers\Modules\PackageData.hpp" />
+    <ClInclude Include="Headers\Modules\PersonaState.hpp" />
     <ClInclude Include="Headers\Modules\PlayGames.hpp" />
+    <ClInclude Include="Headers\Modules\SaleQueue.hpp" />
     <ClInclude Include="Headers\Modules\SteamGuard.hpp" />
     <ClInclude Include="Headers\Modules\UnifiedMessageClient.hpp" />
     <ClInclude Include="Headers\Modules\UnifiedMessageServer.hpp" />
@@ -191,6 +207,7 @@
     <ClInclude Include="Headers\ProtoBuf.hpp" />
     <ClInclude Include="Headers\Random.hpp" />
     <ClInclude Include="Headers\ResultCode.hpp" />
+    <ClInclude Include="Headers\Startup.hpp" />
     <ClInclude Include="Headers\SteamID.hpp" />
     <ClInclude Include="Headers\Steam\AccountType.hpp" />
     <ClInclude Include="Headers\Steam\KeyValue.hpp" />
@@ -216,6 +233,7 @@
     <ClInclude Include="Headers\Web\URLEncode.hpp" />
     <ClInclude Include="Headers\WorkingDir.hpp" />
     <ClInclude Include="Sources\OpenSSL\XCrypt.hpp" />
+    <ClInclude Include="Sources\UI\Console\CLI\Helpers.hpp" />
     <ClInclude Include="Sources\UI\Console\Console.hpp" />
   </ItemGroup>
   <ItemGroup>
