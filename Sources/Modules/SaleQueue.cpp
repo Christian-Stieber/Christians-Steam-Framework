@@ -25,6 +25,7 @@
 #include "Modules/SaleQueue.hpp"
 #include "Helpers/HTML.hpp"
 #include "UI/UI.hpp"
+#include "Client/Sleep.hpp"
 
 #include "HTMLParser/Parser.hpp"
 
@@ -120,6 +121,8 @@ void SaleQueueModule::clearSaleQueue()
 {
     while (true)
     {
+        SteamBot::sleep(std::chrono::seconds(30));
+
         while (queueCompleted->fetch())
             ;
 

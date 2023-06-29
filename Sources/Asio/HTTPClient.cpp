@@ -192,9 +192,10 @@ void Query::read_completed(const ErrorCode& error, size_t bytes)
         return complete(error);
     }
 
-    BOOST_LOG_TRIVIAL(info) << "HTTPClient: query for \"" << query->applicableUrl()
+    BOOST_LOG_TRIVIAL(info) << "HTTPClient: \"" << query->request.method_string()
+                            << "\" query for \"" << query->applicableUrl()
                             << "\" has received a " << query->response.body().size()
-                            << " byte response with code " << query->response.result();
+                            << " byte response with code \"" << query->response.result() << "\"";
 
     close();
 
