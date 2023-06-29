@@ -86,6 +86,7 @@ namespace SteamBot
             static void useListGamesCommand();
             static void usePlayStopGameCommands();
             static void useAddLicenseCommand();
+            static void useClearQueueCommand();
         };
     }
 }
