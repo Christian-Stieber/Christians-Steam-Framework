@@ -39,23 +39,9 @@ namespace
     class DiscoveryQueueModule : public SteamBot::Client::Module
     {
     private:
-        enum class State {
-            None,
-            GenerateQueue,
-            ClearingQueue
-        };
-
-        State state=State::None;
-
-        std::shared_ptr<Request> currentRequest;
-        std::vector<SteamBot::AppID> queue;
-
-    private:
-        void processNewQueue(std::shared_ptr<const Response>);
-        void generateQueue();
-
-    public:
-        void handle(std::shared_ptr<const Response>);
+        std::vector<SteamBot::AppID> processGenerateResponse(std::shared_ptr<const Response>) const;
+        std::shared_ptr<Request> makeGenerateRequest() const;
+        void processQueue() const;
 
     public:
         DiscoveryQueueModule() =default;
@@ -69,8 +55,10 @@ namespace
 
 /************************************************************************/
 
-void DiscoveryQueueModule::processNewQueue(std::shared_ptr<const Response> response)
+std::vector<SteamBot::AppID> DiscoveryQueueModule::processGenerateResponse(std::shared_ptr<const Response> response) const
 {
+    std::vector<SteamBot::AppID> queue;
+
     auto data=SteamBot::HTTPClient::parseJson(*(response->query));
     BOOST_LOG_TRIVIAL(debug) << data;
     try
@@ -98,49 +86,25 @@ void DiscoveryQueueModule::processNewQueue(std::shared_ptr<const Response> respo
                 separator=", ";
             }
         }
-
-        return;
     }
     catch(std::invalid_argument&)
     {
+        queue.clear();
     }
     catch(std::out_of_range&)
     {
+        queue.clear();
     }
-    state=State::None;
+
+    return queue;
 }
 
 /************************************************************************/
 
-void DiscoveryQueueModule::handle(std::shared_ptr<const Response> response)
+std::shared_ptr<Request> DiscoveryQueueModule::makeGenerateRequest() const
 {
-    if (response->initiator==currentRequest)
-    {
-        switch(state)
-        {
-        case State::GenerateQueue:
-            processNewQueue(std::move(response));
-            break;
-
-        case State::ClearingQueue:
-            break;
-
-        default:
-            assert(false);
-        }
-    }
-}
-
-/************************************************************************/
-
-void DiscoveryQueueModule::generateQueue()
-{
-    assert(state==State::None);
-    state=State::GenerateQueue;
-
-    assert(!currentRequest);
-    currentRequest=std::make_shared<Request>();
-    currentRequest->queryMaker=[this](){
+    auto request=std::make_shared<Request>();
+    request->queryMaker=[this](){
         static const boost::urls::url_view url("https://store.steampowered.com/explore/generatenewdiscoveryqueue");
 
         std::string body;
@@ -157,8 +121,16 @@ void DiscoveryQueueModule::generateQueue()
         query->request.base().set("Content-Type", "application/x-www-form-urlencoded");
         return query;
     };
+    return request;
+}
 
-    getClient().messageboard.send(currentRequest);
+/************************************************************************/
+
+void DiscoveryQueueModule::processQueue() const
+{
+    auto generateRequest=makeGenerateRequest();
+    auto geneerateResponse=SteamBot::Modules::WebSession::makeQuery(std::move(generateRequest));
+    auto queue=processGenerateResponse(std::move(geneerateResponse));
 }
 
 /************************************************************************/
@@ -167,16 +139,11 @@ void DiscoveryQueueModule::run(SteamBot::Client& client)
 {
     waitForLogin();
 
-    std::shared_ptr<SteamBot::Messageboard::Waiter<Response>> response;
-    response=waiter->createWaiter<decltype(response)::element_type>(client.messageboard);
-
-    generateQueue();
+    processQueue();
 
     while (true)
     {
         waiter->wait();
-
-        response->handle(this);
     }
 }
 
