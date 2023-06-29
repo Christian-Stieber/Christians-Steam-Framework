@@ -27,6 +27,10 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/Christians-Steam-Framework/Headers")
    include_directories("${CMAKE_SOURCE_DIR}/Christians-Steam-Framework/Headers")
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Headers")
+   include_directories("${CMAKE_CURRENT_SOURCE_DIR}/Headers")
+endif()
+
 ##############################
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")	#  -fsanitize=address
