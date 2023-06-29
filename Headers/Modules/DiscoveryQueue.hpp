@@ -28,6 +28,16 @@ namespace SteamBot
         namespace DiscoveryQueue
         {
             void use();
+
+            namespace Messageboard
+            {
+                class ClearQueue
+                {
+                public:
+                    ClearQueue();
+                    ~ClearQueue();
+                };
+            }
         }
     }
 }

@@ -32,6 +32,8 @@
 typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
 typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
 
+typedef SteamBot::Modules::DiscoveryQueue::Messageboard::ClearQueue ClearQueue;
+
 /************************************************************************/
 
 namespace
@@ -39,13 +41,23 @@ namespace
     class DiscoveryQueueModule : public SteamBot::Client::Module
     {
     private:
+        SteamBot::Messageboard::WaiterType<ClearQueue> clearQueueWaiter;
+
+    private:
         std::vector<SteamBot::AppID> processGenerateResponse(std::shared_ptr<const Response>) const;
         std::shared_ptr<Request> makeGenerateRequest() const;
         std::shared_ptr<Request> makeClearRequest(SteamBot::AppID) const;
         void processQueue() const;
 
     public:
-        DiscoveryQueueModule() =default;
+        void handle(std::shared_ptr<const ClearQueue>);
+
+    public:
+        DiscoveryQueueModule()
+        {
+            clearQueueWaiter=getClient().messageboard.createWaiter<ClearQueue>(*waiter);
+        }
+
         virtual ~DiscoveryQueueModule() =default;
 
         virtual void run(SteamBot::Client&) override;
@@ -53,6 +65,11 @@ namespace
 
     DiscoveryQueueModule::Init<DiscoveryQueueModule> init;
 }
+
+/************************************************************************/
+
+ClearQueue::ClearQueue() =default;
+ClearQueue::~ClearQueue() =default;
 
 /************************************************************************/
 
@@ -102,6 +119,15 @@ std::vector<SteamBot::AppID> DiscoveryQueueModule::processGenerateResponse(std::
 
 /************************************************************************/
 
+static void addSessionId(std::string& body)
+{
+    auto cookies=SteamBot::Client::getClient().whiteboard.has<SteamBot::Modules::WebSession::Whiteboard::Cookies>();
+    assert(cookies!=nullptr);
+    SteamBot::Web::formUrlencode(body, "sessionid", cookies->sessionid);
+}
+
+/************************************************************************/
+
 std::shared_ptr<Request> DiscoveryQueueModule::makeGenerateRequest() const
 {
     auto request=std::make_shared<Request>();
@@ -110,16 +136,13 @@ std::shared_ptr<Request> DiscoveryQueueModule::makeGenerateRequest() const
 
         std::string body;
         SteamBot::Web::formUrlencode(body, "queuetype", 0);
-        {
-            auto cookies=getClient().whiteboard.has<SteamBot::Modules::WebSession::Whiteboard::Cookies>();
-            assert(cookies!=nullptr);
-            SteamBot::Web::formUrlencode(body, "sessionid", cookies->sessionid);
-        }
+        addSessionId(body);
 
         auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::post, url);
         query->request.body()=std::move(body);
         query->request.content_length(query->request.body().size());
         query->request.base().set("Content-Type", "application/x-www-form-urlencoded");
+
         return query;
     };
     return request;
@@ -153,6 +176,8 @@ std::shared_ptr<Request> DiscoveryQueueModule::makeClearRequest(SteamBot::AppID 
 
         std::string body;
         SteamBot::Web::formUrlencode(body, "appid_to_clear_from_queue", static_cast<std::underlying_type_t<SteamBot::AppID>>(appId));
+        addSessionId(body);
+
         query->request.body()=std::move(body);
         query->request.content_length(query->request.body().size());
         query->request.base().set("Content-Type", "application/x-www-form-urlencoded");
@@ -169,14 +194,30 @@ void DiscoveryQueueModule::processQueue() const
     auto geneerateResponse=SteamBot::Modules::WebSession::makeQuery(std::move(generateRequest));
     auto queue=processGenerateResponse(std::move(geneerateResponse));
 
-    for (auto appId : queue)
+    for (size_t i=0; i<queue.size(); i++)
     {
+        const auto appId=queue[i];
         auto clearRequest=makeClearRequest(appId);
         auto clearResponse=SteamBot::Modules::WebSession::makeQuery(std::move(clearRequest));
-    }
 
-    SteamBot::UI::OutputText output;
-    output << "cleared discovery queue: " << queue.size() << " items";
+        SteamBot::UI::OutputText output;
+        output << "cleared " << static_cast<std::underlying_type_t<decltype(appId)>>(appId) << " from discovery queue; ";
+        if (i+1==queue.size())
+        {
+            output << "all done";
+        }
+        else
+        {
+            output << queue.size()-(i+1) << " to go";
+        }
+    }
+}
+
+/************************************************************************/
+
+void DiscoveryQueueModule::handle(std::shared_ptr<const ClearQueue>)
+{
+    processQueue();
 }
 
 /************************************************************************/
@@ -185,11 +226,10 @@ void DiscoveryQueueModule::run(SteamBot::Client& client)
 {
     waitForLogin();
 
-    processQueue();
-
     while (true)
     {
         waiter->wait();
+        clearQueueWaiter->handle(this);
     }
 }
 
