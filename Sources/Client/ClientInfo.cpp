@@ -102,7 +102,7 @@ ClientInfo* ClientInfo::find(std::string_view accountName)
 
 void ClientInfo::init()
 {
-    std::regex regex("Data-(([a-z]|[A-Z]|[0-9]|_)+)\\.json");
+    std::regex regex("Account-(([a-z]|[A-Z]|[0-9]|_)+)\\.json");
     for (auto const& entry: std::filesystem::directory_iterator{"."})
     {
         if (entry.is_regular_file())
