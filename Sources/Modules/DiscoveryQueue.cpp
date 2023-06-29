@@ -41,6 +41,7 @@ namespace
     private:
         std::vector<SteamBot::AppID> processGenerateResponse(std::shared_ptr<const Response>) const;
         std::shared_ptr<Request> makeGenerateRequest() const;
+        std::shared_ptr<Request> makeClearRequest(SteamBot::AppID) const;
         void processQueue() const;
 
     public:
@@ -66,9 +67,9 @@ std::vector<SteamBot::AppID> DiscoveryQueueModule::processGenerateResponse(std::
         {
             auto& array=data.at("queue").as_array();
             queue.reserve(array.size());
-            for (auto iterator=array.crbegin(); iterator!=array.crend(); ++iterator)
+            for (const auto& item : array)
             {
-                auto value=iterator->to_number<std::underlying_type_t<SteamBot::AppID>>();
+                auto value=item.to_number<std::underlying_type_t<SteamBot::AppID>>();
                 queue.push_back(static_cast<SteamBot::AppID>(value));
             }
         }
@@ -126,11 +127,56 @@ std::shared_ptr<Request> DiscoveryQueueModule::makeGenerateRequest() const
 
 /************************************************************************/
 
+std::shared_ptr<Request> DiscoveryQueueModule::makeClearRequest(SteamBot::AppID appId) const
+{
+    auto request=std::make_shared<Request>();
+    request->queryMaker=[appId](){
+        class MyQuery : public SteamBot::HTTPClient::Query
+        {
+        private:
+            std::unique_ptr<boost::urls::url> url;
+
+        public:
+            MyQuery(decltype(url) url_)
+                : Query(boost::beast::http::verb::post, *url_),
+                  url(std::move(url_))
+            {
+            }
+
+            virtual ~MyQuery() =default;
+        };
+
+        auto url=std::make_unique<boost::urls::url>("https://store.steampowered.com/app");
+        url->segments().push_back(std::to_string(static_cast<std::underlying_type_t<SteamBot::AppID>>(appId)));
+
+        auto query=std::make_unique<MyQuery>(std::move(url));
+
+        std::string body;
+        SteamBot::Web::formUrlencode(body, "appid_to_clear_from_queue", static_cast<std::underlying_type_t<SteamBot::AppID>>(appId));
+        query->request.body()=std::move(body);
+        query->request.content_length(query->request.body().size());
+        query->request.base().set("Content-Type", "application/x-www-form-urlencoded");
+        return query;
+    };
+    return request;
+}
+
+/************************************************************************/
+
 void DiscoveryQueueModule::processQueue() const
 {
     auto generateRequest=makeGenerateRequest();
     auto geneerateResponse=SteamBot::Modules::WebSession::makeQuery(std::move(generateRequest));
     auto queue=processGenerateResponse(std::move(geneerateResponse));
+
+    for (auto appId : queue)
+    {
+        auto clearRequest=makeClearRequest(appId);
+        auto clearResponse=SteamBot::Modules::WebSession::makeQuery(std::move(clearRequest));
+    }
+
+    SteamBot::UI::OutputText output;
+    output << "cleared discovery queue: " << queue.size() << " items";
 }
 
 /************************************************************************/
