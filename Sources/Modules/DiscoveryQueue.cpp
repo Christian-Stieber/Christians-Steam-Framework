@@ -17,6 +17,13 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+/************************************************************************/
+/*
+ * All this was reverse-engieered from studying ArchiSteamFarma
+ */
+
+/************************************************************************/
+
 #include "Client/Module.hpp"
 #include "Modules/WebSession.hpp"
 #include "Modules/DiscoveryQueue.hpp"
@@ -33,6 +40,7 @@ typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
 typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
 
 typedef SteamBot::Modules::DiscoveryQueue::Messageboard::ClearQueue ClearQueue;
+typedef SteamBot::Modules::DiscoveryQueue::Messageboard::QueueCompleted QueueCompleted;
 
 /************************************************************************/
 
@@ -48,9 +56,6 @@ namespace
         std::shared_ptr<Request> makeGenerateRequest() const;
         std::shared_ptr<Request> makeClearRequest(SteamBot::AppID) const;
         void processQueue() const;
-
-    public:
-        void handle(std::shared_ptr<const ClearQueue>);
 
     public:
         DiscoveryQueueModule()
@@ -215,10 +220,12 @@ void DiscoveryQueueModule::processQueue() const
 
 /************************************************************************/
 
-void DiscoveryQueueModule::handle(std::shared_ptr<const ClearQueue>)
+QueueCompleted::QueueCompleted()
+    : time_point(std::chrono::system_clock::now())
 {
-    processQueue();
 }
+
+QueueCompleted::~QueueCompleted() =default;
 
 /************************************************************************/
 
@@ -229,7 +236,17 @@ void DiscoveryQueueModule::run(SteamBot::Client& client)
     while (true)
     {
         waiter->wait();
-        clearQueueWaiter->handle(this);
+
+        if (clearQueueWaiter->fetch())
+        {
+            processQueue();
+
+            // just kill all clear requests that have arrived in the meantime
+            while (clearQueueWaiter->fetch())
+                ;
+
+            getClient().messageboard.send(std::make_shared<QueueCompleted>());
+        }
     }
 }
 

@@ -31,11 +31,23 @@ namespace SteamBot
 
             namespace Messageboard
             {
+                // Send this to trigger a queue clearing.
+                // Note that your message might be ignored if clearing
+                // is already in progress; do not expect a
+                // QueueCompleted for every ClearQueue.
                 class ClearQueue
                 {
                 public:
                     ClearQueue();
                     ~ClearQueue();
+                };
+
+                // Sent when a queue has been cleared
+                class QueueCompleted : public std::chrono::system_clock::time_point
+                {
+                public:
+                    QueueCompleted();
+                    ~QueueCompleted();
                 };
             }
         }
