@@ -101,7 +101,18 @@ namespace
 typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
 typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
 
+typedef SteamBot::Modules::SaleSticker::Messageboard::ClaimSaleSticker ClaimSaleSticker;
+
 typedef SteamBot::HTTPClient::Query Query;
+
+/************************************************************************/
+
+ClaimSaleSticker::ClaimSaleSticker(bool force_)
+    : force(force_)
+{
+}
+
+ClaimSaleSticker::~ClaimSaleSticker() =default;
 
 /************************************************************************/
 
@@ -110,12 +121,19 @@ namespace
     class SaleStickerModule : public SteamBot::Client::Module
     {
     private:
+        SteamBot::Messageboard::WaiterType<ClaimSaleSticker> claimSaleStickerWaiter;
+
+    private:
         static void claimItem(std::string_view);
         static bool canClaimItem(std::string_view);
         static std::string getIoken();
 
     public:
-        SaleStickerModule() =default;
+        SaleStickerModule()
+            : claimSaleStickerWaiter(getClient().messageboard.createWaiter<ClaimSaleSticker>(*waiter))
+        {
+        }
+
         virtual ~SaleStickerModule() =default;
 
         virtual void run(SteamBot::Client&) override;
@@ -294,19 +312,24 @@ bool SaleStickerModule::canClaimItem(std::string_view token)
 
 /************************************************************************/
 
-void SaleStickerModule::run(SteamBot::Client&)
+void SaleStickerModule::run(SteamBot::Client& client)
 {
     waitForLogin();
 
-    auto token=getIoken();
-    if (canClaimItem(token))
+    while (true)
     {
-        claimItem(token);
+        waiter->wait();
+
+        if (auto message=claimSaleStickerWaiter->fetch())
+        {
+            auto token=getIoken();
+            if (canClaimItem(token))
+            {
+                claimItem(token);
+            }
+
+            while (claimSaleStickerWaiter->fetch())
+                ;
+        }
     }
-}
-
-/************************************************************************/
-
-void SteamBot::Modules::SaleSticker::use()
-{
 }

@@ -27,7 +27,18 @@ namespace SteamBot
     {
         namespace SaleSticker
         {
-            void use();
+            namespace Messageboard
+            {
+                class ClaimSaleSticker
+                {
+                public:
+                    bool force;		// not used, currently. Intended to ignore a previously obtained nextClaimTime
+
+                public:
+                    ClaimSaleSticker(bool _=false);
+                    ~ClaimSaleSticker();
+                };
+            }
         }
     }
 }
