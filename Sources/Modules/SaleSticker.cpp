@@ -199,6 +199,10 @@ std::string SaleStickerModule::getIoken()
         result=match[1];
         BOOST_LOG_TRIVIAL(debug) << "SaleSticker: loyalty_webapi_token is \"" << result << "\"";
     }
+    else
+    {
+        SteamBot::UI::OutputText() << "cannot find a token to claim a sticker";
+    }
 
     return result;
 }
@@ -323,9 +327,12 @@ void SaleStickerModule::run(SteamBot::Client& client)
         if (auto message=claimSaleStickerWaiter->fetch())
         {
             auto token=getIoken();
-            if (canClaimItem(token))
+            if (!token.empty())
             {
-                claimItem(token);
+                if (canClaimItem(token))
+                {
+                    claimItem(token);
+                }
             }
 
             while (claimSaleStickerWaiter->fetch())
