@@ -199,6 +199,17 @@ void Query::read_completed(const ErrorCode& error, size_t bytes)
 
     close();
 
+    {
+        std::ostringstream output;
+        const char* separator="received headers:";
+        for (const auto& field : query->response)
+        {
+            output << separator << " [" << field.name_string() << ": " << field.value() << "]";
+            separator=",";
+        }
+        BOOST_LOG_TRIVIAL(debug) << output.view();
+    }
+
     complete(ErrorCode());
 }
 
@@ -233,6 +244,21 @@ void Query::handshake_completed(const ErrorCode& error)
     query->request.target(query->url.encoded_target());
     query->request.set(http::field::host, host);
     query->request.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+    if (query->request[http::field::accept_language]=="")
+    {
+        query->request.set(http::field::accept_language, "en-US; q=0.9, en; q=0.8");
+    }
+
+    {
+        std::ostringstream output;
+        const char* separator="outgoing headers:";
+        for (const auto& field : query->request)
+        {
+            output << separator << " [" << field.name_string() << ": " << field.value() << "]";
+            separator=",";
+        }
+        BOOST_LOG_TRIVIAL(debug) << output.view();
+    }
 
     // Send the HTTP request to the remote host
     http::async_write(stream, query->request, std::bind_front(&Query::write_completed, shared_from_this()));
