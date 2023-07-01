@@ -68,6 +68,9 @@ bool LaunchCommand::execute(std::vector<std::string>& words)
         SteamBot::Client::launch(*clientInfo);
         std::cout << "launched client \"" << clientInfo->accountName << "\"" << std::endl;
         std::cout << "NOTE: leave command mode to be able to see password/SteamGuard prompts!" << std::endl;
+
+        cli.currentAccount=clientInfo;
+        std::cout << "your current account is now \"" << cli.currentAccount->accountName << "\"" << std::endl;
     }
     return true;
 }
