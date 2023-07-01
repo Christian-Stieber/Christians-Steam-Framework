@@ -27,7 +27,15 @@ namespace SteamBot
     {
         namespace SaleQueue
         {
-            void use();
+            namespace Messageboard
+            {
+                class ClearSaleQueues
+                {
+                public:
+                    ClearSaleQueues();
+                    ~ClearSaleQueues();
+                };
+            }
         }
     }
 }

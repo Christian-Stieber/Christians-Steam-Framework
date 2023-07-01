@@ -39,6 +39,13 @@ typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
 typedef SteamBot::Modules::DiscoveryQueue::Messageboard::ClearQueue ClearQueue;
 typedef SteamBot::Modules::DiscoveryQueue::Messageboard::QueueCompleted QueueCompleted;
 
+typedef SteamBot::Modules::SaleQueue::Messageboard::ClearSaleQueues ClearSaleQueues;
+
+/************************************************************************/
+
+ClearSaleQueues::ClearSaleQueues() =default;
+ClearSaleQueues::~ClearSaleQueues() =default;
+
 /************************************************************************/
 
 namespace
@@ -46,7 +53,7 @@ namespace
     class SaleQueueModule : public SteamBot::Client::Module
     {
     private:
-        SteamBot::Messageboard::WaiterType<QueueCompleted> queueCompleted;
+        SteamBot::Messageboard::WaiterType<ClearSaleQueues> clearSaleQueueWaiter;
 
     private:
         static bool hasSaleCards();
@@ -54,7 +61,7 @@ namespace
 
     public:
         SaleQueueModule()
-            : queueCompleted(getClient().messageboard.createWaiter<QueueCompleted>(*waiter))
+            : clearSaleQueueWaiter(getClient().messageboard.createWaiter<ClearSaleQueues>(*waiter))
         {
         }
 
@@ -119,20 +126,26 @@ bool SaleQueueModule::hasSaleCards()
 
 void SaleQueueModule::clearSaleQueue()
 {
+    auto& client=getClient();
+
+    auto myWaiter=SteamBot::Waiter::create();
+    auto cancellation=client.cancel.registerObject(*myWaiter);
+
     while (true)
     {
-        SteamBot::sleep(std::chrono::seconds(30));
-
-        while (queueCompleted->fetch())
-            ;
+        auto queueCompleted=client.messageboard.createWaiter<QueueCompleted>(*myWaiter);
 
         if (hasSaleCards())
         {
             if (!queueCompleted->fetch())
             {
-                SteamBot::UI::OutputText() << "triggering another queue clear because of sale event queues";
                 getClient().messageboard.send(std::make_shared<ClearQueue>());
-                return;
+
+                do
+                {
+                    myWaiter->wait();
+                }
+                while (!queueCompleted->fetch());
             }
         }
         else
@@ -140,24 +153,27 @@ void SaleQueueModule::clearSaleQueue()
             SteamBot::UI::OutputText() << "no sale queue to be cleared";
             return;
         }
+
+        SteamBot::sleep(std::chrono::seconds(30));
     }
 }
 
 /************************************************************************/
 
-void SaleQueueModule::run(SteamBot::Client&)
+void SaleQueueModule::run(SteamBot::Client& client)
 {
     waitForLogin();
 
     while (true)
     {
         waiter->wait();
-        clearSaleQueue();
+
+        if (clearSaleQueueWaiter->fetch())
+        {
+            clearSaleQueue();
+
+            while (clearSaleQueueWaiter->fetch())
+                ;
+        }
     }
-}
-
-/************************************************************************/
-
-void SteamBot::Modules::SaleQueue::use()
-{
 }
