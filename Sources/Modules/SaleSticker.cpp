@@ -151,7 +151,7 @@ namespace
 static const std::array<boost::urls::url_view, 20> categoryUrls={{
         boost::urls::url_view("https://store.steampowered.com/category/casual"),
         boost::urls::url_view("https://store.steampowered.com/category/fighting_martial_arts"),
-        boost::urls::url_view("https://store.steampowered.com/greatondecv4k"),
+        boost::urls::url_view("https://store.steampowered.com/greatondeck"),
         boost::urls::url_view("https://store.steampowered.com/category/simulation"),
         boost::urls::url_view("https://store.steampowered.com/category/visual_novel"),
         boost::urls::url_view("https://store.steampowered.com/genre/Free%20to%20Play"),
@@ -175,6 +175,12 @@ static const std::array<boost::urls::url_view, 20> categoryUrls={{
 /*
  * Note: my HTML parser can't (currently?) parse these pages, but
  * I don't really need to.
+ *
+ * Note: apparently, when we access an account with a language that's
+ * english, Steam will set a "Steam-Language" cookie and redirect to
+ * the same page again. We don't currently support cookies like that
+ * so this would lead to an endless redirection loop; we can work
+ * around this by setting l=english on the URL.
  */
 
 std::string SaleStickerModule::getIoken()
@@ -185,6 +191,7 @@ std::string SaleStickerModule::getIoken()
     request->queryMaker=[](){
         auto index=SteamBot::Random::generateRandomNumber()%categoryUrls.size();
         auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, categoryUrls.at(index));
+        query->url.params().set("l", "english");	// we should support cookies, but for now, this works
         return query;
     };
 
