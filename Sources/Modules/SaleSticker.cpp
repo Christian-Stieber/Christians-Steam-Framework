@@ -20,16 +20,88 @@
 #include "Client/Module.hpp"
 #include "Modules/WebSession.hpp"
 #include "Modules/SaleSticker.hpp"
+#include "Web/URLEncode.hpp"
+#include "Connection/Serialize.hpp"
+#include "UI/UI.hpp"
+#include "Helpers/Time.hpp"
+#include "Helpers/JSON.hpp"
+#include "Steam/CommunityItemClass.hpp"
 #include "Random.hpp"
+#include "Base64.hpp"
+#include "EnumString.hpp"
 
 #include <regex>
 
 #include <boost/url/url_view.hpp>
 
+#include "Helpers/ProtoPuf.hpp"
+
+/************************************************************************/
+/*
+ * Adapted from webui/service_saleitemrewards.proto
+ *
+ * Note: I need the namespace just for emacs to get the formatting right
+ */
+
+namespace
+{
+    using LoyaltyRewardDefinition_BadgeData = pp::message<
+        pp::int32_field<"level", 1>,
+        pp::string_field<"image", 2>
+        >;
+
+    using LoyaltyRewardDefinition_CommunityItemData = pp::message<
+        pp::string_field<"item_name", 1>,
+        pp::string_field<"item_title", 2>,
+        pp::string_field<"item_description", 3>,
+        pp::string_field<"item_image_small", 4>,
+        pp::string_field<"item_image_large", 5>,
+        pp::string_field<"item_movie_webm", 6>,
+        pp::string_field<"item_movie_mp4", 7>,
+        pp::bool_field<"animated", 8>,
+        pp::message_field<"badge_data", 9, LoyaltyRewardDefinition_BadgeData, pp::repeated>,
+        pp::string_field<"item_movie_webm_small", 10>,
+        pp::string_field<"item_movie_mp4_small", 11>,
+        pp::string_field<"profile_theme_id", 12>
+        >;
+
+    using LoyaltyRewardDefinition = pp::message<
+        pp::uint32_field<"appid", 1>,
+        pp::uint32_field<"defid", 2>,
+        pp::int32_field<"type", 3>,
+        pp::int32_field<"community_item_class", 4>,
+        pp::uint32_field<"community_item_type", 5>,
+        pp::int64_field<"point_cost", 6>,
+        pp::uint32_field<"timestamp_created", 7>,
+        pp::uint32_field<"timestamp_updated", 8>,
+        pp::uint32_field<"timestamp_available", 9>,
+        pp::int64_field<"quantity", 10>,
+        pp::string_field<"internal_description", 11>,
+        pp::bool_field<"active", 12>,
+        pp::message_field<"community_item_data", 13, LoyaltyRewardDefinition_CommunityItemData>,
+        pp::uint32_field<"timestamp_available_end", 14>,
+        pp::uint32_field<"bundle_defids", 15, pp::repeated>,
+        pp::uint32_field<"usable_duration", 16>,
+        pp::uint32_field<"bundle_discount", 17>
+        >;
+
+    using CSaleItemRewards_ClaimItem_Response = pp::message<
+        pp::uint64_field<"communityitemid", 1>,
+        pp::uint32_field<"next_claim_time", 2>,
+        pp::message_field<"reward_item", 3, LoyaltyRewardDefinition>
+        >;
+
+    using CSaleItemRewards_ClaimItem_Request = pp::message<
+        pp::string_field<"language", 1>
+        >;
+}
+
 /************************************************************************/
 
 typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
 typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
+
+typedef SteamBot::HTTPClient::Query Query;
 
 /************************************************************************/
 
@@ -38,6 +110,8 @@ namespace
     class SaleStickerModule : public SteamBot::Client::Module
     {
     private:
+        static void claimItem(std::string_view);
+        static bool canClaimItem(std::string_view);
         static std::string getIoken();
 
     public:
@@ -59,7 +133,7 @@ namespace
 static const std::array<boost::urls::url_view, 20> categoryUrls={{
         boost::urls::url_view("https://store.steampowered.com/category/casual"),
         boost::urls::url_view("https://store.steampowered.com/category/fighting_martial_arts"),
-        boost::urls::url_view("https://store.steampowered.com/greatondeck"),
+        boost::urls::url_view("https://store.steampowered.com/greatondecv4k"),
         boost::urls::url_view("https://store.steampowered.com/category/simulation"),
         boost::urls::url_view("https://store.steampowered.com/category/visual_novel"),
         boost::urls::url_view("https://store.steampowered.com/genre/Free%20to%20Play"),
@@ -113,11 +187,122 @@ std::string SaleStickerModule::getIoken()
 
 /************************************************************************/
 
+void SaleStickerModule::claimItem(std::string_view token)
+{
+    boost::urls::url url("https://api.steampowered.com/ISaleItemRewardsService/ClaimItem/v1");
+    url.params().set("access_token", token);
+
+    auto bytes=SteamBot::ProtoPuf::encode(CSaleItemRewards_ClaimItem_Request("english"));
+
+    std::string body;
+    SteamBot::Web::formUrlencode(body, "input_protobuf_encoded", SteamBot::Base64::encode(bytes));
+
+    auto query=std::make_unique<Query>(boost::beast::http::verb::post, url);
+    query->request.body()=std::move(body);
+    query->request.content_length(query->request.body().size());
+    query->request.base().set("Content-Type", "application/x-www-form-urlencoded");
+
+    query=SteamBot::HTTPClient::perform(std::move(query));
+
+    body=SteamBot::HTTPClient::parseString(*query);
+    std::span<std::byte> bodyBytes(static_cast<std::byte*>(static_cast<void*>(body.data())), body.size());
+
+    auto response=SteamBot::ProtoPuf::decode<CSaleItemRewards_ClaimItem_Response>(bodyBytes);
+    BOOST_LOG_TRIVIAL(debug) << SteamBot::ProtoPuf::toJson(response);
+
+    {
+        using namespace pp;
+        if (auto rewardItem=SteamBot::ProtoPuf::getItem(&response, "reward_item"_f))
+        {
+            SteamBot::UI::OutputText output;
+            output << "claimed a community item";
+
+            if (auto communityItemClass=SteamBot::ProtoPuf::getItem(rewardItem, "community_item_class"_f))
+            {
+                output << "; class " << SteamBot::enumToStringAlways(static_cast<SteamBot::CommunityItemClass>(*communityItemClass));
+            }
+
+            if (auto communityItemData=SteamBot::ProtoPuf::getItem(rewardItem, "community_item_data"_f))
+            {
+                if (auto itemName=SteamBot::ProtoPuf::getItem(communityItemData, "item_name"_f))
+                {
+                    output << "; name \"" << *itemName << "\"";
+                }
+
+                if (auto itemTitle=SteamBot::ProtoPuf::getItem(communityItemData, "item_title"_f))
+                {
+                    output << "; title \"" << *itemTitle << "\"";
+                }
+
+                if (auto itemDescription=SteamBot::ProtoPuf::getItem(communityItemData, "item_description"_f))
+                {
+                    output << "; description \"" << *itemDescription << "\"";
+                }
+            }
+        }
+    }
+}
+
+/************************************************************************/
+
+bool SaleStickerModule::canClaimItem(std::string_view token)
+{
+    boost::urls::url url("https://api.steampowered.com/ISaleItemRewardsService/CanClaimItem/v1");
+    url.params().set("access_token", token);
+
+    auto query=std::make_unique<Query>(boost::beast::http::verb::get, url);
+
+    query=SteamBot::HTTPClient::perform(std::move(query));
+
+    auto json=SteamBot::HTTPClient::parseJson(*query);
+    // {"response":{"can_claim":true,"next_claim_time":1688230800}}
+
+    bool canClaim=false;
+    if (auto can_claim=SteamBot::JSON::getItem(json, "response", "can_claim"))
+    {
+        if (auto can_claim_bool=can_claim->if_bool())
+        {
+            canClaim=*can_claim_bool;
+        }
+    }
+
+    std::chrono::system_clock::time_point nextClaimTime;
+    if (auto next_claim_time=SteamBot::JSON::getItem(json, "response", "next_claim_time"))
+    {
+        try
+        {
+            nextClaimTime=std::chrono::system_clock::from_time_t(next_claim_time->to_number<std::time_t>());
+        }
+        catch(const boost::json::system_error&)
+        {
+        }
+    }
+
+    SteamBot::UI::OutputText output;
+
+    output << "a sale sticker ";
+    output << (canClaim ? "can" : "can't");
+    output << " be claimed";
+
+    if (nextClaimTime.time_since_epoch().count()!=0)
+    {
+        output << "; next claim time is " << SteamBot::Time::toString(nextClaimTime, false);
+    }
+
+    return canClaim;
+}
+
+/************************************************************************/
+
 void SaleStickerModule::run(SteamBot::Client&)
 {
     waitForLogin();
 
-    getIoken();
+    auto token=getIoken();
+    if (canClaimItem(token))
+    {
+        claimItem(token);
+    }
 }
 
 /************************************************************************/
