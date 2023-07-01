@@ -28,7 +28,6 @@
 #include <boost/beast/http/dynamic_body.hpp>
 #include <boost/beast/http/string_body.hpp>
 
-#include <boost/url/url_view_base.hpp>
 #include <boost/url/url.hpp>
 
 #include <boost/json/value.hpp>
@@ -43,7 +42,7 @@ namespace SteamBot
         {
         public:
             // fill in your request data
-            const boost::urls::url_view_base& url;
+            const boost::urls::url url;
             boost::beast::http::request<boost::beast::http::string_body> request;
 
         public:
@@ -57,7 +56,7 @@ namespace SteamBot
             const boost::urls::url_view_base& applicableUrl() const;
 
         public:
-            Query(boost::beast::http::verb, const boost::urls::url_view_base&);
+            Query(boost::beast::http::verb, boost::urls::url);
             virtual ~Query();
 
         public:

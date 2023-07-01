@@ -289,8 +289,8 @@ void Query::perform()
 
 /************************************************************************/
 
-HTTPClient::Query::Query(boost::beast::http::verb method, const boost::urls::url_view_base& url_)
-    : url(url_), request(method, "", 11)
+HTTPClient::Query::Query(boost::beast::http::verb method, boost::urls::url url_)
+    : url(std::move(url_)), request(method, "", 11)
 {
 }
 
