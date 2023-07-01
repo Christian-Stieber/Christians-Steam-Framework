@@ -159,25 +159,10 @@ std::shared_ptr<Request> DiscoveryQueueModule::makeClearRequest(SteamBot::AppID 
 {
     auto request=std::make_shared<Request>();
     request->queryMaker=[appId](){
-        class MyQuery : public SteamBot::HTTPClient::Query
-        {
-        private:
-            std::unique_ptr<boost::urls::url> url;
+        boost::urls::url url("https://store.steampowered.com/app");
+        url.segments().push_back(std::to_string(static_cast<std::underlying_type_t<SteamBot::AppID>>(appId)));
 
-        public:
-            MyQuery(decltype(url) url_)
-                : Query(boost::beast::http::verb::post, *url_),
-                  url(std::move(url_))
-            {
-            }
-
-            virtual ~MyQuery() =default;
-        };
-
-        auto url=std::make_unique<boost::urls::url>("https://store.steampowered.com/app");
-        url->segments().push_back(std::to_string(static_cast<std::underlying_type_t<SteamBot::AppID>>(appId)));
-
-        auto query=std::make_unique<MyQuery>(std::move(url));
+        auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::post, std::move(url));
 
         std::string body;
         SteamBot::Web::formUrlencode(body, "appid_to_clear_from_queue", static_cast<std::underlying_type_t<SteamBot::AppID>>(appId));
