@@ -100,10 +100,7 @@ void GetBadgeDataModule::handle(std::shared_ptr<const Response> message)
         return;
     }
 
-    if (!message->query->redirectedUrl.empty())
-    {
-        loader->currentUrl=message->query->redirectedUrl;
-    }
+    loader->currentUrl=message->query->url;
 
     auto html=SteamBot::HTTPClient::parseString(*(message->query));
 #if 0

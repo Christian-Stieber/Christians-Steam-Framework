@@ -72,13 +72,13 @@ namespace
         Query(HTTPClient::Query& query_, Callback&& callback_)
             : query(&query_),
               callback(std::move(callback_)),
-              host(query->applicableUrl().host()),
+              host(query->url.host()),
               ioContext(SteamBot::Asio::getIoContext()),
               resolver(ioContext),
               stream(ioContext, getSslContext())
         {
             assert(SteamBot::Asio::isThread());
-            BOOST_LOG_TRIVIAL(debug) << "constructed query to " << query->applicableUrl();
+            BOOST_LOG_TRIVIAL(debug) << "constructed query to " << query->url;
         }
 
         ~Query()
@@ -193,7 +193,7 @@ void Query::read_completed(const ErrorCode& error, size_t bytes)
     }
 
     BOOST_LOG_TRIVIAL(info) << "HTTPClient: \"" << query->request.method_string()
-                            << "\" query for \"" << query->applicableUrl()
+                            << "\" query for \"" << query->url
                             << "\" has received a " << query->response.body().size()
                             << " byte response with code \"" << query->response.result() << "\"";
 
@@ -230,7 +230,7 @@ void Query::handshake_completed(const ErrorCode& error)
 
     BOOST_LOG_TRIVIAL(debug) << "handshake_completed";
 
-    query->request.target(query->applicableUrl().encoded_target());
+    query->request.target(query->url.encoded_target());
     query->request.set(http::field::host, host);
     query->request.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
@@ -280,7 +280,7 @@ void Query::resolve_completed(const ErrorCode& error, Resolver::results_type res
 
 void Query::perform()
 {
-    std::string_view port=query->applicableUrl().port();
+    std::string_view port=query->url.port();
     if (port.empty()) port="443";
 
     // Look up the host name
@@ -297,13 +297,6 @@ HTTPClient::Query::Query(boost::beast::http::verb method, boost::urls::url url_)
 /************************************************************************/
 
 HTTPClient::Query::~Query() =default;
-
-/************************************************************************/
-
-const boost::urls::url_view_base& HTTPClient::Query::applicableUrl() const
-{
-    return redirectedUrl.empty() ? url : redirectedUrl;
-}
 
 /************************************************************************/
 
@@ -366,11 +359,16 @@ static bool checkRetry(HTTPClient::Query& query)
         auto location=query.response.base()["Location"];
         if (!location.empty())
         {
-            BOOST_LOG_TRIVIAL(info) << "we've been redirected from \"" << query.applicableUrl() << "\" to \"" << location << "\"";
+            BOOST_LOG_TRIVIAL(info) << "we've been redirected from \"" << query.url << "\" to \"" << location << "\"";
             try
             {
-                query.redirectedUrl=boost::urls::url(location);
-                return true;
+                boost::urls::url redirected(location);
+                if (query.url!=redirected)
+                {
+                    query.url=std::move(redirected);
+                    return true;
+                }
+                BOOST_LOG_TRIVIAL(error) << "redirection loop on " << query.url;
             }
             catch(...)
             {

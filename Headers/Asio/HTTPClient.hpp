@@ -42,18 +42,14 @@ namespace SteamBot
         {
         public:
             // fill in your request data
-            const boost::urls::url url;
+            boost::urls::url url;
             boost::beast::http::request<boost::beast::http::string_body> request;
 
         public:
             // this gets filled in during perform(). Check the error first.
-            boost::urls::url redirectedUrl;
             boost::system::error_code error;
             boost::beast::flat_buffer responseBuffer;
             boost::beast::http::response<boost::beast::http::dynamic_body> response;
-
-        public:
-            const boost::urls::url_view_base& applicableUrl() const;
 
         public:
             Query(boost::beast::http::verb, boost::urls::url);
