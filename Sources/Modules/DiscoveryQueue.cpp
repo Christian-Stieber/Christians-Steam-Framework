@@ -137,7 +137,7 @@ std::shared_ptr<Request> DiscoveryQueueModule::makeGenerateRequest() const
 {
     auto request=std::make_shared<Request>();
     request->queryMaker=[this](){
-        static const boost::urls::url_view url("https://store.steampowered.com/explore/generatenewdiscoveryqueue");
+        static const boost::urls::url_view url("https://store.steampowered.com/explore/generatenewdiscoveryqueue?l=english");
 
         std::string body;
         SteamBot::Web::formUrlencode(body, "queuetype", 0);
