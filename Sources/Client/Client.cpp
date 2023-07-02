@@ -43,7 +43,7 @@ static SteamBot::Counter threadCounter;
 
 SteamBot::Client::Client(SteamBot::ClientInfo& clientInfo_)
     : universe{SteamBot::Universe::get(SteamBot::Universe::Type::Public)},
-      dataFile(clientInfo_.accountName, SteamBot::DataFile::FileType::Account),
+      dataFile(SteamBot::DataFile::get(clientInfo_.accountName, SteamBot::DataFile::FileType::Account)),
       clientInfo(clientInfo_)
 {
 	assert(currentClient==nullptr);

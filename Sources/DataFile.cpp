@@ -25,6 +25,10 @@
 #include <sstream>
 
 /************************************************************************/
+
+typedef SteamBot::DataFile DataFile;
+
+/************************************************************************/
 /*
  * Note that Steam account names can only have a-z, A-Z, 0-9 or _ as
  * characters, so we can use them as filenames.
@@ -32,7 +36,7 @@
  * I'm just applying the same rule to the other filetypes as well.
  */
 
-static std::filesystem::path makeFilename(const std::string_view& name, SteamBot::DataFile::FileType fileType)
+static std::filesystem::path makeFilename(const std::string& name, DataFile::FileType fileType)
 {
 	for (const char c : name)
 	{
@@ -42,11 +46,11 @@ static std::filesystem::path makeFilename(const std::string_view& name, SteamBot
 	std::string result;
     switch(fileType)
     {
-    case SteamBot::DataFile::FileType::Account:
+    case DataFile::FileType::Account:
         result+="Account-";
         break;
 
-    case SteamBot::DataFile::FileType::Steam:
+    case DataFile::FileType::Steam:
         result+="Steam-";
         break;
 
@@ -73,7 +77,7 @@ static std::filesystem::path makeTempFilename(const std::filesystem::path& filen
  * This does NOT lock the mutex.
  */
 
-void SteamBot::DataFile::loadFile()
+void DataFile::loadFile()
 {
     json=boost::json::object();
 	invalid=true;
@@ -110,7 +114,7 @@ void SteamBot::DataFile::loadFile()
  * This does NOT lock the mutex.
  */
 
-void SteamBot::DataFile::saveFile() const
+void DataFile::saveFile() const
 {
 	assert(!invalid);
 
@@ -133,8 +137,9 @@ void SteamBot::DataFile::saveFile() const
  * "name" needs to be unique within its FileType.
  */
 
-SteamBot::DataFile::DataFile(std::string_view name, SteamBot::DataFile::FileType fileType_)
+DataFile::DataFile(std::string&& name_, DataFile::FileType fileType_)
 	: fileType(fileType_),
+      name(std::move(name_)),
       filename(makeFilename(name, fileType)),
 	  tempFilename(makeTempFilename(filename))
 {
@@ -143,7 +148,7 @@ SteamBot::DataFile::DataFile(std::string_view name, SteamBot::DataFile::FileType
 
 /************************************************************************/
 
-void SteamBot::DataFile::update(std::function<void(boost::json::value&)> function)
+void DataFile::update(std::function<void(boost::json::value&)> function)
 {
     std::lock_guard<decltype(mutex)> lock(mutex);
 	assert(!invalid);
@@ -161,4 +166,37 @@ void SteamBot::DataFile::update(std::function<void(boost::json::value&)> functio
 
 /************************************************************************/
 
-SteamBot::DataFile::~DataFile() =default;
+DataFile::~DataFile() =default;
+
+/************************************************************************/
+
+DataFile& DataFile::get(std::string name, DataFile::FileType type)
+{
+    class Files
+    {
+    private:
+        boost::fibers::mutex mutex;
+        std::vector<std::unique_ptr<DataFile>> files;
+
+    public:
+        DataFile& get(std::string&& name, DataFile::FileType type)
+        {
+            std::lock_guard<decltype(mutex)> lock(mutex);
+            for (const auto& file : files)
+            {
+                if (file->fileType==type && file->name==name)
+                {
+                    return *file;
+                }
+            }
+            {
+                std::unique_ptr<DataFile> file(new DataFile(std::move(name), type));
+                files.emplace_back(std::move(file));
+            }
+            return *files.back();
+        }
+    };
+
+    static auto& files=*new Files;
+    return files.get(std::move(name), type);
+}

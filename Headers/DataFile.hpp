@@ -51,7 +51,9 @@ namespace SteamBot
 
 	private:
         const FileType fileType;
+        std::string name;
 
+    private:
 		const std::filesystem::path filename;
 		const std::filesystem::path tempFilename;
 
@@ -59,8 +61,10 @@ namespace SteamBot
         boost::json::value json;
 		bool invalid=false;
 
-	public:
-		DataFile(std::string_view, FileType);
+    private:
+		DataFile(std::string&&, FileType);
+
+    public:
 		~DataFile();
 
 	private:
@@ -77,5 +81,8 @@ namespace SteamBot
 
 	public:
 		void update(std::function<void(boost::json::value&)>);
+
+    public:
+        static DataFile& get(std::string, FileType);
 	};
 }

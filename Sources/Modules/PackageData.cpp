@@ -49,7 +49,7 @@ namespace
     class PackageData : public SteamBot::Printable
     {
     private:
-        SteamBot::DataFile file{"PackageData", SteamBot::DataFile::FileType::Steam};
+        SteamBot::DataFile& file{SteamBot::DataFile::get("PackageData", SteamBot::DataFile::FileType::Steam)};
 
     private:
         mutable boost::fibers::mutex mutex;

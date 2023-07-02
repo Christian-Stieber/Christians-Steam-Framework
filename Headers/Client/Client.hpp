@@ -52,7 +52,7 @@ namespace SteamBot
         Whiteboard whiteboard;
         Messageboard messageboard;
         const Universe& universe;
-        DataFile dataFile;
+        DataFile& dataFile;
 
 	public:
         static void launch(ClientInfo&);
