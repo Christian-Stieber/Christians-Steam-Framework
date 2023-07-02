@@ -170,7 +170,7 @@ DataFile::~DataFile() =default;
 
 /************************************************************************/
 
-DataFile& DataFile::get(std::string name, DataFile::FileType type)
+DataFile& DataFile::get(std::string_view name, DataFile::FileType type)
 {
     class Files
     {
@@ -179,7 +179,7 @@ DataFile& DataFile::get(std::string name, DataFile::FileType type)
         std::vector<std::unique_ptr<DataFile>> files;
 
     public:
-        DataFile& get(std::string&& name, DataFile::FileType type)
+        DataFile& get(std::string_view name, DataFile::FileType type)
         {
             std::lock_guard<decltype(mutex)> lock(mutex);
             for (const auto& file : files)
@@ -190,7 +190,7 @@ DataFile& DataFile::get(std::string name, DataFile::FileType type)
                 }
             }
             {
-                std::unique_ptr<DataFile> file(new DataFile(std::move(name), type));
+                std::unique_ptr<DataFile> file(new DataFile(std::string(name), type));
                 files.emplace_back(std::move(file));
             }
             return *files.back();
@@ -198,5 +198,5 @@ DataFile& DataFile::get(std::string name, DataFile::FileType type)
     };
 
     static auto& files=*new Files;
-    return files.get(std::move(name), type);
+    return files.get(name, type);
 }
