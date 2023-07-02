@@ -81,6 +81,7 @@ namespace SteamBot
             static void useLaunchCommand();
             static void useCreateCommand();
             static void useSelectCommand();
+            static void useQuitCommand();
 
             // you must add these individually
             static void useListGamesCommand();
