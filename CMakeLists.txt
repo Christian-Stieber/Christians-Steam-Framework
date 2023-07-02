@@ -86,6 +86,7 @@ list(APPEND SRCS UI/Console/CLI/CLI UI/Console/CLI/Helpers UI/Console/CLI/Tokeni
 list(APPEND SRCS UI/Console/CLI/Commands/ListGames UI/Console/CLI/Commands/Status UI/Console/CLI/Commands/Launch UI/Console/CLI/Commands/Select)
 list(APPEND SRCS UI/Console/CLI/Commands/Help UI/Console/CLI/Commands/Exit UI/Console/CLI/Commands/Create UI/Console/CLI/Commands/PlayStopGame)
 list(APPEND SRCS UI/Console/CLI/Commands/AddLicense UI/Console/CLI/Commands/DiscoveryQueue UI/Console/CLI/Commands/SaleEvent UI/Console/CLI/Commands/Quit)
+list(APPEND SRCS UI/Console/CLI/Commands/Settings)
 list(APPEND SRCS Modules/Executor)
 list(APPEND SRCS Modules/Connection)
 list(APPEND SRCS Modules/MultiPacket)
