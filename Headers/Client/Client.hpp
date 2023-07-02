@@ -101,12 +101,17 @@ namespace SteamBot
 }
 
 /************************************************************************/
+/*
+ * ToDo: this is pretty much messed up. It works, as far as I can
+ * tell, but it's not nice...
+ */
 
 namespace SteamBot
 {
     class ClientInfo
     {
     private:
+        bool active=false;
         std::shared_ptr<Client> client;
 
     public:
@@ -117,9 +122,12 @@ namespace SteamBot
         ~ClientInfo();
 
     public:
-        void setClient(std::shared_ptr<Client>);	// internal use
+        // internal use
+        bool setActive(bool);
+        void setClient(std::shared_ptr<Client>);
 
     public:
+        bool isActive() const;
         std::shared_ptr<Client> getClient() const;
 
         static void init();

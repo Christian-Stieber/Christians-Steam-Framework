@@ -38,6 +38,24 @@ ClientInfo::~ClientInfo()
 
 /************************************************************************/
 
+bool ClientInfo::isActive() const
+{
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    return active;
+}
+
+/************************************************************************/
+
+bool ClientInfo::setActive(bool state)
+{
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    bool current=active;
+    active=state;
+    return current;
+}
+
+/************************************************************************/
+
 std::shared_ptr<SteamBot::Client> ClientInfo::getClient() const
 {
     std::lock_guard<decltype(mutex)> lock(mutex);

@@ -54,8 +54,7 @@ SteamBot::Client::Client(SteamBot::ClientInfo& clientInfo_)
 
 SteamBot::Client::~Client()
 {
-	assert(currentClient==this);
-	currentClient=nullptr;
+    BOOST_LOG_TRIVIAL(debug) << "Client::~Client()";
 }
 
 /************************************************************************/
@@ -115,30 +114,38 @@ void SteamBot::Client::main()
 
 void SteamBot::Client::launch(SteamBot::ClientInfo& clientInfo)
 {
-    BOOST_LOG_TRIVIAL(debug) << "Client::launch()";
+    if (!clientInfo.setActive(true))
+    {
+        BOOST_LOG_TRIVIAL(debug) << "Client::launch()";
 
-    std::thread([counter = threadCounter(), &clientInfo]() mutable {
-        std::shared_ptr<Client> client;
-        client=std::make_shared<Client>(clientInfo);
-        clientInfo.setClient(client);
+        std::thread([counter = threadCounter(), &clientInfo]() mutable {
+            std::shared_ptr<Client> client;
+            client=std::make_shared<Client>(clientInfo);
 
-        client->main();
-
-        BOOST_LOG_TRIVIAL(info) << "client quit with mode \"" << SteamBot::enumToStringAlways(client->quitMode) << "\"";
-        switch(client->quitMode)
-        {
-        case QuitMode::None:
-        case QuitMode::Quit:
-            break;
-
-        case QuitMode::Restart:
-            client.reset();
             clientInfo.setClient(client);
-            std::this_thread::sleep_for(std::chrono::seconds(15));
-            launch(clientInfo);
-            break;
-        }
-    }).detach();
+            client->main();
+            clientInfo.setClient(nullptr);
+
+            BOOST_LOG_TRIVIAL(info) << "client quit with mode \"" << SteamBot::enumToStringAlways(client->quitMode) << "\"";
+            switch(client->quitMode)
+            {
+            case QuitMode::None:
+            case QuitMode::Quit:
+                break;
+
+            case QuitMode::Restart:
+                client.reset();
+                std::this_thread::sleep_for(std::chrono::seconds(15));
+                launch(clientInfo);
+                break;
+            }
+            clientInfo.setActive(false);
+        }).detach();
+    }
+    else
+    {
+        BOOST_LOG_TRIVIAL(debug) << "client is already active";
+    }
 }
 
 /************************************************************************/
