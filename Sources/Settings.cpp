@@ -71,6 +71,15 @@ bool SteamBot::SettingsBase::checkSetting(std::string_view settingName, SteamBot
 
 /************************************************************************/
 
+void SteamBot::SettingsBase::clear(SteamBot::DataFile& file, std::string_view settingName) const
+{
+    file.update([&settingName](boost::json::value& json) {
+        SteamBot::JSON::eraseItem(json, settingsKey, settingName);
+    });
+}
+
+/************************************************************************/
+
 std::optional<bool> SteamBot::SettingsBase::getBool(SteamBot::DataFile& file, std::string_view settingName) const
 {
     std::optional<bool> result;
@@ -136,6 +145,13 @@ SteamBot::ClientSettings& SteamBot::ClientSettings::get()
 
 /************************************************************************/
 
+void SteamBot::ClientSettings::clear(std::string_view settingName) const
+{
+    clear(settingName, getAccountName());
+}
+
+/************************************************************************/
+
 std::optional<bool> SteamBot::ClientSettings::getBool(std::string_view settingName) const
 {
     return getBool(settingName, getAccountName());
@@ -146,6 +162,14 @@ std::optional<bool> SteamBot::ClientSettings::getBool(std::string_view settingNa
 void SteamBot::ClientSettings::setBool(std::string_view settingName, bool value) const
 {
     setBool(settingName, getAccountName(), value);
+}
+
+/************************************************************************/
+
+void SteamBot::ClientSettings::clear(std::string_view settingName, std::string_view accountName) const
+{
+    auto& file=SteamBot::DataFile::get(accountName, SteamBot::DataFile::FileType::Account);
+    SettingsBase::clear(file, settingName);
 }
 
 /************************************************************************/
@@ -161,5 +185,5 @@ std::optional<bool> SteamBot::ClientSettings::getBool(std::string_view settingNa
 void SteamBot::ClientSettings::setBool(std::string_view settingName, std::string_view accountName, bool value) const
 {
     auto& file=SteamBot::DataFile::get(accountName, SteamBot::DataFile::FileType::Account);
-    return SettingsBase::setBool(file, settingName, value);
+    SettingsBase::setBool(file, settingName, value);
 }

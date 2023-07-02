@@ -35,39 +35,6 @@ CLI::CLI(ConsoleUI& ui_)
 CLI::~CLI() =default;
 
 /************************************************************************/
-/*
- * Returns currentAccount, or nullptr.
- *
- * Outputs a message if none was set.
- */
-
-SteamBot::ClientInfo* CLI::getAccount() const
-{
-    if (currentAccount==nullptr)
-    {
-        std::cout << "no current account; select one first or specify an account name" << std::endl;
-    }
-    return currentAccount;
-}
-
-/************************************************************************/
-/*
- * Returns named account, or nullptr.
- *
- * Outputs a message if none was found.
- */
-
-SteamBot::ClientInfo* CLI::getAccount(std::string_view name) const
-{
-    const auto clientInfo=SteamBot::ClientInfo::find(name);
-    if (clientInfo==nullptr)
-    {
-        std::cout << "unknown account \"" << name << "\"" << std::endl;
-    }
-    return clientInfo;
-}
-
-/************************************************************************/
 
 CLI::CLICommandBase::~CLICommandBase() =default;
 
@@ -75,6 +42,10 @@ CLI::CLICommandBase::~CLICommandBase() =default;
 
 void CLI::CLICommandBase::printSyntax() const
 {
+    if (needsAccount)
+    {
+        std::cout << "[<account>:] ";
+    }
     std::cout << command;
     if (syntax.size()!=0)
     {
@@ -96,17 +67,48 @@ void CLI::showHelp()
 }
 
 /************************************************************************/
+/*
+ * Note: commands can be oprefixed with "<accountname>:" as the first
+ * word (even if it doesn't make sense, like "account: help").
+ */
 
 void CLI::command(std::string_view line)
 {
     auto words=getWords(line);
     if (words.size()>0)
     {
+        SteamBot::ClientInfo* clientInfo=nullptr;
+
+        if (words[0].size()>0 && words[0].back()==':')
+        {
+            auto name=std::move(words[0]);
+            name.pop_back();
+            words.erase(words.begin());
+
+            clientInfo=SteamBot::ClientInfo::find(name);
+            if (clientInfo==nullptr)
+            {
+                std::cout << "unknown account \"" << name << "\"" << std::endl;
+                return;
+            }
+        }
+
+        if (clientInfo==nullptr)
+        {
+            clientInfo=currentAccount;
+        }
+
         for (const auto& command : commands)
         {
             if (command->command==words[0])
             {
-                if (!command->execute(words))
+                if (command->needsAccount && clientInfo==nullptr)
+                {
+                    std::cout << "no current account; select one first or specify an account name" << std::endl;
+                    return;
+                }
+
+                if (!command->execute(clientInfo, words))
                 {
                     std::cout << "command syntax: ";
                     command->printSyntax();

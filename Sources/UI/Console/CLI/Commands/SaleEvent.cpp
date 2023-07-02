@@ -37,14 +37,14 @@ namespace
     {
     public:
         SaleEventCommand(CLI& cli_)
-            : CLICommandBase(cli_, "sale-event", "[<account>]", "clear sale queues and stickers")
+            : CLICommandBase(cli_, "sale-event", "", "clear sale queues and stickers", true)
         {
         }
 
         virtual ~SaleEventCommand() =default;
 
     public:
-        virtual bool execute(std::vector<std::string>&) override;
+        virtual bool execute(SteamBot::ClientInfo*, std::vector<std::string>&) override;
     };
 
     SaleEventCommand::InitClass<SaleEventCommand> init;
@@ -52,24 +52,9 @@ namespace
 
 /************************************************************************/
 
-bool SaleEventCommand::execute(std::vector<std::string>& words)
+bool SaleEventCommand::execute(SteamBot::ClientInfo* clientInfo, std::vector<std::string>& words)
 {
-    SteamBot::ClientInfo* clientInfo=nullptr;
-
     if (words.size()==1)
-    {
-        clientInfo=cli.getAccount();
-    }
-    else if (words.size()==2)
-    {
-        clientInfo=cli.getAccount(words[1]);
-    }
-    else
-    {
-        return false;
-    }
-
-    if (clientInfo!=nullptr)
     {
         if (auto client=clientInfo->getClient())
         {
@@ -82,8 +67,12 @@ bool SaleEventCommand::execute(std::vector<std::string>& words)
                 std::cout << "requested sale queue clearing and sticker claiming for account " << client->getClientInfo().accountName << std::endl;
             }
         }
+        return true;
     }
-    return true;
+    else
+    {
+        return false;
+    }
 }
 
 /************************************************************************/

@@ -41,14 +41,14 @@ namespace
     {
     public:
         ListGamesCommand(CLI& cli_)
-            : CLICommandBase(cli_, "list-games", "[<account>] [<regex>]", "list owned games")
+            : CLICommandBase(cli_, "list-games", "[<regex>]", "list owned games", true)
         {
         }
 
         virtual ~ListGamesCommand() =default;
 
     public:
-        virtual bool execute(std::vector<std::string>&) override;
+        virtual bool execute(SteamBot::ClientInfo*, std::vector<std::string>&) override;
     };
 
     ListGamesCommand::InitClass<ListGamesCommand> init;
@@ -118,47 +118,29 @@ static void outputGameList(SteamBot::ClientInfo& clientInfo, const OwnedGames::P
 
 /************************************************************************/
 
-bool ListGamesCommand::execute(std::vector<std::string>& words)
+bool ListGamesCommand::execute(SteamBot::ClientInfo* clientInfo, std::vector<std::string>& words)
 {
-    SteamBot::ClientInfo* clientInfo=nullptr;
     std::string_view pattern;
 
-    if (words.size()==3)
+    if (words.size()==2)
     {
-        // list-games accountname pattern
-        clientInfo=cli.getAccount(words[1]);
-        pattern=words[2];
-    }
-    else if (words.size()==2)
-    {
-        // list-games accountname
-        // list-games pattern
-        clientInfo=SteamBot::ClientInfo::find(words[1]);
-        if (clientInfo==nullptr)
-        {
-            clientInfo=cli.getAccount();
-            pattern=words[1];
-        }
+        pattern=words[1];
     }
     else if (words.size()==1)
     {
-        clientInfo=cli.getAccount();
     }
     else
     {
         return false;
     }
 
-    if (clientInfo)
+    if (auto ownedGames=CLI::Helpers::getOwnedGames(*clientInfo))
     {
-        if (auto ownedGames=CLI::Helpers::getOwnedGames(*clientInfo))
-        {
-            outputGameList(*clientInfo, *ownedGames, pattern);
-        }
-        else
-        {
-            std::cout << "gamelist not available for \"" << clientInfo->accountName << "\"" << std::endl;
-        }
+        outputGameList(*clientInfo, *ownedGames, pattern);
+    }
+    else
+    {
+        std::cout << "gamelist not available for \"" << clientInfo->accountName << "\"" << std::endl;
     }
 
     return true;

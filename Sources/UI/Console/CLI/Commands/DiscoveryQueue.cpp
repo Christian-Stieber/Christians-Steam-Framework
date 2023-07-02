@@ -35,14 +35,14 @@ namespace
     {
     public:
         ClearQueueCommand(CLI& cli_)
-            : CLICommandBase(cli_, "clear-queue", "[<account>]", "clear a discovery queue")
+            : CLICommandBase(cli_, "clear-queue", "", "clear a discovery queue", true)
         {
         }
 
         virtual ~ClearQueueCommand() =default;
 
     public:
-        virtual bool execute(std::vector<std::string>&) override;
+        virtual bool execute(SteamBot::ClientInfo*, std::vector<std::string>&) override;
     };
 
     ClearQueueCommand::InitClass<ClearQueueCommand> init;
@@ -50,24 +50,9 @@ namespace
 
 /************************************************************************/
 
-bool ClearQueueCommand::execute(std::vector<std::string>& words)
+bool ClearQueueCommand::execute(SteamBot::ClientInfo* clientInfo, std::vector<std::string>& words)
 {
-    SteamBot::ClientInfo* clientInfo=nullptr;
-
     if (words.size()==1)
-    {
-        clientInfo=cli.getAccount();
-    }
-    else if (words.size()==2)
-    {
-        clientInfo=cli.getAccount(words[1]);
-    }
-    else
-    {
-        return false;
-    }
-
-    if (clientInfo!=nullptr)
     {
         if (auto client=clientInfo->getClient())
         {
@@ -79,8 +64,12 @@ bool ClearQueueCommand::execute(std::vector<std::string>& words)
                 std::cout << "requested queue clearing for account " << client->getClientInfo().accountName << std::endl;
             }
         }
+        return true;
     }
-    return true;
+    else
+    {
+        return false;
+    }
 }
 
 /************************************************************************/

@@ -35,14 +35,14 @@ namespace
     {
     public:
         StatusCommand(CLI& cli_)
-            : CLICommandBase(cli_, "status", "", "Show list of known accounts")
+            : CLICommandBase(cli_, "status", "", "Show list of known accounts", false)
         {
         }
 
         virtual ~StatusCommand() =default;
 
     public:
-        virtual bool execute(std::vector<std::string>&) override;
+        virtual bool execute(SteamBot::ClientInfo*, std::vector<std::string>&) override;
     };
 
     StatusCommand::InitClass<StatusCommand> init;
@@ -50,7 +50,7 @@ namespace
 
 /************************************************************************/
 
-bool StatusCommand::execute(std::vector<std::string>& words)
+bool StatusCommand::execute(SteamBot::ClientInfo*, std::vector<std::string>& words)
 {
     if (words.size()>1) return false;
 

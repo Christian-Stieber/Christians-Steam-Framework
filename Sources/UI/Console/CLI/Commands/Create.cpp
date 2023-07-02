@@ -29,14 +29,14 @@ namespace
     {
     public:
         CreateCommand(CLI& cli_)
-            : CLICommandBase(cli_, "create", "<account>", "create a new bot")
+            : CLICommandBase(cli_, "create", "<account>", "create a new bot", false)
         {
         }
 
         virtual ~CreateCommand() =default;
 
     public:
-        virtual bool execute(std::vector<std::string>&) override;
+        virtual bool execute(SteamBot::ClientInfo*, std::vector<std::string>&) override;
     };
 
     CreateCommand::InitClass<CreateCommand> init;
@@ -44,7 +44,7 @@ namespace
 
 /************************************************************************/
 
-bool CreateCommand::execute(std::vector<std::string>& words)
+bool CreateCommand::execute(SteamBot::ClientInfo*, std::vector<std::string>& words)
 {
     if (words.size()!=2) return false;
 
@@ -58,6 +58,9 @@ bool CreateCommand::execute(std::vector<std::string>& words)
         SteamBot::Client::launch(*clientInfo);
         std::cout << "launched new client \"" << clientInfo->accountName << "\"" << std::endl;
         std::cout << "NOTE: leave command mode to be able to see password/SteamGuard prompts!" << std::endl;
+
+        cli.currentAccount=clientInfo;
+        std::cout << "your current account is now \"" << cli.currentAccount->accountName << "\"" << std::endl;
     }
     return true;
 }

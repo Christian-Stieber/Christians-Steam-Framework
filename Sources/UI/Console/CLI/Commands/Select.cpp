@@ -29,14 +29,14 @@ namespace
     {
     public:
         SelectCommand(CLI& cli_)
-            : CLICommandBase(cli_, "select", "<account>", "select a bot as target for some commands")
+            : CLICommandBase(cli_, "select", "", "select a client as target for commands", true)
         {
         }
 
         virtual ~SelectCommand() =default;
 
     public:
-        virtual bool execute(std::vector<std::string>&) override;
+        virtual bool execute(SteamBot::ClientInfo*, std::vector<std::string>&) override;
     };
 
     SelectCommand::InitClass<SelectCommand> init;
@@ -45,31 +45,18 @@ namespace
 
 /************************************************************************/
 
-bool SelectCommand::execute(std::vector<std::string>& words)
+bool SelectCommand::execute(SteamBot::ClientInfo* clientInfo, std::vector<std::string>& words)
 {
     if (words.size()==1)
     {
-        if (cli.currentAccount==nullptr)
-        {
-            return false;
-        }
-        cli.currentAccount=nullptr;
-        std::cout << "deselected the current account" << std::endl;
-    }
-    else if (words.size()==2)
-    {
-        const auto clientInfo=cli.getAccount(words[1]);
-        if (clientInfo!=nullptr)
-        {
-            cli.currentAccount=clientInfo;
-            std::cout << "your current account is now \"" << cli.currentAccount->accountName << "\"" << std::endl;
-        }
+        cli.currentAccount=clientInfo;
+        std::cout << "your current account is now \"" << cli.currentAccount->accountName << "\"" << std::endl;
+        return true;
     }
     else
     {
         return false;
     }
-    return true;
 }
 
 /************************************************************************/

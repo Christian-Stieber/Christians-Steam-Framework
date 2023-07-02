@@ -42,32 +42,42 @@ namespace
         virtual ~PlayBase() =default;
 
     protected:
-        bool game_start_stop(std::vector<std::string>&, bool);
+        bool game_start_stop(SteamBot::ClientInfo*, std::vector<std::string>&, bool);
     };
 }
 
 /************************************************************************/
 
-bool PlayBase::game_start_stop(std::vector<std::string>& words, bool start)
+bool PlayBase::game_start_stop(SteamBot::ClientInfo* clientInfo, std::vector<std::string>& words, bool start)
 {
-    return cli.helpers->simpleCommand(words, [start](std::shared_ptr<SteamBot::Client> client, uint64_t appId){
-        bool success=SteamBot::Modules::Executor::execute(client, [appId, start](SteamBot::Client&) mutable {
-            PlayGame::play(static_cast<SteamBot::AppID>(appId), start);
-        });
-        if (success)
+    if (words.size()==2)
+    {
+        uint64_t appId;
+        if (CLI::Helpers::parseNumber(words[1], appId))
         {
-            std::cout << (start ? "started" : "stopped") << " game " << appId;
-            if (auto ownedGames=CLI::Helpers::getOwnedGames(client->getClientInfo()))
+            if (auto client=clientInfo->getClient())
             {
-                if (auto info=ownedGames->getInfo(static_cast<SteamBot::AppID>(appId)))
+                bool success=SteamBot::Modules::Executor::execute(client, [appId, start](SteamBot::Client&) mutable {
+                    PlayGame::play(static_cast<SteamBot::AppID>(appId), start);
+                });
+
+                if (success)
                 {
-                    std::cout << " (" << info->name << ")";
+                    std::cout << (start ? "started" : "stopped") << " game " << appId;
+                    if (auto ownedGames=CLI::Helpers::getOwnedGames(client->getClientInfo()))
+                    {
+                        if (auto info=ownedGames->getInfo(static_cast<SteamBot::AppID>(appId)))
+                        {
+                            std::cout << " (" << info->name << ")";
+                        }
+                    }
+                    std::cout << " on account " << client->getClientInfo().accountName << std::endl;
                 }
             }
-            std::cout << " on account " << client->getClientInfo().accountName << std::endl;
         }
-        return success;
-    });
+        return true;
+    }
+    return false;
 }
 
 /************************************************************************/
@@ -78,16 +88,16 @@ namespace
     {
     public:
         PlayGameCommand(CLI& cli_)
-            : PlayBase(cli_, "play-game", "[<account>] <appid>", "play a game")
+            : PlayBase(cli_, "play-game", "<appid>", "play a game", true)
         {
         }
 
         virtual ~PlayGameCommand() =default;
 
     public:
-        virtual bool execute(std::vector<std::string>& words) override
+        virtual bool execute(SteamBot::ClientInfo* clientInfo, std::vector<std::string>& words) override
         {
-            return game_start_stop(words, true);
+            return game_start_stop(clientInfo, words, true);
         }
     };
 
@@ -102,16 +112,16 @@ namespace
     {
     public:
         StopGameCommand(CLI& cli_)
-            : PlayBase(cli_, "stop-game", "[<account>] <appid>", "stop playing")
+            : PlayBase(cli_, "stop-game", "<appid>", "stop playing", true)
         {
         }
 
         virtual ~StopGameCommand() =default;
 
     public:
-        virtual bool execute(std::vector<std::string>& words) override
+        virtual bool execute(SteamBot::ClientInfo* clientInfo, std::vector<std::string>& words) override
         {
-            return game_start_stop(words, false);
+            return game_start_stop(clientInfo, words, false);
         }
     };
 

@@ -68,6 +68,9 @@ namespace SteamBot
         void use(std::string_view, Type);
 
     protected:
+        void clear(SteamBot::DataFile&, std::string_view) const;
+
+    protected:
         std::optional<bool> getBool(SteamBot::DataFile&, std::string_view) const;
         void setBool(SteamBot::DataFile&, std::string_view, bool) const;
 
@@ -91,6 +94,10 @@ namespace SteamBot
 
     public:
         static ClientSettings& get();
+
+    public:
+        void clear(std::string_view, std::string_view) const;
+        void clear(std::string_view) const;
 
     public:
         std::optional<bool> getBool(std::string_view, std::string_view) const;

@@ -31,14 +31,14 @@ namespace
     {
     public:
         LaunchCommand(CLI& cli_)
-            : CLICommandBase(cli_, "launch", "[<account>]", "launch an existing bot")
+            : CLICommandBase(cli_, "launch", "", "launch an existing client", true)
         {
         }
 
         virtual ~LaunchCommand() =default;
 
     public:
-        virtual bool execute(std::vector<std::string>&) override;
+        virtual bool execute(SteamBot::ClientInfo*, std::vector<std::string>&) override;
     };
 
     LaunchCommand::InitClass<LaunchCommand> init;
@@ -46,24 +46,9 @@ namespace
 
 /************************************************************************/
 
-bool LaunchCommand::execute(std::vector<std::string>& words)
+bool LaunchCommand::execute(SteamBot::ClientInfo* clientInfo, std::vector<std::string>& words)
 {
-    SteamBot::ClientInfo* clientInfo=nullptr;
-
     if (words.size()==1)
-    {
-        clientInfo=cli.getAccount();
-    }
-    else if (words.size()==2)
-    {
-        clientInfo=cli.getAccount(words[1]);
-    }
-    else
-    {
-        return false;
-    }
-
-    if (clientInfo!=nullptr)
     {
         SteamBot::Client::launch(*clientInfo);
         std::cout << "launched client \"" << clientInfo->accountName << "\"" << std::endl;
@@ -71,8 +56,13 @@ bool LaunchCommand::execute(std::vector<std::string>& words)
 
         cli.currentAccount=clientInfo;
         std::cout << "your current account is now \"" << cli.currentAccount->accountName << "\"" << std::endl;
+
+        return true;
     }
-    return true;
+    else
+    {
+        return false;
+    }
 }
 
 /************************************************************************/

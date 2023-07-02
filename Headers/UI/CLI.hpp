@@ -108,12 +108,15 @@ public:
     const std::string_view syntax;
     const std::string_view description;
 
+    const bool needsAccount=false;
+
 protected:
-    template <typename COMMAND, typename SYNTAX, typename DESCRIPTION> CLICommandBase(CLI& cli_, COMMAND&& command_, SYNTAX&& syntax_, DESCRIPTION&& description_)
+    template <typename COMMAND, typename SYNTAX, typename DESCRIPTION> CLICommandBase(CLI& cli_, COMMAND&& command_, SYNTAX&& syntax_, DESCRIPTION&& description_, bool needsAccount_)
         : cli(cli_),
           command(std::forward<COMMAND>(command_)),
           syntax(std::forward<SYNTAX>(syntax_)),
-          description(std::forward<DESCRIPTION>(description_))
+          description(std::forward<DESCRIPTION>(description_)),
+          needsAccount(needsAccount_)
     {
     }
 
@@ -121,6 +124,6 @@ public:
     virtual ~CLICommandBase();
 
 public:
-    virtual bool execute(std::vector<std::string>&) =0;
+    virtual bool execute(SteamBot::ClientInfo*, std::vector<std::string>&) =0;
     void printSyntax() const;
 };

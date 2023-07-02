@@ -35,14 +35,14 @@ namespace
     {
     public:
         AddLicenseCommand(CLI& cli_)
-            : CLICommandBase(cli_, "add-license", "[<account>] <appid>", "add a (free) license")
+            : CLICommandBase(cli_, "add-license", "<appid>", "add a (free) license", true)
         {
         }
 
         virtual ~AddLicenseCommand() =default;
 
     public:
-        virtual bool execute(std::vector<std::string>&) override;
+        virtual bool execute(SteamBot::ClientInfo*, std::vector<std::string>&) override;
     };
 
     AddLicenseCommand::InitClass<AddLicenseCommand> init;
@@ -50,18 +50,31 @@ namespace
 
 /************************************************************************/
 
-bool AddLicenseCommand::execute(std::vector<std::string>& words)
+bool AddLicenseCommand::execute(SteamBot::ClientInfo* clientInfo, std::vector<std::string>& words)
 {
-    return cli.helpers->simpleCommand(words, [](std::shared_ptr<SteamBot::Client> client, uint64_t appId){
-        bool success=SteamBot::Modules::Executor::execute(client, [appId](SteamBot::Client&) mutable {
-            AddLicense::add(static_cast<SteamBot::AppID>(appId));
-        });
-        if (success)
+    if (words.size()==2)
+    {
+        uint64_t appId;
+        if (CLI::Helpers::parseNumber(words[1], appId))
         {
-            std::cout << "I've asked Steam to add the license " << appId << " to your account" << std::endl;
+            if (auto client=clientInfo->getClient())
+            {
+                bool success=SteamBot::Modules::Executor::execute(std::move(client), [appId](SteamBot::Client&) mutable {
+                    AddLicense::add(static_cast<SteamBot::AppID>(appId));
+                });
+
+                if (success)
+                {
+                    std::cout << "I've asked Steam to add the license " << appId << " to your account" << std::endl;
+                }
+            }
         }
-        return success;
-    });
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 /************************************************************************/

@@ -46,7 +46,4 @@ public:
     static std::vector<std::shared_ptr<const LicenseInfo>> getLicenseInfo(const SteamBot::ClientInfo&, SteamBot::AppID);
 
     static bool parseNumber(std::string_view, uint64_t&);
-
-public:
-    bool simpleCommand(std::vector<std::string>&, std::function<bool(std::shared_ptr<SteamBot::Client>, uint64_t)>);
 };

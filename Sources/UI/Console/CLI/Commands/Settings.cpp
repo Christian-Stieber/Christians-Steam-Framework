@@ -31,7 +31,7 @@ namespace
     {
     public:
         SetCommand(CLI& cli_)
-            : CLICommandBase(cli_, "set", "[<account>] [<name> <value>]", "change a setting for an account")
+            : CLICommandBase(cli_, "set", "[<name> <value>]", "change a setting for an account", true)
         {
         }
 
@@ -42,7 +42,7 @@ namespace
         static void showVariables(const SteamBot::ClientInfo*);
 
     public:
-        virtual bool execute(std::vector<std::string>&) override;
+        virtual bool execute(SteamBot::ClientInfo*, std::vector<std::string>&) override;
     };
 
     SetCommand::InitClass<SetCommand> init;
@@ -131,48 +131,28 @@ void SetCommand::setVariable(const SteamBot::ClientInfo* clientInfo, std::string
 
 /************************************************************************/
 
-bool SetCommand::execute(std::vector<std::string>& words)
+bool SetCommand::execute(SteamBot::ClientInfo* clientInfo, std::vector<std::string>& words)
 {
-    SteamBot::ClientInfo* clientInfo=nullptr;
-
-    if (words.size()==4)
-    {
-        // set <account> <name> <value>
-        if (auto clientInfo=cli.getAccount(words[1]))
-        {
-            setVariable(clientInfo, words[2], words[3]);
-        }
-        return true;
-    }
-    else if (words.size()==3)
+    if (words.size()==3)
     {
         // set <name> <value>
-        if (auto clientInfo=cli.getAccount())
-        {
-            setVariable(clientInfo, words[1], words[2]);
-        }
-        return true;
+        setVariable(clientInfo, words[1], words[2]);
     }
     else if (words.size()==2)
     {
-        // set <account>
-        clientInfo=cli.getAccount(words[1]);
-        if (clientInfo!=nullptr)
-        {
-            showVariables(clientInfo);
-        }
-        return true;
+        // set <name> -> clear
+        SteamBot::ClientSettings::get().clear(clientInfo->accountName, words[1]);
     }
     else if (words.size()==1)
     {
-        // set
-        showVariables(cli.currentAccount);
-        return true;
+        // set -> show all
+        showVariables(clientInfo);
     }
     else
     {
         return false;
     }
+    return true;
 }
 
 /************************************************************************/

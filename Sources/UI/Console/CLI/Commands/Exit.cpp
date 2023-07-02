@@ -29,14 +29,14 @@ namespace
     {
     public:
         ExitCommand(CLI& cli_)
-            : CLICommandBase(cli_, "EXIT", "", "Exit the bot")
+            : CLICommandBase(cli_, "EXIT", "", "Exit the bot", false)
         {
         }
 
         virtual ~ExitCommand() =default;
 
     public:
-        virtual bool execute(std::vector<std::string>& words) override
+        virtual bool execute(SteamBot::ClientInfo*, std::vector<std::string>& words) override
         {
             if (words.size()>1) return false;
 

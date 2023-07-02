@@ -29,14 +29,14 @@ namespace
     {
     public:
         HelpCommand(CLI& cli_)
-            : CLICommandBase(cli_, "help", "", "Show list of commands")
+            : CLICommandBase(cli_, "help", "", "Show list of commands", false)
         {
         }
 
         virtual ~HelpCommand() =default;
 
     public:
-        virtual bool execute(std::vector<std::string>&) override
+        virtual bool execute(SteamBot::ClientInfo*, std::vector<std::string>&) override
         {
             cli.showHelp();
             return true;
