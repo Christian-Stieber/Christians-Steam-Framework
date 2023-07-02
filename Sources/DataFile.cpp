@@ -17,7 +17,7 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "Client/DataFile.hpp"
+#include "DataFile.hpp"
 #include "EnumString.hpp"
 
 #include <boost/log/trivial.hpp>

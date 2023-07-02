@@ -31,7 +31,7 @@
 #include "Client/Module.hpp"
 #include "Modules/Connection.hpp"
 #include "Modules/PackageData.hpp"
-#include "Client/DataFile.hpp"
+#include "DataFile.hpp"
 #include "Steam/KeyValue.hpp"
 #include "JobID.hpp"
 #include "Vector.hpp"
