@@ -168,6 +168,8 @@ void ExecutorModule::wait()
 
 void ExecutorModule::run(SteamBot::Client& client)
 {
+    auto cancellation=client.cancel.registerObject(*this);
+
     try
     {
         while (true)
