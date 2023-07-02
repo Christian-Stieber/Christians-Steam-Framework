@@ -50,7 +50,7 @@ namespace SteamBot
     class SettingsBase
     {
     public:
-        enum Type { Bool, Integer, String };
+        enum Type { Invalid, Bool, Integer, String };
 
     protected:
         SettingsBase();
@@ -62,6 +62,7 @@ namespace SteamBot
 
     public:
         bool checkSetting(std::string_view, Type) const;
+        Type getType(std::string_view) const;
 
     public:
         void use(std::string_view, Type);
@@ -69,6 +70,10 @@ namespace SteamBot
     protected:
         std::optional<bool> getBool(SteamBot::DataFile&, std::string_view) const;
         void setBool(SteamBot::DataFile&, std::string_view, bool) const;
+
+    public:
+        typedef std::pair<decltype(settings)::key_type, decltype(settings)::mapped_type> ListPair;
+        std::vector<ListPair> getVariables() const;
     };
 }
 
@@ -88,10 +93,10 @@ namespace SteamBot
         static ClientSettings& get();
 
     public:
-        std::optional<bool> getBool(std::string_view, std::string_view);
-        std::optional<bool> getBool(std::string_view);
+        std::optional<bool> getBool(std::string_view, std::string_view) const;
+        std::optional<bool> getBool(std::string_view) const;
 
-        void setBool(std::string_view, std::string_view, bool);
-        void setBool(std::string_view, bool);
+        void setBool(std::string_view, std::string_view, bool) const;
+        void setBool(std::string_view, bool) const;
     };
 }

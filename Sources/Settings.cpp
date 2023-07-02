@@ -42,13 +42,25 @@ void SteamBot::SettingsBase::use(std::string_view name, SteamBot::SettingsBase::
 
 /************************************************************************/
 
-bool SteamBot::SettingsBase::checkSetting(std::string_view settingName, SteamBot::SettingsBase::Type type) const
+SteamBot::SettingsBase::Type SteamBot::SettingsBase::getType(std::string_view settingName) const
 {
     std::lock_guard<decltype(mutex)> lock(mutex);
     auto iterator=settings.find(settingName);
     if (iterator!=settings.end())
     {
-        if (iterator->second==type)
+        return iterator->second;
+    }
+    return Type::Invalid;
+}
+
+/************************************************************************/
+
+bool SteamBot::SettingsBase::checkSetting(std::string_view settingName, SteamBot::SettingsBase::Type type) const
+{
+    auto myType=getType(settingName);
+    if (myType!=Type::Invalid)
+    {
+        if (myType==type)
         {
             return true;
         }
@@ -91,6 +103,19 @@ void SteamBot::SettingsBase::setBool(SteamBot::DataFile& file, std::string_view 
 
 /************************************************************************/
 
+std::vector<SteamBot::SettingsBase::ListPair> SteamBot::SettingsBase::getVariables() const
+{
+    std::vector<ListPair> result;
+    {
+        std::lock_guard<decltype(mutex)> lock(mutex);
+        result.reserve(settings.size());
+        result.insert(result.end(), settings.begin(), settings.end());
+    }
+    return result;
+}
+
+/************************************************************************/
+
 SteamBot::ClientSettings::ClientSettings() =default;
 SteamBot::ClientSettings::~ClientSettings() =default;
 
@@ -111,21 +136,21 @@ SteamBot::ClientSettings& SteamBot::ClientSettings::get()
 
 /************************************************************************/
 
-std::optional<bool> SteamBot::ClientSettings::getBool(std::string_view settingName)
+std::optional<bool> SteamBot::ClientSettings::getBool(std::string_view settingName) const
 {
     return getBool(settingName, getAccountName());
 }
 
 /************************************************************************/
 
-void SteamBot::ClientSettings::setBool(std::string_view settingName, bool value)
+void SteamBot::ClientSettings::setBool(std::string_view settingName, bool value) const
 {
     setBool(settingName, getAccountName(), value);
 }
 
 /************************************************************************/
 
-std::optional<bool> SteamBot::ClientSettings::getBool(std::string_view settingName, std::string_view accountName)
+std::optional<bool> SteamBot::ClientSettings::getBool(std::string_view settingName, std::string_view accountName) const
 {
     auto& file=SteamBot::DataFile::get(accountName, SteamBot::DataFile::FileType::Account);
     return SettingsBase::getBool(file, settingName);
@@ -133,7 +158,7 @@ std::optional<bool> SteamBot::ClientSettings::getBool(std::string_view settingNa
 
 /************************************************************************/
 
-void SteamBot::ClientSettings::setBool(std::string_view settingName, std::string_view accountName, bool value)
+void SteamBot::ClientSettings::setBool(std::string_view settingName, std::string_view accountName, bool value) const
 {
     auto& file=SteamBot::DataFile::get(accountName, SteamBot::DataFile::FileType::Account);
     return SettingsBase::setBool(file, settingName, value);
