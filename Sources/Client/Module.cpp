@@ -44,12 +44,12 @@ Module::~Module() =default;
 void Module::createAll(std::function<void(std::shared_ptr<SteamBot::Client::Module>)> callback)
 {
     SteamBot::Startup::InitBase<Module>::initAll(std::move(callback));
-    /*
+}
 
-      [&callback](std::unique_ptr<Module> module){
-        callback(std::move(module));
-    });
-    */
+/************************************************************************/
+
+void Module::init(Client&)
+{
 }
 
 /************************************************************************/

@@ -77,21 +77,47 @@ void SteamBot::Client::initModules()
     SteamBot::Modules::MultiPacket::use();
     SteamBot::Modules::Login::use();
 
+    // construct modules
     Module::createAll([this](std::shared_ptr<Client::Module> module){
         std::lock_guard<decltype(modulesMutex)> lock(modulesMutex);
         bool success=modules.try_emplace(std::type_index(typeid(*module)), std::move(module)).second;
         assert(success);	// only one module per type
     });
 
-    std::lock_guard<decltype(modulesMutex)> lock(modulesMutex);
-    for (auto& item : modules)
+    // Call init on all modules
+    // Note: I'm not entirely sure why I have the module mutex, but we
+    // can't keep it locked or init would deadlock when trying to
+    // access other modules -- which is the main reason I've
+    // introduced init, so we can access other modules before run().
     {
-        auto module=item.second;
-        std::string name=boost::typeindex::type_id_runtime(*module).pretty_name();
-        launchFiber(std::move(name), [this, module=std::move(module)](){
-            auto cancellation=cancel.registerObject(*(module->waiter));
-            module->run(*this);
-        });
+        std::vector<std::shared_ptr<Client::Module>> temp;
+        {
+            std::lock_guard<decltype(modulesMutex)> lock(modulesMutex);
+            temp.reserve(modules.size());
+            for (auto& item : modules)
+            {
+                temp.push_back(item.second);
+            }
+        }
+        for (const auto& module : temp)
+        {
+            module->init(*this);
+        }
+    }
+
+    // run them
+    // Note: module mutex is fine here, since we launch fibers.
+    {
+        std::lock_guard<decltype(modulesMutex)> lock(modulesMutex);
+        for (auto& item : modules)
+        {
+            auto module=item.second;
+            std::string name=boost::typeindex::type_id_runtime(*module).pretty_name();
+            launchFiber(std::move(name), [this, module=std::move(module)](){
+                auto cancellation=cancel.registerObject(*(module->waiter));
+                module->run(*this);
+            });
+        }
     }
 }
 

@@ -30,6 +30,10 @@
  *    Client::Module::Init<T>
  * Clients will use this to find and instanciate your module.
  *
+ * Note: init() will be called after all modules have been
+ * constructed; if you need other modules in your init, use
+ * this instead of doing it in the constructor.
+ *
  * Client::Module:
  *   - each module has a "waiter" instance (with a cancellation
  *     object attached to it)
@@ -61,6 +65,7 @@ namespace SteamBot
     public:
         static SteamBot::Client& getClient() { return SteamBot::Client::getClient(); }
 
+        virtual void init(Client&);
         virtual void run(Client&);
     };
 }
