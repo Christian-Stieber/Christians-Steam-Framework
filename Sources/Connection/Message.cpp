@@ -206,7 +206,7 @@ size_t SteamBot::Connection::Message::Base::serialize(SteamBot::Connection::Seri
 
 void SteamBot::Connection::Message::Base::send(Connection::Base& connection) const
 {
-    BOOST_LOG_TRIVIAL(info) << "writing message: " << boost::typeindex::type_id_runtime(*this).pretty_name();
+    BOOST_LOG_TRIVIAL(info) << "writing message: " << SteamBot::typeName(*this);
 	auto bytes=Serializeable::serialize();
 
 #if 0

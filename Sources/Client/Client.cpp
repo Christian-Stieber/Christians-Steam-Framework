@@ -25,6 +25,7 @@
 #include "UI/UI.hpp"
 #include "Modules/MultiPacket.hpp"
 #include "Modules/Login.hpp"
+#include "TypeName.hpp"
 
 #include <thread>
 #include <boost/log/trivial.hpp>
@@ -112,7 +113,7 @@ void SteamBot::Client::initModules()
         for (auto& item : modules)
         {
             auto module=item.second;
-            std::string name=boost::typeindex::type_id_runtime(*module).pretty_name();
+            std::string name=SteamBot::typeName(*module);
             launchFiber(std::move(name), [this, module=std::move(module)](){
                 auto cancellation=cancel.registerObject(*(module->waiter));
                 module->run(*this);

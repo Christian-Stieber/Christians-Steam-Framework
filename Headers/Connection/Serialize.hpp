@@ -34,6 +34,8 @@
 
 #include <boost/log/trivial.hpp>
 
+#include "TypeName.hpp"
+
 /************************************************************************/
 /*
  * This is a class to help serialize things to byte streams:
@@ -104,7 +106,7 @@ namespace SteamBot
             {
                 auto bytes=SteamBot::ProtoPuf::encode(message);
                 BOOST_LOG_TRIVIAL(debug) << "serializing protopuf message "
-                                         << boost::typeindex::type_id<T>().pretty_name()
+                                         << SteamBot::typeName<T>()
                                          << " into " << bytes.size() << " bytes: "
                                          << SteamBot::ProtoPuf::toJson(message);
                 return store(bytes);
@@ -208,7 +210,7 @@ namespace SteamBot
                 assert(size<=messageSize);
 
                 BOOST_LOG_TRIVIAL(debug) << "deserialized protopuf message "
-                                         << boost::typeindex::type_id<T>().pretty_name()
+                                         << SteamBot::typeName<T>()
                                          << " from " << size << " bytes: "
                                          << SteamBot::ProtoPuf::toJson(message);
 
