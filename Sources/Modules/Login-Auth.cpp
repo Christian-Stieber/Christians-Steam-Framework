@@ -652,7 +652,7 @@ void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMes
                 }
                 if (message->header.proto.has_client_sessionid())
                 {
-                    whiteboard.set(static_cast<SteamBot::Modules::Login::Whiteboard::ClientSessionID>(message->header.proto.steamid()));
+                    whiteboard.set(static_cast<SteamBot::Modules::Login::Whiteboard::ClientSessionID>(message->header.proto.client_sessionid()));
                 }
                 if (message->content.has_cell_id())
                 {
