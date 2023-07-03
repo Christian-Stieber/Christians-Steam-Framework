@@ -106,6 +106,8 @@ namespace SteamBot
                 ClientRequestWebAPIAuthenticateUserNonceResponse = 5586,
                 ClientPlayerNicknameList = 5587,
 
+                ClientUserNotifications = 5599,
+
                 ClientFSOfflineMessageNotification = 7523,
 
                 ClientPICSProductInfoRequest = 8903,
@@ -370,7 +372,11 @@ template <typename T> class SteamBot::Connection::Message::ContentSerialization
 public:
     inline static size_t serialize(SteamBot::Connection::Serializer& serializer, const T& content)
     {
-        if constexpr (std::derived_from<T, google::protobuf::MessageLite>)
+        if constexpr (pp::is_message<T>)
+        {
+            return serializer.storeProto(content);
+        }
+        else if constexpr (std::derived_from<T, google::protobuf::MessageLite>)
         {
             return serializer.storeProto(content);
         }
@@ -382,7 +388,11 @@ public:
 
     inline static void deserialize(SteamBot::Connection::Deserializer& deserializer, T& content)
     {
-        if constexpr (std::derived_from<T, google::protobuf::MessageLite>)
+        if constexpr (pp::is_message<T>)
+        {
+			deserializer.getProto(content, deserializer.data.size());
+        }
+        else if constexpr (std::derived_from<T, google::protobuf::MessageLite>)
         {
 			deserializer.getProto(content, deserializer.data.size());
         }

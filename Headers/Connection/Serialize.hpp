@@ -30,6 +30,9 @@
 #include <google/protobuf/message_lite.h>
 
 #include "Connection/Base.hpp"
+#include "Helpers/ProtoPuf.hpp"
+
+#include <boost/log/trivial.hpp>
 
 /************************************************************************/
 /*
@@ -96,6 +99,16 @@ namespace SteamBot
 
         public:
             size_t storeProto(const google::protobuf::MessageLite&);
+
+            template <typename T> size_t storeProto(const T& message) requires (pp::is_message<T>)
+            {
+                auto bytes=SteamBot::ProtoPuf::encode(message);
+                BOOST_LOG_TRIVIAL(debug) << "serializing protopuf message "
+                                         << boost::typeindex::type_id<T>().pretty_name()
+                                         << " into " << bytes.size() << " bytes: "
+                                         << SteamBot::ProtoPuf::toJson(message);
+                return store(bytes);
+            }
         };
     }
 }
@@ -178,6 +191,29 @@ namespace SteamBot
 
         public:
             void getProto(google::protobuf::MessageLite&, size_t);
+
+            template <typename T> void getProto(T& message, size_t messageSize) requires (pp::is_message<T>)
+            {
+                if (messageSize>data.size())
+                {
+                    throw NotEnoughDataException();
+                }
+
+                const std::span<std::byte> bytes(const_cast<std::byte*>(data.data()), messageSize);
+
+                auto result=pp::message_coder<T>::decode(bytes);
+                message=std::move(result.first);
+
+                auto size=result.second.data()-bytes.data();
+                assert(size<=messageSize);
+
+                BOOST_LOG_TRIVIAL(debug) << "deserialized protopuf message "
+                                         << boost::typeindex::type_id<T>().pretty_name()
+                                         << " from " << size << " bytes: "
+                                         << SteamBot::ProtoPuf::toJson(message);
+
+                getBytes(size);
+            }
         };
     }
 }
