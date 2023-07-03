@@ -517,6 +517,7 @@ void LoginModule::queryPollAuthSessionStatus()
         getClient().dataFile.update([&response](boost::json::value& json) {
             auto& item=SteamBot::JSON::createItem(json, Keys::SteamGuard, Keys::Data);
             item.emplace_string()=response->new_guard_data();
+            return true;
         });
     }
 
@@ -526,6 +527,7 @@ void LoginModule::queryPollAuthSessionStatus()
         getClient().dataFile.update([this](boost::json::value& json) {
             auto& item=SteamBot::JSON::createItem(json, Keys::Login, Keys::Data);
             item.emplace_string()=refreshToken;
+            return true;
         });
     }
     if (response->has_access_token())
@@ -675,6 +677,7 @@ void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMes
             SteamBot::UI::Thread::outputText("login failed; removing login key");
             getClient().dataFile.update([](boost::json::value& json) {
                 SteamBot::JSON::eraseItem(json, Keys::Login, Keys::Data);
+                return true;
             });
             getClient().quit(true);
             break;

@@ -80,7 +80,7 @@ namespace SteamBot
 		}
 
 	public:
-		void update(std::function<void(boost::json::value&)>);
+		void update(std::function<bool(boost::json::value&)>);
 
     public:
         static DataFile& get(std::string_view, FileType);

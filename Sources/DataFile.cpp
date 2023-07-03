@@ -147,15 +147,21 @@ DataFile::DataFile(std::string&& name_, DataFile::FileType fileType_)
 }
 
 /************************************************************************/
+/*
+ * Note: this only saves if you return true -- be sure to not
+ * change anyting if you return false!
+ */
 
-void DataFile::update(std::function<void(boost::json::value&)> function)
+void DataFile::update(std::function<bool(boost::json::value&)> function)
 {
     std::lock_guard<decltype(mutex)> lock(mutex);
 	assert(!invalid);
 	try
 	{
-		function(json);
-		saveFile();
+		if (function(json))
+        {
+            saveFile();
+        }
 	}
 	catch(...)
 	{

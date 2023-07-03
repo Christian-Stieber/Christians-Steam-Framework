@@ -75,6 +75,7 @@ void SteamBot::SettingsBase::clear(SteamBot::DataFile& file, std::string_view se
 {
     file.update([&settingName](boost::json::value& json) {
         SteamBot::JSON::eraseItem(json, settingsKey, settingName);
+        return true;
     });
 }
 
@@ -106,6 +107,7 @@ void SteamBot::SettingsBase::setBool(SteamBot::DataFile& file, std::string_view 
     {
         file.update([&settingName, value](boost::json::value& json) {
             SteamBot::JSON::createItem(json, settingsKey, settingName)=value;
+            return true;
         });
     }
 }

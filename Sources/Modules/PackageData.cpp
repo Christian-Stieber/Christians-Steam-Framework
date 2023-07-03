@@ -376,6 +376,7 @@ void PackageData::save()
     {
         file.update([this](boost::json::value& fileData) {
             fileData=toJson_noMutex();
+            return true;
         });
         wasUpdated=false;
     }
