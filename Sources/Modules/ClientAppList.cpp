@@ -23,11 +23,19 @@
 #include "Steam/ProtoBuf/steammessages_clientserver_uds.hpp"
 
 /************************************************************************/
+/*
+ * Eh... what does this do?
+ */
+
+/************************************************************************/
 
 namespace
 {
     class ClientAppListModule : public SteamBot::Client::Module
     {
+    private:
+        SteamBot::Messageboard::WaiterType<Steam::CMsgClientGetClientAppListMessageType> clientAppListQueue;
+
     public:
         void handle(std::shared_ptr<const Steam::CMsgClientGetClientAppListMessageType>);
 
@@ -35,6 +43,7 @@ namespace
         ClientAppListModule() =default;
         virtual ~ClientAppListModule() =default;
 
+        virtual void init(SteamBot::Client&) override;
         virtual void run(SteamBot::Client&) override;
     };
 
@@ -51,11 +60,15 @@ void ClientAppListModule::handle(std::shared_ptr<const Steam::CMsgClientGetClien
 
 /************************************************************************/
 
+void ClientAppListModule::init(SteamBot::Client& client)
+{
+    clientAppListQueue=client.messageboard.createWaiter<Steam::CMsgClientGetClientAppListMessageType>(*waiter);
+}
+
+/************************************************************************/
+
 void ClientAppListModule::run(SteamBot::Client& client)
 {
-    std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgClientGetClientAppListMessageType>> clientAppListQueue;
-    clientAppListQueue=waiter->createWaiter<decltype(clientAppListQueue)::element_type>(client.messageboard);
-
     while (true)
     {
         waiter->wait();

@@ -55,6 +55,8 @@ namespace
     class PlayGamesModule : public SteamBot::Client::Module
     {
     private:
+        SteamBot::Messageboard::WaiterType<PlayGame> playGame;
+
         std::vector<SteamBot::AppID> games;
 
     private:
@@ -68,6 +70,7 @@ namespace
         PlayGamesModule() =default;
         virtual ~PlayGamesModule() =default;
 
+        virtual void init(SteamBot::Client&) override;
         virtual void run(SteamBot::Client&) override;
     };
 
@@ -185,11 +188,15 @@ void PlayGamesModule::handle(std::shared_ptr<const PlayGame> message)
 
 /************************************************************************/
 
+void PlayGamesModule::init(SteamBot::Client& client)
+{
+    playGame=client.messageboard.createWaiter<PlayGame>(*waiter);
+}
+
+/************************************************************************/
+
 void PlayGamesModule::run(SteamBot::Client& client)
 {
-    std::shared_ptr<SteamBot::Messageboard::Waiter<PlayGame>> playGame;
-    playGame=waiter->createWaiter<decltype(playGame)::element_type>(client.messageboard);
-
     waitForLogin();
 
     while (true)

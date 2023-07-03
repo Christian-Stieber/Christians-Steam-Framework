@@ -43,17 +43,20 @@ namespace
     class ConnectionModule : public SteamBot::Client::Module
     {
     private:
+        SteamBot::Messageboard::WaiterType<SendSteamMessage> sendMessageWaiter;
+
         std::unordered_map<SteamBot::Connection::Message::Type, std::unique_ptr<HandlerBase>> handlers;
 
     public:
         ConnectionModule();
         virtual ~ConnectionModule();
 
+        virtual void init(SteamBot::Client&) override;
         virtual void run(SteamBot::Client&) override;
 
     private:
         void readPackets(SteamBot::Connections::ConnectResult::element_type*);
-        void writePackets(SteamBot::Connections::ConnectResult::element_type*, SteamBot::Messageboard::Waiter<SendSteamMessage>*);
+        void writePackets(SteamBot::Connections::ConnectResult::element_type*);
         void body();
 
     public:
@@ -84,11 +87,10 @@ void ConnectionModule::add(SteamBot::Connection::Message::Type type, std::unique
 
 /************************************************************************/
 
-void ConnectionModule::writePackets(SteamBot::Connections::ConnectResult::element_type* const connection,
-                                    SteamBot::Messageboard::Waiter<SendSteamMessage>* const messages)
+void ConnectionModule::writePackets(SteamBot::Connections::ConnectResult::element_type* const connection)
 {
     std::shared_ptr<const SendSteamMessage> message;
-    while ((message=messages->fetch()))
+    while ((message=sendMessageWaiter->fetch()))
     {
         BOOST_LOG_TRIVIAL(info) << "sending message: " << boost::typeindex::type_id_runtime(message->payload).pretty_name();
         connection->writePacket(message->payload->Serializeable::serialize());
@@ -134,18 +136,24 @@ void ConnectionModule::readPackets(SteamBot::Connections::ConnectResult::element
 
 /************************************************************************/
 
+void ConnectionModule::init(SteamBot::Client& client)
+{
+    sendMessageWaiter=client.messageboard.createWaiter<SendSteamMessage>(*waiter);
+}
+
+/************************************************************************/
+
 void ConnectionModule::body()
 {
     auto& whiteboard=getClient().whiteboard;
 
     auto connection=SteamBot::Connections::connect(waiter);
-    auto sendMessageWaiter=waiter->createWaiter<SteamBot::Messageboard::Waiter<SendSteamMessage>>(getClient().messageboard);
 
     while (true)
     {
         waiter->wait();
 
-        writePackets(connection.get(), sendMessageWaiter.get());
+        writePackets(connection.get());
         readPackets(connection.get());
 
         typedef SteamBot::Connections::Connection::Status Status;

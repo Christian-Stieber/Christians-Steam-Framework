@@ -33,13 +33,17 @@ namespace
 {
     class MultiPacketModule : public SteamBot::Client::Module
     {
+    private:
+        SteamBot::Messageboard::WaiterType<Steam::CMsgMultiMessageType> multiMessageWaiter;
+
     public:
         MultiPacketModule() =default;
         virtual ~MultiPacketModule() =default;
 
+        virtual void init(SteamBot::Client&) override;
         virtual void run(SteamBot::Client&) override;
 
-    private:
+    public:
         void handle(std::shared_ptr<const Steam::CMsgMultiMessageType>);
     };
 
@@ -103,19 +107,19 @@ void MultiPacketModule::handle(std::shared_ptr<const Steam::CMsgMultiMessageType
 
 /************************************************************************/
 
+void MultiPacketModule::init(SteamBot::Client& client)
+{
+    multiMessageWaiter=client.messageboard.createWaiter<Steam::CMsgMultiMessageType>(*waiter);
+}
+
+/************************************************************************/
+
 void MultiPacketModule::run(SteamBot::Client& client)
 {
-    std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgMultiMessageType>> multiMessageWaiter;
-    multiMessageWaiter=waiter->createWaiter<decltype(multiMessageWaiter)::element_type>(client.messageboard);
-
     while (true)
     {
         waiter->wait();
-        auto message=multiMessageWaiter->fetch();
-        if (message)
-        {
-            handle(message);
-        }
+        multiMessageWaiter->handle(this);
     }
 }
 

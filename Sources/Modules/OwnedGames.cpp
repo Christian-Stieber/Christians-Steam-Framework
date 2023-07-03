@@ -29,6 +29,7 @@
 /************************************************************************/
 
 typedef SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames OwnedGames;
+typedef SteamBot::Modules::LicenseList::Whiteboard::Licenses Licenses;
 
 /************************************************************************/
 
@@ -37,12 +38,16 @@ namespace
     class OwnedGamesModule : public SteamBot::Client::Module
     {
     private:
+        SteamBot::Whiteboard::WaiterType<Licenses::Ptr> licenseList;
+
+    private:
         void getOwnedGames();
 
     public:
         OwnedGamesModule() =default;
         virtual ~OwnedGamesModule() =default;
 
+        virtual void init(SteamBot::Client&) override;
         virtual void run(SteamBot::Client&) override;
     };
 
@@ -149,11 +154,15 @@ void OwnedGamesModule::getOwnedGames()
 
 /************************************************************************/
 
+void OwnedGamesModule::init(SteamBot::Client& client)
+{
+    licenseList=client.whiteboard.createWaiter<Licenses::Ptr>(*waiter);
+}
+
+/************************************************************************/
+
 void OwnedGamesModule::run(SteamBot::Client& client)
 {
-    typedef SteamBot::Modules::LicenseList::Whiteboard::Licenses Licenses;
-    auto licenseList=client.whiteboard.createWaiter<Licenses::Ptr>(*waiter);
-
     while (true)
     {
         waiter->wait();

@@ -77,12 +77,16 @@ namespace
     class LicenseListModule : public SteamBot::Client::Module
     {
     private:
-        void handleMessage(std::shared_ptr<const Steam::CMsgClientLicenseListMessageType>);
+        SteamBot::Messageboard::WaiterType<Steam::CMsgClientLicenseListMessageType> cmsgClientLicenseList;
+
+    public:
+        void handle(std::shared_ptr<const Steam::CMsgClientLicenseListMessageType>);
 
     public:
         LicenseListModule() =default;
         virtual ~LicenseListModule() =default;
 
+        virtual void init(SteamBot::Client&) override;
         virtual void run(SteamBot::Client&) override;
     };
 
@@ -186,7 +190,7 @@ boost::json::value Licenses::toJson() const
 
 /************************************************************************/
 
-void LicenseListModule::handleMessage(std::shared_ptr<const Steam::CMsgClientLicenseListMessageType> message)
+void LicenseListModule::handle(std::shared_ptr<const Steam::CMsgClientLicenseListMessageType> message)
 {
     auto& client=getClient();
 
@@ -217,14 +221,18 @@ void LicenseListModule::handleMessage(std::shared_ptr<const Steam::CMsgClientLic
 
 /************************************************************************/
 
+void LicenseListModule::init(SteamBot::Client& client)
+{
+    cmsgClientLicenseList=client.messageboard.createWaiter<Steam::CMsgClientLicenseListMessageType>(*waiter);
+}
+
+/************************************************************************/
+
 void LicenseListModule::run(SteamBot::Client& client)
 {
-    std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgClientLicenseListMessageType>> cmsgClientLicenseList;
-    cmsgClientLicenseList=waiter->createWaiter<decltype(cmsgClientLicenseList)::element_type>(client.messageboard);
-
     while (true)
     {
         waiter->wait();
-        handleMessage(cmsgClientLicenseList->fetch());
+        cmsgClientLicenseList->handle(this);
     }
 }

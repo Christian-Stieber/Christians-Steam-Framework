@@ -140,10 +140,16 @@ namespace
 {
     class LoginModule : public SteamBot::Client::Module
     {
+    private:
+        SteamBot::Whiteboard::WaiterType<ConnectionStatus> connectionStatus;
+        SteamBot::Messageboard::WaiterType<Steam::CMsgClientLoggedOffMessageType> cmsgClientLoggedOffMessage;
+        SteamBot::Messageboard::WaiterType<Steam::CMsgClientLogonResponseMessageType> cmsgClientLogonResponse;
+
     public:
         LoginModule() =default;
         virtual ~LoginModule() =default;
 
+        virtual void init(SteamBot::Client&) override;
         virtual void run(SteamBot::Client&) override;
 
     private:
@@ -710,6 +716,15 @@ void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMes
 
 /************************************************************************/
 
+void LoginModule::init(SteamBot::Client& client)
+{
+    connectionStatus=client.whiteboard.createWaiter<ConnectionStatus>(*waiter);
+    cmsgClientLoggedOffMessage=client.messageboard.createWaiter<Steam::CMsgClientLoggedOffMessageType>(*waiter);
+    cmsgClientLogonResponse=client.messageboard.createWaiter<Steam::CMsgClientLogonResponseMessageType>(*waiter);
+}
+
+/************************************************************************/
+
 void LoginModule::run(SteamBot::Client& client)
 {
     setStatus(LoginStatus::LoggedOut);
@@ -720,15 +735,6 @@ void LoginModule::run(SteamBot::Client& client)
             refreshToken=string->as_string();
         }
     });
-
-    std::shared_ptr<SteamBot::Whiteboard::Waiter<ConnectionStatus>> connectionStatus;
-    connectionStatus=waiter->createWaiter<decltype(connectionStatus)::element_type>(client.whiteboard);
-
-    std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgClientLoggedOffMessageType>> cmsgClientLoggedOffMessage;
-    cmsgClientLoggedOffMessage=waiter->createWaiter<decltype(cmsgClientLoggedOffMessage)::element_type>(client.messageboard);
-
-    std::shared_ptr<SteamBot::Messageboard::Waiter<Steam::CMsgClientLogonResponseMessageType>> cmsgClientLogonResponse;
-    cmsgClientLogonResponse=waiter->createWaiter<decltype(cmsgClientLogonResponse)::element_type>(client.messageboard);
 
     while (true)
     {

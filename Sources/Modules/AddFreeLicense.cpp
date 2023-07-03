@@ -36,6 +36,10 @@ namespace
 {
     class AddFreeLicenseModule : public SteamBot::Client::Module
     {
+    private:
+        SteamBot::Messageboard::WaiterType<Steam::CMsgClientRequestFreeLicenseResponseMessageType> cmsgClientRequestFreeLicenseResponse;
+        SteamBot::Messageboard::WaiterType<AddLicense> addLicense;
+
     public:
         void handle(std::shared_ptr<const Steam::CMsgClientRequestFreeLicenseResponseMessageType>);
         void handle(std::shared_ptr<const AddLicense>);
@@ -44,6 +48,7 @@ namespace
         AddFreeLicenseModule() =default;
         virtual ~AddFreeLicenseModule() =default;
 
+        virtual void init(SteamBot::Client&) override;
         virtual void run(SteamBot::Client&) override;
     };
 
@@ -116,12 +121,16 @@ void AddFreeLicenseModule::handle(std::shared_ptr<const AddLicense> message)
 
 /************************************************************************/
 
+void AddFreeLicenseModule::init(SteamBot::Client& client)
+{
+    cmsgClientRequestFreeLicenseResponse=client.messageboard.createWaiter<Steam::CMsgClientRequestFreeLicenseResponseMessageType>(*waiter);
+    addLicense=client.messageboard.createWaiter<AddLicense>(*waiter);
+}
+
+/************************************************************************/
+
 void AddFreeLicenseModule::run(SteamBot::Client& client)
 {
-    typedef SteamBot::Messageboard::Waiter<Steam::CMsgClientRequestFreeLicenseResponseMessageType> CMsgClientRequestFreeLicenseResponseWaiterType;
-    auto cmsgClientRequestFreeLicenseResponse=waiter->createWaiter<CMsgClientRequestFreeLicenseResponseWaiterType>(client.messageboard);
-    auto addLicense=waiter->createWaiter<SteamBot::Messageboard::Waiter<AddLicense>>(client.messageboard);
-
     waitForLogin();
 
     while (true)

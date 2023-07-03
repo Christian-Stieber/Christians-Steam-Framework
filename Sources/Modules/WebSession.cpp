@@ -75,6 +75,9 @@ namespace
 
         std::queue<std::shared_ptr<const Request>> requests;
 
+        SteamBot::Messageboard::WaiterType<NonceMessage> nonceMessage;
+        SteamBot::Messageboard::WaiterType<Request> requestWaiter;
+
     private:
         std::chrono::steady_clock::time_point timestamp;
         std::string cookies;
@@ -96,6 +99,7 @@ namespace
         WebSessionModule() =default;
         virtual ~WebSessionModule() =default;
 
+        virtual void init(SteamBot::Client&) override;
         virtual void run(SteamBot::Client&) override;
     };
 
@@ -333,14 +337,16 @@ void WebSessionModule::handleRequests()
 
 /************************************************************************/
 
+void WebSessionModule::init(SteamBot::Client& client)
+{
+    nonceMessage=client.messageboard.createWaiter<NonceMessage>(*waiter);
+    requestWaiter=client.messageboard.createWaiter<Request>(*waiter);
+}
+
+/************************************************************************/
+
 void WebSessionModule::run(SteamBot::Client& client)
 {
-    std::shared_ptr<SteamBot::Messageboard::Waiter<NonceMessage>> nonceMessage;
-    nonceMessage=waiter->createWaiter<decltype(nonceMessage)::element_type>(client.messageboard);
-
-    std::shared_ptr<SteamBot::Messageboard::Waiter<Request>> requestWaiter;
-    requestWaiter=waiter->createWaiter<decltype(requestWaiter)::element_type>(client.messageboard);
-
     waitForLogin();
 
     while (true)
