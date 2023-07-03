@@ -87,7 +87,10 @@ namespace SteamBot
 /************************************************************************/
 /*
  * We don't need all the baggage from the Connection::Message here.
- * And, I'm too lazy to try and rework the class hierarchy...
+ * And, I'm too lazy to try and rework the class hierarchy..
+ *
+ * Note: ProtoPuf can't do empty messages; use "void" as message
+ * type if needed.
  */
 
 namespace SteamBot
@@ -113,6 +116,22 @@ namespace SteamBot
                         if (deserializer.data.size()>0)
                         {
                             BOOST_LOG_TRIVIAL(debug) << "message has " << deserializer.data.size() << " excess bytes at the end";
+                        }
+                    }
+                };
+
+                template <> class NotificationMessage<void>
+                {
+                public:
+                    std::shared_ptr<const ServiceMethodMessage> message;
+
+                public:
+                    NotificationMessage(std::shared_ptr<const ServiceMethodMessage>&& message_)
+                        : message(std::move(message_))
+                    {
+                        if (message->content.size()>0)
+                        {
+                            BOOST_LOG_TRIVIAL(debug) << "message has " << message->content.size() << " excess bytes at the end";
                         }
                     }
                 };
