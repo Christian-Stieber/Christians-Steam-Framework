@@ -19,6 +19,15 @@
 
 #pragma once
 
+#include "Connection/Message.hpp"
+
+/************************************************************************/
+/*
+ * You just call
+ *    SteamBot::Modules::UnifiedMessageServer::registerNotification
+ * with the content data type and the target job name.
+ */
+
 /************************************************************************/
 
 namespace SteamBot
@@ -27,85 +36,95 @@ namespace SteamBot
     {
         namespace UnifiedMessageServer
         {
-            class ServiceMethodMessageBase;
-            template <typename REQUEST, typename RESPONSE> class ServiceMethodMessage;
+            namespace Internal
+            {
+                class ServiceMethodMessage : public SteamBot::Connection::Message::Base
+                {
+                public:
+                    typedef SteamBot::Connection::Message::Header::ProtoBuf headerType;
+
+                public:
+                    static constexpr auto messageType=SteamBot::Connection::Message::Type::ServiceMethod;
+
+                    headerType header;
+                    std::vector<std::byte> content;
+
+                public:
+                    ServiceMethodMessage(std::span<const std::byte>);
+                    virtual ~ServiceMethodMessage();
+
+                public:
+                    virtual void deserialize(SteamBot::Connection::Deserializer&) override;
+                    virtual size_t serialize(SteamBot::Connection::Serializer&) const override;
+
+                    using Serializeable::deserialize;
+
+                public:
+                    static void createdWaiter();
+                };
+            }
         }
     }
 }
 
 /************************************************************************/
 
-class SteamBot::Modules::UnifiedMessageServer::ServiceMethodMessageBase : public SteamBot::Connection::Message::Base
+namespace SteamBot
 {
-public:
-    typedef SteamBot::Connection::Message::Header::ProtoBuf headerType;
-
-public:
-    static constexpr auto messageType=SteamBot::Connection::Message::Type::ServiceMethod;
-
-    headerType header;
-    std::any content;	// std::shared_ptr<REQUEST>
-
-protected:
-    ServiceMethodMessageBase(std::span<const std::byte> bytes)
-        : header(SteamBot::Connection::Message::Header::Base::peekMessgeType(bytes))
+    namespace Modules
     {
+        namespace UnifiedMessageServer
+        {
+            namespace Internal
+            {
+                typedef std::function<void(std::shared_ptr<const ServiceMethodMessage>)> MessageHandler;
+                void registerNotification(std::string&&, MessageHandler);
+            }
+        }
     }
-
-public:
-    virtual ~ServiceMethodMessageBase() =default;
-};
+}
 
 /************************************************************************/
+/*
+ * We don't need all the baggage from the Connection::Message here.
+ * And, I'm too lazy to try and rework the class hierarchy...
+ */
 
-template <typename REQUEST, typename RESPONSE=void> class SteamBot::Modules::UnifiedMessageServer::ServiceMethodMessage
-    : public SteamBot::Modules::UnifiedMessageServer::ServiceMethodMessageBase
+namespace SteamBot
 {
-    static_assert(std::is_same_v<RESPONSE, void>);	// for now...
-
-public:
-    ServiceMethodMessage(std::span<const std::byte> bytes)
-        : ServiceMethodMessageBase(bytes)
+    namespace Modules
     {
-        deserialize(bytes);
-    }
-
-    virtual ~ServiceMethodMessage() =default;
-
-public:
-    virtual void deserialize(SteamBot::Connection::Deserializer& deserializer) override
-    {
-        header.deserialize(deserializer);
-        // ToDo: verify that the job-target string is as expected?
-
-        auto contentPtr=std::make_shared<REQUEST>
-        
-        // ToDo: deserialize the content
-    }
-
-    using Serializeable::deserialize;
-
-public:
-    static void createdWaiter()
-    {
-        SteamBot::Modules::Connection::Internal::Handler<ServiceMethodMessage>::create();
+        namespace UnifiedMessageServer
+        {
+            namespace Internal
+            {
+                template <typename CONTENT> class NotificationMessage
+                {
+                public:
+                    SteamBot::Connection::Message::Header::ProtoBuf header;
+                    CONTENT content;
+                };
+            }
+        }
     }
 }
 
 /************************************************************************/
 
-
-
-
-
-public:
-    std::any content;	// std::shared_ptr<RESPONSE>
-
-
-
-
-    virtual size_t serialize(SteamBot::Connection::Serializer&) const override
+namespace SteamBot
+{
+    namespace Modules
     {
-        assert(false);
-        return 0;
+        namespace UnifiedMessageServer
+        {
+            // ToDo: add a check so T must be a NotificationMessage
+            template <typename T> void registerNotification(std::string name)
+            {
+                std::string temp=name;
+                Internal::registerNotification(std::move(name), [temp=std::move(temp)](std::shared_ptr<const Internal::ServiceMethodMessage>) {
+                    BOOST_LOG_TRIVIAL(debug) << "process notification " << temp;
+                });
+            }
+        }
     }
+}

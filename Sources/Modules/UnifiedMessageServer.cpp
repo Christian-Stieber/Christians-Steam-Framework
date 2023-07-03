@@ -19,16 +19,55 @@
 
 #include "Connection/Message.hpp"
 #include "Client/Module.hpp"
+#include "Modules/UnifiedMessageServer.hpp"
 
 /************************************************************************/
 /*
- * Note: this needs A LOT more work, to let clients register
- * subscriptions for templated versions of the ServiceMethod message
- * class, link these with the job_name etc.
- *
- * For now, this simple version is merely there so we can see
- * what calls we actually get.
+ * We derserialize the ServiceMethod into a "content" that's
+ * just a pile of bytes. Our handler for these messages then
+ * uses the lookup table from registered target job names to
+ * payload data types to produce the real message.
  */
+
+/************************************************************************/
+
+typedef SteamBot::Modules::UnifiedMessageServer::Internal::ServiceMethodMessage ServiceMethodMessage;
+typedef SteamBot::Modules::UnifiedMessageServer::Internal::MessageHandler MessageHandler;
+
+/************************************************************************/
+
+ServiceMethodMessage::ServiceMethodMessage(std::span<const std::byte> bytes)
+    : header(SteamBot::Connection::Message::Header::Base::peekMessgeType(bytes))
+{
+    deserialize(bytes);
+}
+
+ServiceMethodMessage::~ServiceMethodMessage() =default;
+
+/************************************************************************/
+
+void ServiceMethodMessage::deserialize(SteamBot::Connection::Deserializer& deserializer)
+{
+    header.deserialize(deserializer);
+
+    auto bytes=deserializer.getRemaining();
+    content.assign(bytes.begin(), bytes.end());
+}
+
+/************************************************************************/
+
+size_t ServiceMethodMessage::serialize(SteamBot::Connection::Serializer&) const
+{
+    assert(false);
+    return 0;
+}
+
+/************************************************************************/
+
+void ServiceMethodMessage::createdWaiter()
+{
+    SteamBot::Modules::Connection::Internal::Handler<ServiceMethodMessage>::create();
+}
 
 /************************************************************************/
 
@@ -36,11 +75,30 @@ namespace
 {
     class UnifiedMessageServerModule : public SteamBot::Client::Module
     {
+    private:
+        SteamBot::Messageboard::WaiterType<ServiceMethodMessage> serviceMethodMessage;
+
+        std::unordered_map<std::string, MessageHandler> handlers;
+
     public:
-        UnifiedMessageServerModule() =default;
+        void handle(std::shared_ptr<const ServiceMethodMessage>);
+
+    public:
+        UnifiedMessageServerModule()
+            : serviceMethodMessage(getClient().messageboard.createWaiter<ServiceMethodMessage>(*waiter))
+        {
+        }
+
         virtual ~UnifiedMessageServerModule() =default;
 
         virtual void run(SteamBot::Client&) override;
+
+    public:
+        void registerHandler(std::string&& name, MessageHandler&& handler)
+        {
+            auto result=handlers.emplace(std::move(name), std::move(handler));
+            assert(result.second);		// no duplicate registrations!
+        }
     };
 
     UnifiedMessageServerModule::Init<UnifiedMessageServerModule> init;
@@ -48,60 +106,32 @@ namespace
 
 /************************************************************************/
 
-namespace
+void SteamBot::Modules::UnifiedMessageServer::Internal::registerNotification(std::string&& name, MessageHandler handler)
 {
-    class ServiceMethodMessage : public SteamBot::Connection::Message::Base
+    SteamBot::Client::getClient().getModule<UnifiedMessageServerModule>()->registerHandler(std::move(name), std::move(handler));
+}
+
+/************************************************************************/
+
+void UnifiedMessageServerModule::handle(std::shared_ptr<const ServiceMethodMessage> message)
+{
+    if (message->header.proto.has_target_job_name())
     {
-    public:
-        typedef SteamBot::Connection::Message::Header::ProtoBuf headerType;
-
-    public:
-        static constexpr auto messageType=SteamBot::Connection::Message::Type::ServiceMethod;
-
-        headerType header;
-        // no content... yet?
-
-    public:
-        ServiceMethodMessage(std::span<const std::byte> bytes)
-            : header(SteamBot::Connection::Message::Header::Base::peekMessgeType(bytes))
+        auto iterator=handlers.find(message->header.proto.target_job_name());
+        if (iterator!=handlers.end())
         {
-            deserialize(bytes);
+            iterator->second(std::move(message));
         }
-
-        virtual ~ServiceMethodMessage() =default;
-
-    public:
-        virtual void deserialize(SteamBot::Connection::Deserializer& deserializer) override
-        {
-            header.deserialize(deserializer);
-        }
-
-        virtual size_t serialize(SteamBot::Connection::Serializer&) const override
-        {
-            assert(false);
-            return 0;
-        }
-
-        using Serializeable::deserialize;
-
-    public:
-        static void createdWaiter()
-        {
-            SteamBot::Modules::Connection::Internal::Handler<ServiceMethodMessage>::create();
-        }
-    };
+    }
 }
 
 /************************************************************************/
 
 void UnifiedMessageServerModule::run(SteamBot::Client& client)
 {
-    std::shared_ptr<SteamBot::Messageboard::Waiter<ServiceMethodMessage>> serviceMethodMessage;
-    serviceMethodMessage=waiter->createWaiter<decltype(serviceMethodMessage)::element_type>(client.messageboard);
-
     while (true)
     {
         waiter->wait();
-        serviceMethodMessage->fetch();
+        serviceMethodMessage->handle(this);
     }
 }
