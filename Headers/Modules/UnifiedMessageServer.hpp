@@ -101,8 +101,20 @@ namespace SteamBot
                 template <typename CONTENT> class NotificationMessage
                 {
                 public:
-                    SteamBot::Connection::Message::Header::ProtoBuf header;
+                    std::shared_ptr<const ServiceMethodMessage> message;
                     CONTENT content;
+
+                public:
+                    NotificationMessage(std::shared_ptr<const ServiceMethodMessage>&& message_)
+                        : message(std::move(message_))
+                    {
+                        SteamBot::Connection::Deserializer deserializer(message->content);
+                        deserializer.getProto(content, deserializer.data.size());
+                        if (deserializer.data.size()>0)
+                        {
+                            BOOST_LOG_TRIVIAL(debug) << "message has " << deserializer.data.size() << " excess bytes at the end";
+                        }
+                    }
                 };
             }
         }
@@ -117,12 +129,12 @@ namespace SteamBot
     {
         namespace UnifiedMessageServer
         {
-            // ToDo: add a check so T must be a NotificationMessage
-            template <typename T> void registerNotification(std::string name)
+            // ToDo: add a check so CONTENT must be a NotificationMessage
+            template <typename CONTENT> void registerNotification(std::string name)
             {
-                std::string temp=name;
-                Internal::registerNotification(std::move(name), [temp=std::move(temp)](std::shared_ptr<const Internal::ServiceMethodMessage>) {
-                    BOOST_LOG_TRIVIAL(debug) << "process notification " << temp;
+                Internal::registerNotification(std::move(name), [](std::shared_ptr<const Internal::ServiceMethodMessage> message) {
+                    auto notification=std::make_shared<CONTENT>(std::move(message));
+                    SteamBot::Client::getClient().messageboard.send(std::move(notification));
                 });
             }
         }
