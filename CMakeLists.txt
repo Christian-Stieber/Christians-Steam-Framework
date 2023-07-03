@@ -11,8 +11,6 @@ include(CMakefile.Common)
 # ToDo: does it really have to be that complicated?
 # Took hours to set up...
 
-include_directories(${Protobuf_INCLUDE_DIRS})
-
 cmake_path(SET protoDir "${CMAKE_CURRENT_SOURCE_DIR}")
 cmake_path(APPEND protoDir "steamdatabase" "protobufs")
 
@@ -58,8 +56,6 @@ foreach(protoFile ${protoFiles})
    list(APPEND PROTO_SRCS "${finalName}.pb.cc")
    list(APPEND PROTO_HDRS "${finalName}.pb.h")
 endforeach()
-
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 ######################################################################
 
