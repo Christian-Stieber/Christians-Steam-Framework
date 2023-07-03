@@ -648,7 +648,21 @@ void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMes
                 auto& whiteboard=getClient().whiteboard;
                 if (message->header.proto.has_steamid())
                 {
-                    whiteboard.set<SteamBot::Modules::Login::Whiteboard::SteamID>(message->header.proto.steamid());
+                    auto steamId=message->header.proto.steamid();
+                    whiteboard.set<SteamBot::Modules::Login::Whiteboard::SteamID>(steamId);
+                    getClient().dataFile.update([steamId](boost::json::value& json) {
+                        auto& item=SteamBot::JSON::createItem(json, "Info", "SteamID");
+                        if (!item.is_null())
+                        {
+                            if (item.is_number() && item.to_number<decltype(steamId)>()==steamId)
+                            {
+                                return false;
+                            }
+                            assert(false);		// shouldn't happen...
+                        }
+                        item=steamId;
+                        return true;
+                    });
                 }
                 if (message->header.proto.has_client_sessionid())
                 {
