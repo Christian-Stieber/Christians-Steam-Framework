@@ -84,12 +84,13 @@ namespace
         void handle(std::shared_ptr<const ServiceMethodMessage>);
 
     public:
-        UnifiedMessageServerModule()
-            : serviceMethodMessage(getClient().messageboard.createWaiter<ServiceMethodMessage>(*waiter))
-        {
-        }
-
+        UnifiedMessageServerModule() =default;
         virtual ~UnifiedMessageServerModule() =default;
+
+        virtual void init(SteamBot::Client& client) override
+        {
+            serviceMethodMessage=client.messageboard.createWaiter<ServiceMethodMessage>(*waiter);
+        }
 
         virtual void run(SteamBot::Client&) override;
 
