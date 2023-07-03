@@ -412,7 +412,7 @@ public:
 
 template <SteamBot::Connection::Message::Type TYPE, typename HEADER, typename CONTENT> class SteamBot::Connection::Message::Message : public Base
 {
-	static_assert(std::derived_from<CONTENT, google::protobuf::MessageLite> == std::is_same_v<HEADER, Header::ProtoBuf>);
+    static_assert(std::is_same_v<HEADER, Header::ProtoBuf> == (std::is_base_of_v<google::protobuf::MessageLite, CONTENT> || pp::is_message<CONTENT>));
 
 public:
 	static constexpr auto messageType=TYPE;

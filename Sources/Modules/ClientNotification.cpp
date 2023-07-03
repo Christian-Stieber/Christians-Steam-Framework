@@ -21,9 +21,9 @@
 
 #include "Client/Module.hpp"
 #include "Modules/UnifiedMessageServer.hpp"
+#include "Modules/UnifiedMessageClient.hpp"
 #include "Modules/ClientNotification.hpp"
 #include "Helpers/ProtoPuf.hpp"
-#include "UI/UI.hpp"
 
 /************************************************************************/
 /*
@@ -107,8 +107,12 @@ void ClientNotificationModule::init(SteamBot::Client& client)
 
 void ClientNotificationModule::handle(std::shared_ptr<const CSteamNotificationNotificationsReceivedNotificationMessageType> message)
 {
-    SteamBot::UI::OutputText output;
-    output << "received a SteamNotificationClient.NotificationsReceived#1 notification";
+    std::shared_ptr<CSteamNotification_GetSteamNotifications_Response> response;
+    {
+        CSteamNotification_GetSteamNotifications_Request request;
+        response=SteamBot::Modules::UnifiedMessageClient::execute<CSteamNotification_GetSteamNotifications_Response>("SteamNotification.GetSteamNotifications#1", std::move(request));
+    }
+    BOOST_LOG_TRIVIAL(info) << "CSteamNotification_GetSteamNotifications_Response: " << SteamBot::ProtoPuf::toJson(*response);
 }
 
 /************************************************************************/
