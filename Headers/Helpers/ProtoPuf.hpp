@@ -116,6 +116,10 @@ namespace SteamBot
                             array.push_back(item);
                         }
                     }
+                    if (!array.empty())
+                    {
+                        object[name]=std::move(array);
+                    }
                 }
                 else if constexpr (FieldType::attr==pp::singular)
                 {
