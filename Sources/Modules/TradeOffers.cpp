@@ -26,6 +26,7 @@
 #include "Web/CookieJar.hpp"
 #include "Helpers/HTML.hpp"
 #include "Helpers/ParseNumber.hpp"
+#include "UI/UI.hpp"
 
 #include "HTMLParser/Parser.hpp"
 
@@ -92,6 +93,7 @@ namespace
         virtual ~IncomingOffersParser() =default;
 
     private:
+        bool handleItemsBanner(const HTMLParser::Tree::Element&);
         bool handleTradePartner(const HTMLParser::Tree::Element&);
         bool handleTradeOffer_open(const HTMLParser::Tree::Element&);
         bool handleTradeOffer_close(const HTMLParser::Tree::Element&);
@@ -104,7 +106,7 @@ namespace
 
         virtual void endElement(const HTMLParser::Tree::Element& element) override
         {
-            handleTradeOffer_close(element);
+            handleTradeOffer_close(element) || handleItemsBanner(element);
         }
     };
 }
@@ -137,6 +139,23 @@ boost::json::value IncomingTradeOffers::toJson() const
         json.emplace_back(offer->toJson());
     }
     return json;
+}
+
+/************************************************************************/
+
+bool IncomingOffersParser::handleItemsBanner(const HTMLParser::Tree::Element& element)
+{
+    if (currentTradeOffer)
+    {
+        // <div class="tradeoffer_items_banner in_escrow">
+        if (element.name=="div" && SteamBot::HTML::checkClass(element, "tradeoffer_items_banner"))
+        {
+            BOOST_LOG_TRIVIAL(info) << "ignoring trade offer " << currentTradeOffer->offer->tradeOfferId << ": " << SteamBot::HTML::getCleanText(element);
+            currentTradeOffer.reset();
+            return true;
+        }
+    }
+    return false;
 }
 
 /************************************************************************/
@@ -221,6 +240,7 @@ void TradeOffersModule::parseIncomingTradeOffserPage(std::string_view html) cons
     IncomingOffersParser(html, offers).parse();
 
     BOOST_LOG_TRIVIAL(debug) << "trade offers: " << offers.toJson();
+    SteamBot::UI::OutputText() << offers.offers.size() << " incoming trade offers";
 }
 
 /************************************************************************/
