@@ -73,6 +73,7 @@ list(APPEND SRCS Steam/OSType Steam/KeyValue Steam/KeyValue_Serialize Steam/KeyV
 list(APPEND SRCS Steam/MachineInfo Steam/MachineInfo/Linux)
 list(APPEND SRCS Web/URLEncode)
 list(APPEND SRCS Web/Cookies)
+list(APPEND SRCS Web/CookieJar)
 list(APPEND SRCS Helpers/Time)
 list(APPEND SRCS Helpers/URLs)
 list(APPEND SRCS Helpers/HTML)

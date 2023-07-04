@@ -322,7 +322,7 @@ void WebSessionModule::handleRequests()
         {
             std::string myCookies=cookies;
             setTimezoneCookie(myCookies);
-            query->request.base().set("Cookie", std::move(myCookies));
+            query->request.base().set(boost::beast::http::field::cookie, std::move(myCookies));
         }
 
         query=SteamBot::HTTPClient::perform(std::move(query));

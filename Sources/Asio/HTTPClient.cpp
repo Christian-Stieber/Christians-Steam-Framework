@@ -210,6 +210,12 @@ void Query::read_completed(const ErrorCode& error, size_t bytes)
         BOOST_LOG_TRIVIAL(debug) << output.view();
     }
 
+    if (query->cookies)
+    {
+        query->cookies->update(query->url, query->response);
+        BOOST_LOG_TRIVIAL(debug) << "new cookie jar: " << query->cookies->toJson();
+    }
+
     complete(ErrorCode());
 }
 
@@ -247,6 +253,21 @@ void Query::handshake_completed(const ErrorCode& error)
     if (query->request[http::field::accept_language]=="")
     {
         query->request.set(http::field::accept_language, "en-US; q=0.9, en; q=0.8");
+    }
+
+    if (query->cookies)
+    {
+        std::string jarCookies=query->cookies->get(query->url);
+        if (!jarCookies.empty())
+        {
+            std::string cookies;
+            cookies=query->request.operator[](http::field::cookie);
+
+            if (!cookies.empty()) cookies.push_back(';');
+            cookies.append(std::move(jarCookies));
+
+            query->request.set(http::field::cookie, cookies);
+        }
     }
 
     {
@@ -360,6 +381,7 @@ HTTPClient::Query::QueryPtr HTTPClient::perform(HTTPClient::Query::QueryPtr quer
 {
     auto waiter=SteamBot::Waiter::create();
     auto cancellation=SteamBot::Client::getClient().cancel.registerObject(*waiter);
+
     auto responseWaiter=SteamBot::HTTPClient::perform(waiter, std::move(query));
     while (true)
     {

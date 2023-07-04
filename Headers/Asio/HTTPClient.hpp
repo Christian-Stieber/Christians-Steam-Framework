@@ -20,6 +20,7 @@
 #pragma once
 
 #include "Client/ResultWaiter.hpp"
+#include "Web/CookieJar.hpp"
 
 #include <memory>
 
@@ -40,6 +41,9 @@ namespace SteamBot
     {
         class Query
         {
+        public:
+            std::shared_ptr<SteamBot::Web::CookieJar> cookies;
+
         public:
             // fill in your request data
             boost::urls::url url;
@@ -66,12 +70,11 @@ namespace SteamBot
 
 /************************************************************************/
 /*
- * This is a small helper for quick(er) porting of old code.
+ * This is a blocking call.
+ * It will cancel.
+ * Can also set and update cookies.
  *
- * This is a blocking call (although unlike the old version, this will
- * cancel).
- *
- * Also throws on errors.
+ * Throws on errors.
  */
 
 namespace SteamBot
