@@ -33,4 +33,17 @@ namespace SteamBot
         const auto result=std::from_chars(string.data(), last, number);
         return result.ec==std::errc() && result.ptr==last;
     }
+
+    template <typename T> bool parseNumberPrefix(std::string_view& string, T& number)
+        requires ((std::is_integral_v<T> && !std::is_same_v<T, bool>) || (std::is_floating_point_v<T>))
+    {
+        const auto first=string.data();
+        const auto result=std::from_chars(first, first+string.size(), number);
+        if (result.ec==std::errc())
+        {
+            string.remove_prefix(result.ptr-first);
+            return true;
+        }
+        return false;
+    }
 }
