@@ -68,21 +68,12 @@ namespace
         IncomingTradeOffers& result;
 
     private:
-        class CurrentTradeOffer
-        {
-        public:
-            const HTMLParser::Tree::Element& root;
-            std::unique_ptr<TradeOffer> offer;
+        const HTMLParser::Tree::Element* root=nullptr;
 
-        public:
-            CurrentTradeOffer(const HTMLParser::Tree::Element& element)
-                : root(element),
-                  offer(std::make_unique<TradeOffer>())
-            {
-            }
-        };
+        const HTMLParser::Tree::Element* tradeOfferItems=nullptr;
+        decltype(TradeOffer::myItems)* tradeOfferItemsList=nullptr;
 
-        std::unique_ptr<CurrentTradeOffer> currentTradeOffer;
+        std::unique_ptr<TradeOffer> currentTradeOffer;
 
     public:
         IncomingOffersParser(std::string_view html, IncomingTradeOffers& result_)
@@ -93,6 +84,9 @@ namespace
         virtual ~IncomingOffersParser() =default;
 
     private:
+        bool handleTradeOfferItems_open(const HTMLParser::Tree::Element&);
+        bool handleTradeOfferItems_close(const HTMLParser::Tree::Element&);
+        bool handleTradeItem(const HTMLParser::Tree::Element&);
         bool handleItemsBanner(const HTMLParser::Tree::Element&);
         bool handleTradePartner(const HTMLParser::Tree::Element&);
         bool handleTradeOffer_open(const HTMLParser::Tree::Element&);
@@ -101,12 +95,12 @@ namespace
     private:
         virtual void startElement(const HTMLParser::Tree::Element& element) override
         {
-            handleTradeOffer_open(element) || handleTradePartner(element);
+            handleTradeOffer_open(element) || handleTradeOfferItems_open(element) || handleTradePartner(element) || handleTradeItem(element);
         }
 
         virtual void endElement(const HTMLParser::Tree::Element& element) override
         {
-            handleTradeOffer_close(element) || handleItemsBanner(element);
+            handleTradeOffer_close(element) || handleTradeOfferItems_close(element) || handleItemsBanner(element);
         }
     };
 }
@@ -126,6 +120,8 @@ boost::json::value TradeOffer::toJson() const
     boost::json::object json;
     json["tradeOfferId"]=tradeOfferId;
     json["partner"]=partner;
+    json["myItems"]=boost::json::array(myItems.begin(), myItems.end());
+    json["theirItems"]=boost::json::array(theirItems.begin(), theirItems.end());
     return json;
 }
 
@@ -143,6 +139,86 @@ boost::json::value IncomingTradeOffers::toJson() const
 
 /************************************************************************/
 
+bool IncomingOffersParser::handleTradeOfferItems_close(const HTMLParser::Tree::Element& element)
+{
+    if (&element==tradeOfferItems)
+    {
+        tradeOfferItems=nullptr;
+        tradeOfferItemsList=nullptr;
+        return true;
+    }
+    return false;
+}
+
+/************************************************************************/
+
+bool IncomingOffersParser::handleTradeOfferItems_open(const HTMLParser::Tree::Element& element)
+{
+    // <div class="tradeoffer_items primaty">
+    // <div class="tradeoffer_items secondary">
+    if (element.name=="div" && SteamBot::HTML::checkClass(element, "tradeoffer_items"))
+    {
+        assert(tradeOfferItems==nullptr && tradeOfferItemsList==nullptr);
+        if (currentTradeOffer)
+        {
+            if (SteamBot::HTML::checkClass(element, "primary"))
+            {
+                tradeOfferItemsList=&currentTradeOffer->theirItems;
+                tradeOfferItems=&element;
+            }
+            else if (SteamBot::HTML::checkClass(element, "secondary"))
+            {
+                tradeOfferItemsList=&currentTradeOffer->myItems;
+                tradeOfferItems=&element;
+            }
+            else
+            {
+                currentTradeOffer.reset();
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
+/************************************************************************/
+
+bool IncomingOffersParser::handleTradeItem(const HTMLParser::Tree::Element& element)
+{
+    if (currentTradeOffer)
+    {
+        // <div class="tradeoffer_item_list">
+        //   <div class="trade_item " style="" data-economy-item="classinfo/753/667924416/667076610">
+
+        if (element.name=="div" &&  SteamBot::HTML::checkClass(element, "trade_item"))
+        {
+            bool killOffer=true;
+            if (auto dataEconomyItem=element.getAttribute("data-economy-item"))
+            {
+                if (auto parent=element.parent)
+                {
+                    if (parent->name=="div" && SteamBot::HTML::checkClass(*parent, "tradeoffer_item_list"))
+                    {
+                        if (tradeOfferItemsList!=nullptr)
+                        {
+                            tradeOfferItemsList->push_back(*dataEconomyItem);
+                            killOffer=false;
+                        }
+                    }
+                }
+            }
+            if (killOffer)
+            {
+                currentTradeOffer.reset();
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+/************************************************************************/
+
 bool IncomingOffersParser::handleItemsBanner(const HTMLParser::Tree::Element& element)
 {
     if (currentTradeOffer)
@@ -150,8 +226,10 @@ bool IncomingOffersParser::handleItemsBanner(const HTMLParser::Tree::Element& el
         // <div class="tradeoffer_items_banner in_escrow">
         if (element.name=="div" && SteamBot::HTML::checkClass(element, "tradeoffer_items_banner"))
         {
-            BOOST_LOG_TRIVIAL(info) << "ignoring trade offer " << currentTradeOffer->offer->tradeOfferId << ": " << SteamBot::HTML::getCleanText(element);
+#if 1
+            BOOST_LOG_TRIVIAL(info) << "ignoring trade offer " << currentTradeOffer->tradeOfferId << ": " << SteamBot::HTML::getCleanText(element);
             currentTradeOffer.reset();
+#endif
             return true;
         }
     }
@@ -174,7 +252,7 @@ bool IncomingOffersParser::handleTradePartner(const HTMLParser::Tree::Element& e
                 {
                     if (auto dataMiniprofile=element.getAttribute("data-miniprofile"))
                     {
-                        if (!SteamBot::parseNumber(*dataMiniprofile, currentTradeOffer->offer->partner))
+                        if (!SteamBot::parseNumber(*dataMiniprofile, currentTradeOffer->partner))
                         {
                             currentTradeOffer.reset();
                         }
@@ -191,13 +269,18 @@ bool IncomingOffersParser::handleTradePartner(const HTMLParser::Tree::Element& e
 
 bool IncomingOffersParser::handleTradeOffer_close(const HTMLParser::Tree::Element& element)
 {
-    if (currentTradeOffer && &currentTradeOffer->root==&element)
+    if (root==&element)
     {
-        if (currentTradeOffer->offer->tradeOfferId!=0 && currentTradeOffer->offer->partner!=0)
+        root=nullptr;
+        if (currentTradeOffer)
         {
-            result.offers.push_back(std::move(currentTradeOffer->offer));
+            if (currentTradeOffer->tradeOfferId!=0 && currentTradeOffer->partner!=0 &&
+                (currentTradeOffer->myItems.size()!=0 || currentTradeOffer->theirItems.size()!=0))
+            {
+                result.offers.push_back(std::move(currentTradeOffer));
+            }
+            currentTradeOffer.reset();
         }
-        currentTradeOffer.reset();
         return true;
     }
     return false;
@@ -211,6 +294,7 @@ bool IncomingOffersParser::handleTradeOffer_open(const HTMLParser::Tree::Element
     if (element.name=="div" && SteamBot::HTML::checkClass(element, "tradeoffer"))
     {
         assert(!currentTradeOffer);
+        assert(root==nullptr);
         if (auto id=element.getAttribute("id"))
         {
             static const char tradeofferid_prefix[]="tradeofferid_";
@@ -222,8 +306,9 @@ bool IncomingOffersParser::handleTradeOffer_open(const HTMLParser::Tree::Element
                 uint64_t tradeOfferId;
                 if (SteamBot::parseNumber(number, tradeOfferId))
                 {
-                    currentTradeOffer=std::make_unique<CurrentTradeOffer>(element);
-                    currentTradeOffer->offer->tradeOfferId=tradeOfferId;
+                    root=&element;
+                    currentTradeOffer=std::make_unique<TradeOffer>();
+                    currentTradeOffer->tradeOfferId=tradeOfferId;
                 }
             }
         }

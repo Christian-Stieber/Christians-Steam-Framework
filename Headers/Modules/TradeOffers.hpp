@@ -42,6 +42,9 @@ namespace SteamBot
                 uint64_t tradeOfferId=0;
                 uint32_t partner=0;	/* Steam32 ID */
 
+                std::vector<std::string> myItems;
+                std::vector<std::string> theirItems;	// "classinfo/753/667924416/667076610"
+
             public:
                 TradeOffer();
                 ~TradeOffer();
