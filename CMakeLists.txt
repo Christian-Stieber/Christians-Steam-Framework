@@ -105,6 +105,7 @@ list(APPEND SRCS Modules/DiscoveryQueue)
 list(APPEND SRCS Modules/SaleQueue)
 list(APPEND SRCS Modules/SaleSticker)
 list(APPEND SRCS Modules/ClientNotification)
+list(APPEND SRCS Modules/TradeOffers)
 list(APPEND SRCS Modules/GetBadgeData/ParseBadgePage Modules/GetBadgeData/GetBadgeData Modules/GetBadgeData/Printable)
 list(APPEND SRCS WebAPI/WebAPI WebAPI/ISteamDirectory/GetCMList)
 
