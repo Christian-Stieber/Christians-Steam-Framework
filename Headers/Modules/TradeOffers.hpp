@@ -38,12 +38,28 @@ namespace SteamBot
 
             class TradeOffer
             {
+                class AssetClass
+                {
+                public:
+                    uint32_t appId=0;
+                    uint64_t classId=0;
+                    uint64_t instanceId=0;
+
+                public:
+                    AssetClass();
+                    ~AssetClass();
+
+                    bool init(std::string_view);
+
+                    boost::json::value toJson() const;
+                };
+
             public:
                 uint64_t tradeOfferId=0;
                 uint32_t partner=0;	/* Steam32 ID */
 
-                std::vector<std::string> myItems;
-                std::vector<std::string> theirItems;	// "classinfo/753/667924416/667076610"
+                std::vector<AssetClass> myItems;
+                std::vector<AssetClass> theirItems;
 
             public:
                 TradeOffer();

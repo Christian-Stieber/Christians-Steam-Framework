@@ -113,6 +113,60 @@ TradeOffer::~TradeOffer() =default;
 IncomingTradeOffers::IncomingTradeOffers() =default;
 IncomingTradeOffers::~IncomingTradeOffers() =default;
 
+TradeOffer::AssetClass::AssetClass() =default;
+TradeOffer::AssetClass::~AssetClass() =default;
+
+/************************************************************************/
+
+bool TradeOffer::AssetClass::init(std::string_view original)
+{
+    // "classinfo/753/667924416/667076610"
+    // Not sure which number is which :-)
+
+    std::string_view string=original;
+
+    const char classinfoPrefix[]="classinfo/";
+    if (string.starts_with(classinfoPrefix))
+    {
+        string.remove_prefix(strlen(classinfoPrefix));
+        if (parseNumberPrefix(string, appId))
+        {
+            if (string.size()>0 && string.front()=='/')
+            {
+                string.remove_prefix(1);
+                if (parseNumberPrefix(string, classId))
+                {
+                    if (string.size()==0)
+                    {
+                        return true;
+                    }
+                    if (string.front()=='/')
+                    {
+                        string.remove_prefix(1);
+                        if (parseNumber(string, instanceId))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    BOOST_LOG_TRIVIAL(info) << "can't parse asset-string \"" << original << "\"";
+    return false;
+}
+
+/************************************************************************/
+
+boost::json::value TradeOffer::AssetClass::toJson() const
+{
+    boost::json::object json;
+    if (appId) json["appId"]=appId;
+    if (classId) json["classId"]=classId;
+    if (instanceId) json["instanceId"]=instanceId;
+    return json;
+}
+
 /************************************************************************/
 
 boost::json::value TradeOffer::toJson() const
@@ -120,8 +174,22 @@ boost::json::value TradeOffer::toJson() const
     boost::json::object json;
     json["tradeOfferId"]=tradeOfferId;
     json["partner"]=partner;
-    json["myItems"]=boost::json::array(myItems.begin(), myItems.end());
-    json["theirItems"]=boost::json::array(theirItems.begin(), theirItems.end());
+    {
+        boost::json::array array;
+        for (const auto& item : myItems)
+        {
+            array.emplace_back(item.toJson());
+        }
+        json["myItems"]=std::move(array);
+    }
+    {
+        boost::json::array array;
+        for (const auto& item : theirItems)
+        {
+            array.emplace_back(item.toJson());
+        }
+        json["theirItems"]=std::move(array);
+    }
     return json;
 }
 
@@ -201,8 +269,11 @@ bool IncomingOffersParser::handleTradeItem(const HTMLParser::Tree::Element& elem
                     {
                         if (tradeOfferItemsList!=nullptr)
                         {
-                            tradeOfferItemsList->push_back(*dataEconomyItem);
-                            killOffer=false;
+                            tradeOfferItemsList->emplace_back();
+                            if (tradeOfferItemsList->back().init(*dataEconomyItem))
+                            {
+                                killOffer=false;
+                            }
                         }
                     }
                 }
