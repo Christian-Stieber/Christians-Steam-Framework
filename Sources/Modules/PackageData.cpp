@@ -65,6 +65,8 @@ namespace
     private:
         PackageData();
         virtual ~PackageData();
+
+    public:
         virtual boost::json::value toJson() const;
 
     public:

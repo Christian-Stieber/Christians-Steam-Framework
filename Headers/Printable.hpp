@@ -45,8 +45,26 @@ namespace SteamBot
         constexpr bool operator==(const Printable&) const =default;
     };
 
+#if 0
     inline std::ostream& operator<<(std::ostream& stream, const Printable& printable)
     {
         return stream << printable.toJson();
     }
+#endif
 }
+
+/************************************************************************/
+
+namespace SteamBot
+{
+    template <typename T> concept IsPrintable = requires(const T& item) {
+        item.toJson();
+    };
+
+    template <IsPrintable T> std::ostream& operator<<(std::ostream& stream, const T& item)
+    {
+        return stream << item.toJson();
+    }
+}
+
+using SteamBot::operator<<;
