@@ -20,6 +20,7 @@
 #pragma once
 
 #include <string_view>
+#include <functional>
 
 #include <boost/json/value.hpp>
 
@@ -34,18 +35,32 @@ namespace SteamBot
         uint64_t classId=0;
         uint64_t instanceId=0;
 
-    public:
+    protected:
         // Helper functions to parse a "classinfo/..." string
         static bool parseString(std::string_view&, std::string_view);
         static bool parseNumberSlash(std::string_view&, uint32_t&);
         static bool parseNumberSlash(std::string_view&, uint64_t&);
 
     public:
-        AssetKey();
-        ~AssetKey();
+        size_t hash() const;
+        bool operator==(const AssetKey&) const =default;
 
-        boost::json::value toJson() const;
+    public:
+        AssetKey();
+        virtual ~AssetKey();
+
+        virtual boost::json::value toJson() const;
 
         bool init(std::string_view&);
     };
 }
+
+/************************************************************************/
+
+template <> struct std::hash<SteamBot::AssetKey>
+{
+    std::size_t operator()(const SteamBot::AssetKey& key) const noexcept
+    {
+        return key.hash();
+    }
+};

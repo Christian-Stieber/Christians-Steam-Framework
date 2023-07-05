@@ -20,6 +20,8 @@
 #include "AssetKey.hpp"
 #include "Helpers/ParseNumber.hpp"
 
+#include <boost/functional/hash.hpp>
+
 /************************************************************************/
 
 typedef SteamBot::AssetKey AssetKey;
@@ -108,4 +110,15 @@ boost::json::value AssetKey::toJson() const
     if (classId) json["classId"]=classId;
     if (instanceId) json["instanceId"]=instanceId;
     return json;
+}
+
+/************************************************************************/
+
+size_t AssetKey::hash() const
+{
+    size_t seed=0;
+    boost::hash_combine(seed, appId);
+    boost::hash_combine(seed, classId);
+    boost::hash_combine(seed, instanceId);
+    return seed;
 }
