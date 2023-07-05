@@ -21,13 +21,13 @@
 
 #include "Client/Module.hpp"
 #include "Modules/WebSession.hpp"
+#include "Modules/AssetData.hpp"
 #include "Modules/TradeOffers.hpp"
 #include "Modules/UnifiedMessageClient.hpp"
 #include "Helpers/URLs.hpp"
 #include "Web/CookieJar.hpp"
 #include "Helpers/HTML.hpp"
 #include "Helpers/ParseNumber.hpp"
-#include "UI/UI.hpp"
 #include "Printable.hpp"
 
 #include "HTMLParser/Parser.hpp"
@@ -165,7 +165,7 @@ bool TradeOffer::Item::init(std::string_view string)
 boost::json::value TradeOffer::Item::toJson() const
 {
     boost::json::object json;
-    json["asset"]=SteamBot::AssetKey::toJson();
+    json["asset-key"]=SteamBot::AssetKey::toJson();
     if (amount) json["amount"]=amount;
     return json;
 }
@@ -404,7 +404,6 @@ std::unique_ptr<IncomingTradeOffers> TradeOffersModule::parseIncomingTradeOffser
     IncomingOffersParser(html, *offers).parse();
 
     BOOST_LOG_TRIVIAL(debug) << "trade offers: " << offers->toJson();
-    SteamBot::UI::OutputText() << offers->offers.size() << " incoming trade offers";
 
     return offers;
 }
@@ -442,4 +441,5 @@ void TradeOffersModule::run(SteamBot::Client& client)
 
 void SteamBot::Modules::TradeOffers::use()
 {
+    SteamBot::Modules::AssetData::use();
 }

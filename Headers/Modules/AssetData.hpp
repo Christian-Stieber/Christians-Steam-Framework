@@ -20,8 +20,10 @@
 #pragma once
 
 #include "MiscIDs.hpp"
+#include "Modules/TradeOffers.hpp"
 
 #include <string>
+#include <memory>
 
 #include <boost/json/value.hpp>
 
@@ -57,6 +59,40 @@ namespace SteamBot
 
                 virtual boost::json::value toJson() const;
             };
+
+            namespace Messageboard
+            {
+                // The arrays match their counterparts in the offers
+                class IncomingTradeOffers
+                {
+                public:
+                    std::shared_ptr<const SteamBot::Modules::TradeOffers::Messageboard::IncomingTradeOffers> offers;
+
+                public:
+                    class TradeOfferAssets
+                    {
+                    public:
+                        const SteamBot::Modules::TradeOffers::TradeOffer& offer;
+
+                        std::vector<std::shared_ptr<const AssetInfo>> myItems;
+                        std::vector<std::shared_ptr<const AssetInfo>> theirItems;
+
+                    public:
+                        TradeOfferAssets(decltype(offer)&);
+                        ~TradeOfferAssets();
+
+                        boost::json::value toJson() const;
+                    };
+
+                    std::vector<TradeOfferAssets> assets;
+
+                public:
+                    IncomingTradeOffers(decltype(offers)&&);
+                    ~IncomingTradeOffers();
+
+                    boost::json::value toJson() const;
+                };
+            }
         }
     }
 }

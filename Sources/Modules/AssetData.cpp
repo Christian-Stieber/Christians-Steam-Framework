@@ -20,11 +20,10 @@
 /************************************************************************/
 
 #include "Client/Module.hpp"
-#include "AssetKey.hpp"
 #include "DerefStuff.hpp"
 #include "Modules/AssetData.hpp"
-#include "Modules/TradeOffers.hpp"
 #include "Modules/UnifiedMessageClient.hpp"
+#include "UI/UI.hpp"
 
 #include <unordered_set>
 
@@ -33,6 +32,7 @@
 /************************************************************************/
 
 typedef SteamBot::Modules::TradeOffers::Messageboard::IncomingTradeOffers IncomingTradeOffers;
+typedef SteamBot::Modules::AssetData::Messageboard::IncomingTradeOffers MyIncomingTradeOffers;
 
 /************************************************************************/
 
@@ -58,7 +58,7 @@ namespace
         typedef std::vector<std::pair<uint32_t, KeyList>> MissingKeys;
 
     private:
-        boost::fibers::mutex mutex;
+        mutable boost::fibers::mutex mutex;
         KeySet data;
 
     private:
@@ -78,7 +78,8 @@ namespace
         }
 
     public:
-        std::vector<AssetInfoPtr> query(const KeySet&);
+        void update(const KeySet&);
+        AssetInfoPtr query(const AssetKeyPtr&) const;
     };
 };
 
@@ -91,7 +92,7 @@ AssetInfo::~AssetInfo() =default;
 boost::json::value AssetInfo::toJson() const
 {
     boost::json::object object;
-    object["key"]=AssetKey::toJson();
+    object["asset-key"]=AssetKey::toJson();
     SteamBot::enumToJson(object, "itemType", itemType);
     if (!name.empty()) object["name"]=name;
     if (!type.empty()) object["type"]=type;
@@ -250,6 +251,9 @@ void AssetData::storeReceivedData(std::shared_ptr<GetAssetClassInfoInfo::ResultT
     {
         auto info=std::make_shared<AssetInfo>(response->descriptions(i));
         BOOST_LOG_TRIVIAL(debug) << info->toJson();
+
+        auto success=data.insert(std::move(info)).second;
+        assert(success);
     }
 }
 
@@ -281,27 +285,32 @@ void AssetData::requestData(const MissingKeys& missing)
 
 /************************************************************************/
 
-std::vector<AssetInfoPtr> AssetData::query(const KeySet& items)
+void AssetData::update(const KeySet& items)
 
 {
-    std::vector<AssetInfoPtr> result;
-    {
-        std::lock_guard<decltype(mutex)> lock(mutex);
-        auto missing=getMissingKeys(items);
-        requestData(missing);
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    auto missing=getMissingKeys(items);
+    requestData(missing);
+}
 
-        for (const auto& key: items)
-        {
-            auto iterator=data.find(key);
-            if (iterator!=data.end())
-            {
-                result.emplace_back(std::dynamic_pointer_cast<AssetInfo>(*iterator));
-            }
-            else
-            {
-                result.emplace_back();
-            }
-        }
+/************************************************************************/
+/*
+ * This does NOT fetch new data
+ */
+
+AssetInfoPtr AssetData::query(const AssetKeyPtr& key) const
+{
+    AssetInfoPtr result;
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    auto iterator=data.find(key);
+    if (iterator!=data.end())
+    {
+        result=std::dynamic_pointer_cast<AssetInfo>(*iterator);
+    }
+
+    if (result)
+    {
+        assert(static_cast<const SteamBot::AssetKey&>(*result)==*key);
     }
 
     return result;
@@ -332,15 +341,111 @@ namespace
 
 /************************************************************************/
 
+MyIncomingTradeOffers::~IncomingTradeOffers() =default;
+
+MyIncomingTradeOffers::TradeOfferAssets::~TradeOfferAssets() =default;
+
+/************************************************************************/
+
+MyIncomingTradeOffers::TradeOfferAssets::TradeOfferAssets(decltype(offer)& offer_)
+    : offer(offer_)
+{
+    const auto& assetData=::AssetData::get();
+
+    myItems.reserve(offer.myItems.size());
+    for (auto& item : offer.myItems)
+    {
+        myItems.emplace_back(assetData.query(item));
+    }
+
+    theirItems.reserve(offer.theirItems.size());
+    for (auto& item : offer.theirItems)
+    {
+        theirItems.emplace_back(assetData.query(item));
+    }
+}
+
+/************************************************************************/
+/*
+ * This is for human reading; it mixes information from the
+ * TradeOffers and the AssetData stuff to make it look unified.
+ */
+
+boost::json::value MyIncomingTradeOffers::TradeOfferAssets::toJson() const
+{
+    struct Foo
+    {
+        static void merge(boost::json::object& json, std::string_view key, const std::vector<std::shared_ptr<const AssetInfo>>& assets)
+        {
+            auto& jsonArray=json.at(key).as_array();
+            assert(jsonArray.size()==assets.size());
+            for (size_t i=0; i<assets.size(); i++)
+            {
+                auto& arrayObject=jsonArray[i].as_object();
+                auto myObject=assets[i]->toJson();
+                for (auto& item : myObject.as_object())
+                {
+                    auto iterator=arrayObject.find(item.key());
+                    if (iterator==arrayObject.end())
+                    {
+                        arrayObject.insert(item);
+                    }
+                    else
+                    {
+                        assert(iterator->value()==item.value());
+                    }
+                }
+            }
+        }
+    };
+
+    auto json=offer.toJson();
+    Foo::merge(json.as_object(), "myItems", myItems);
+    Foo::merge(json.as_object(), "theirItems", theirItems);
+    return json;
+};
+
+/************************************************************************/
+
+boost::json::value MyIncomingTradeOffers::toJson() const
+{
+    boost::json::array json;
+    for (const auto& asset : assets)
+    {
+        json.emplace_back(asset.toJson());
+    }
+    return json;
+}
+
+/************************************************************************/
+
+MyIncomingTradeOffers::IncomingTradeOffers(std::shared_ptr<const ::IncomingTradeOffers>&& offers_)
+    : offers(std::move(offers_))
+{
+    assets.reserve(offers->offers.size());
+    for (const auto& offer : offers->offers)
+    {
+        assets.emplace_back(*offer);
+    }
+}
+
+/************************************************************************/
+
 void AssetDataModule::handle(std::shared_ptr<const IncomingTradeOffers> message)
 {
-    KeySet keys;
-    for (const auto& offer: message->offers)
     {
-        keys.insert(offer->myItems.begin(), offer->myItems.end());
-        keys.insert(offer->theirItems.begin(), offer->theirItems.end());
+        KeySet keys;
+        for (const auto& offer: message->offers)
+        {
+            keys.insert(offer->myItems.begin(), offer->myItems.end());
+            keys.insert(offer->theirItems.begin(), offer->theirItems.end());
+        }
+        ::AssetData::get().update(keys);
     }
-    AssetData::get().query(keys);
+
+    auto result=std::make_shared<MyIncomingTradeOffers>(std::move(message));
+    SteamBot::UI::OutputText() << "detected incoming trade offers: " << result->toJson();
+    getClient().messageboard.send(std::move(result));
 }
 
 /************************************************************************/
