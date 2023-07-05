@@ -38,6 +38,7 @@ namespace SteamBot
 
             class TradeOffer
             {
+            public:
                 class AssetClass
                 {
                 public:

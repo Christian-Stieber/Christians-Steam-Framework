@@ -22,13 +22,19 @@
 #include "Client/Module.hpp"
 #include "Modules/WebSession.hpp"
 #include "Modules/TradeOffers.hpp"
+#include "Modules/UnifiedMessageClient.hpp"
 #include "Helpers/URLs.hpp"
 #include "Web/CookieJar.hpp"
 #include "Helpers/HTML.hpp"
 #include "Helpers/ParseNumber.hpp"
 #include "UI/UI.hpp"
+#include "Printable.hpp"
 
 #include "HTMLParser/Parser.hpp"
+
+#include <boost/functional/hash_fwd.hpp>
+
+#include "steamdatabase/protobufs/steam/steammessages_econ.steamclient.pb.h"
 
 /************************************************************************/
 
@@ -45,7 +51,8 @@ namespace
     class TradeOffersModule : public SteamBot::Client::Module
     {
     private:
-        void parseIncomingTradeOffserPage(std::string_view) const;
+        void getAssetData(IncomingTradeOffers&) const;
+        std::unique_ptr<IncomingTradeOffers> parseIncomingTradeOffserPage(std::string_view) const;
         std::string getIncomingTradeOfferPage() const;
 
     public:
@@ -390,13 +397,89 @@ bool IncomingOffersParser::handleTradeOffer_open(const HTMLParser::Tree::Element
 
 /************************************************************************/
 
-void TradeOffersModule::parseIncomingTradeOffserPage(std::string_view html) const
+namespace
 {
-    IncomingTradeOffers offers;
-    IncomingOffersParser(html, offers).parse();
+    struct AssetIds
+    {
+        uint64_t classId=0;
+        uint64_t instanceId=0;
 
-    BOOST_LOG_TRIVIAL(debug) << "trade offers: " << offers.toJson();
-    SteamBot::UI::OutputText() << offers.offers.size() << " incoming trade offers";
+        bool operator==(const AssetIds&) const =default;
+    };
+}
+
+template <> struct std::hash<AssetIds>
+{
+    std::size_t operator()(const AssetIds& ids) const noexcept
+    {
+        size_t seed=0;
+        boost::hash_combine(seed, ids.classId);
+        boost::hash_combine(seed, ids.instanceId);
+        return seed;
+    }
+};
+
+/************************************************************************/
+
+void TradeOffersModule::getAssetData(IncomingTradeOffers& offers) const
+{
+    class Data
+    {
+    public:
+        std::unordered_map<uint32_t, std::unordered_map<AssetIds, std::vector<TradeOffer::AssetClass*>>> data;
+
+    public:
+        void add(TradeOffer::AssetClass& assetClass)
+        {
+            data[assetClass.appId][AssetIds{assetClass.classId, assetClass.instanceId}].push_back(&assetClass);
+        }
+    } data;
+
+    for (auto& offer : offers.offers)
+    {
+        for (auto& item : offer->myItems)
+        {
+            data.add(item);
+        }
+        for (auto& item : offer->theirItems)
+        {
+            data.add(item);
+        }
+    }
+
+    for (const auto& appItem : data.data)
+    {
+        typedef SteamBot::Modules::UnifiedMessageClient::ProtobufService::Info<decltype(&::Econ::GetAssetClassInfo)> GetAssetClassInfoInfo;
+        std::shared_ptr<GetAssetClassInfoInfo::ResultType> response;
+        {
+            GetAssetClassInfoInfo::RequestType request;
+            request.set_language("english");
+            request.set_appid(appItem.first);
+            for (const auto& dataItem : appItem.second)
+            {
+                auto* classItem=request.add_classes();
+                classItem->set_classid(dataItem.first.classId);
+                if (dataItem.first.instanceId!=0)
+                {
+                    classItem->set_instanceid(dataItem.first.instanceId);
+                }
+            }
+            response=SteamBot::Modules::UnifiedMessageClient::execute<GetAssetClassInfoInfo::ResultType>("Econ.GetAssetClassInfo#1", std::move(request));
+        }
+    }
+}
+
+/************************************************************************/
+
+std::unique_ptr<IncomingTradeOffers> TradeOffersModule::parseIncomingTradeOffserPage(std::string_view html) const
+{
+    auto offers=std::make_unique<IncomingTradeOffers>();
+    IncomingOffersParser(html, *offers).parse();
+
+    BOOST_LOG_TRIVIAL(debug) << "trade offers: " << offers->toJson();
+    SteamBot::UI::OutputText() << offers->offers.size() << " incoming trade offers";
+
+    return offers;
 }
 
 /************************************************************************/
@@ -423,7 +506,8 @@ void TradeOffersModule::run(SteamBot::Client& client)
     waitForLogin();
 
     auto html=getIncomingTradeOfferPage();
-    parseIncomingTradeOffserPage(html);
+    auto offers=parseIncomingTradeOffserPage(html);
+    getAssetData(*offers);
 }
 
 /************************************************************************/
