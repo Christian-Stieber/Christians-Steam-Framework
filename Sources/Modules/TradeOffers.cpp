@@ -42,7 +42,7 @@ typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
 typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
 
 typedef SteamBot::Modules::TradeOffers::TradeOffer TradeOffer;
-typedef SteamBot::Modules::TradeOffers::IncomingTradeOffers IncomingTradeOffers;
+typedef SteamBot::Modules::TradeOffers::Messageboard::IncomingTradeOffers IncomingTradeOffers;
 
 /************************************************************************/
 
@@ -75,7 +75,7 @@ namespace
         IncomingTradeOffers& result;
 
     private:
-        decltype(TradeOffer::myItems)::value_type* tradeItem=nullptr;
+        TradeOffer::Item* tradeItem=nullptr;
         decltype(TradeOffer::myItems)* tradeOfferItems=nullptr;
 
         std::unique_ptr<TradeOffer> currentTradeOffer;
@@ -181,7 +181,7 @@ boost::json::value TradeOffer::toJson() const
         boost::json::array array;
         for (const auto& item : myItems)
         {
-            array.emplace_back(item.toJson());
+            array.emplace_back(item->toJson());
         }
         json["myItems"]=std::move(array);
     }
@@ -189,7 +189,7 @@ boost::json::value TradeOffer::toJson() const
         boost::json::array array;
         for (const auto& item : theirItems)
         {
-            array.emplace_back(item.toJson());
+            array.emplace_back(item->toJson());
         }
         json["theirItems"]=std::move(array);
     }
@@ -280,7 +280,7 @@ std::function<void(const HTMLParser::Tree::Element&)> IncomingOffersParser::hand
 
             if (auto dataEconomyItem=element.getAttribute("data-economy-item"))
             {
-                tradeItem=&(tradeOfferItems->emplace_back());
+                tradeItem=tradeOfferItems->emplace_back(std::make_shared<TradeOffer::Item>()).get();
                 if (tradeItem->init(*dataEconomyItem))
                 {
                     BOOST_LOG_TRIVIAL(debug) << "" << *dataEconomyItem << " -> " << tradeItem->toJson();
@@ -398,80 +398,6 @@ std::function<void(const HTMLParser::Tree::Element&)> IncomingOffersParser::hand
 
 /************************************************************************/
 
-namespace
-{
-    struct AssetIds
-    {
-        uint64_t classId=0;
-        uint64_t instanceId=0;
-
-        bool operator==(const AssetIds&) const =default;
-    };
-}
-
-template <> struct std::hash<AssetIds>
-{
-    std::size_t operator()(const AssetIds& ids) const noexcept
-    {
-        size_t seed=0;
-        boost::hash_combine(seed, ids.classId);
-        boost::hash_combine(seed, ids.instanceId);
-        return seed;
-    }
-};
-
-/************************************************************************/
-
-void TradeOffersModule::getAssetData(IncomingTradeOffers& offers) const
-{
-    class Data
-    {
-    public:
-        std::unordered_map<uint32_t, std::unordered_map<AssetIds, std::vector<TradeOffer::Item*>>> data;
-
-    public:
-        void add(TradeOffer::Item& item)
-        {
-            data[item.appId][AssetIds{item.classId, item.instanceId}].push_back(&item);
-        }
-    } data;
-
-    for (auto& offer : offers.offers)
-    {
-        for (auto& item : offer->myItems)
-        {
-            data.add(item);
-        }
-        for (auto& item : offer->theirItems)
-        {
-            data.add(item);
-        }
-    }
-
-    for (const auto& appItem : data.data)
-    {
-        typedef SteamBot::Modules::UnifiedMessageClient::ProtobufService::Info<decltype(&::Econ::GetAssetClassInfo)> GetAssetClassInfoInfo;
-        std::shared_ptr<GetAssetClassInfoInfo::ResultType> response;
-        {
-            GetAssetClassInfoInfo::RequestType request;
-            request.set_language("english");
-            request.set_appid(appItem.first);
-            for (const auto& dataItem : appItem.second)
-            {
-                auto* classItem=request.add_classes();
-                classItem->set_classid(dataItem.first.classId);
-                if (dataItem.first.instanceId!=0)
-                {
-                    classItem->set_instanceid(dataItem.first.instanceId);
-                }
-            }
-            response=SteamBot::Modules::UnifiedMessageClient::execute<GetAssetClassInfoInfo::ResultType>("Econ.GetAssetClassInfo#1", std::move(request));
-        }
-    }
-}
-
-/************************************************************************/
-
 std::unique_ptr<IncomingTradeOffers> TradeOffersModule::parseIncomingTradeOffserPage(std::string_view html) const
 {
     auto offers=std::make_unique<IncomingTradeOffers>();
@@ -508,7 +434,8 @@ void TradeOffersModule::run(SteamBot::Client& client)
 
     auto html=getIncomingTradeOfferPage();
     auto offers=parseIncomingTradeOffserPage(html);
-    getAssetData(*offers);
+
+    client.messageboard.send(std::shared_ptr<IncomingTradeOffers>(std::move(offers)));
 }
 
 /************************************************************************/

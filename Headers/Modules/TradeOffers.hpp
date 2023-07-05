@@ -44,19 +44,19 @@ namespace SteamBot
 
                 public:
                     Item();
-                    ~Item();
+                    virtual ~Item();
 
                     bool init(std::string_view);
 
-                    boost::json::value toJson() const;
+                    virtual boost::json::value toJson() const override;
                 };
 
             public:
                 uint64_t tradeOfferId=0;
                 uint32_t partner=0;	/* Steam32 ID */
 
-                std::vector<Item> myItems;
-                std::vector<Item> theirItems;
+                std::vector<std::shared_ptr<Item>> myItems;
+                std::vector<std::shared_ptr<Item>> theirItems;
 
             public:
                 TradeOffer();
@@ -65,17 +65,20 @@ namespace SteamBot
                 boost::json::value toJson() const;
             };
 
-            class IncomingTradeOffers
+            namespace Messageboard
             {
-            public:
-                std::vector<std::unique_ptr<TradeOffer>> offers;
+                class IncomingTradeOffers
+                {
+                public:
+                    std::vector<std::unique_ptr<TradeOffer>> offers;
 
-            public:
-                IncomingTradeOffers();
-                ~IncomingTradeOffers();
+                public:
+                    IncomingTradeOffers();
+                    ~IncomingTradeOffers();
 
-                boost::json::value toJson() const;
-            };
+                    boost::json::value toJson() const;
+                };
+            }
         }
     }
 }
