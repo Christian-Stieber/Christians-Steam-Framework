@@ -69,9 +69,10 @@ namespace
         bool handleEnd_pagebtn(const HTMLParser::Tree::Element&);
 
     private:
-        virtual void startElement(const HTMLParser::Tree::Element& element) override
+        virtual std::function<void(const HTMLParser::Tree::Element&)> startElement(const HTMLParser::Tree::Element& element) override
         {
             handleStart_badge_row_overlay(element);
+            return nullptr;
         }
 
         virtual void endElement(const HTMLParser::Tree::Element& element) override

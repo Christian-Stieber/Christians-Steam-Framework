@@ -19,12 +19,10 @@
 
 #pragma once
 
+#include "AssetKey.hpp"
+
 #include <vector>
 #include <memory>
-
-#include <boost/json/value.hpp>
-
-#include "Printable.hpp"
 
 /************************************************************************/
 
@@ -39,16 +37,14 @@ namespace SteamBot
             class TradeOffer
             {
             public:
-                class AssetClass
+                class Item : public SteamBot::AssetKey
                 {
                 public:
-                    uint32_t appId=0;
-                    uint64_t classId=0;
-                    uint64_t instanceId=0;
+                    uint32_t amount=0;
 
                 public:
-                    AssetClass();
-                    ~AssetClass();
+                    Item();
+                    ~Item();
 
                     bool init(std::string_view);
 
@@ -59,8 +55,8 @@ namespace SteamBot
                 uint64_t tradeOfferId=0;
                 uint32_t partner=0;	/* Steam32 ID */
 
-                std::vector<AssetClass> myItems;
-                std::vector<AssetClass> theirItems;
+                std::vector<Item> myItems;
+                std::vector<Item> theirItems;
 
             public:
                 TradeOffer();
