@@ -19,6 +19,16 @@
 
 #pragma once
 
+#include "MiscIDs.hpp"
+
+#include <string>
+
+#include <boost/json/value.hpp>
+
+/************************************************************************/
+
+class CEconItem_Description;
+
 /************************************************************************/
 
 namespace SteamBot
@@ -31,6 +41,21 @@ namespace SteamBot
 
             class AssetInfo : public SteamBot::AssetKey
             {
+            public:
+                enum class ItemType { Unknown, TradingCard, Gems };
+
+            public:
+                ItemType itemType=ItemType::Unknown;
+
+                std::string name;
+                std::string type;
+                SteamBot::AppID marketFeeApp=SteamBot::AppID::None;
+
+            public:
+                AssetInfo(const CEconItem_Description&);
+                virtual ~AssetInfo();
+
+                virtual boost::json::value toJson() const;
             };
         }
     }
