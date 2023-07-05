@@ -42,7 +42,7 @@ namespace SteamBot
             class AssetInfo : public SteamBot::AssetKey
             {
             public:
-                enum class ItemType { Unknown, TradingCard, Gems };
+                enum class ItemType { Unknown, TradingCard, Emoticon, Gems };
 
             public:
                 ItemType itemType=ItemType::Unknown;

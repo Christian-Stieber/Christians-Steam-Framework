@@ -135,6 +135,66 @@ AssetData::MissingKeys AssetData::getMissingKeys(const KeySet& items) const
 
 /************************************************************************/
 
+static AssetInfo::ItemType checkItemType_TradingCard(const ::CEconItem_Description& description, const AssetInfo& assetInfo)
+{
+    for (int j=0; j<description.owner_actions_size(); j++)
+    {
+        const auto& ownerAction=description.owner_actions(j);
+        if (ownerAction.has_name())
+        {
+            if (ownerAction.name()=="#Profile_ViewBadgeProgress")
+            {
+                if (ownerAction.has_link())
+                {
+                    std::string_view string=ownerAction.link();
+                    if (SteamBot::AssetKey::parseString(string, "https://steamcommunity.com/my/gamecards/"))
+                    {
+                        uint32_t number;
+                        if (SteamBot::AssetKey::parseNumberSlash(string, number))
+                        {
+                            assert(static_cast<SteamBot::AppID>(number)==assetInfo.marketFeeApp);
+                        }
+                    }
+                    assert(string.size()==0);
+                    return AssetInfo::ItemType::TradingCard;
+                }
+            }
+        }
+    }
+    return AssetInfo::ItemType::Unknown;
+}
+
+/************************************************************************/
+
+static AssetInfo::ItemType checkItemType_Emoticon(const ::CEconItem_Description& description, const AssetInfo&)
+{
+    for (int j=0; j<description.descriptions_size(); j++)
+    {
+        const auto& desc=description.descriptions(j);
+        if (desc.has_type() && desc.has_value())
+        {
+            if (desc.type()=="html")
+            {
+                auto value=desc.value();
+                if (value.find("class=\"emoticon\"")!=std::string::npos)
+                {
+                    return AssetInfo::ItemType::Emoticon;
+                }
+            }
+        }
+    }
+    return AssetInfo::ItemType::Unknown;
+}
+
+/************************************************************************/
+
+static AssetInfo::ItemType checkItemType_Gems(const ::CEconItem_Description&, const AssetInfo& assetInfo)
+{
+    return (assetInfo.type=="Steam Gems") ? AssetInfo::ItemType::Gems : AssetInfo::ItemType::Unknown;
+}
+
+/************************************************************************/
+
 AssetInfo::AssetInfo(const ::CEconItem_Description& description)
 {
     assert(description.has_appid());
@@ -155,12 +215,6 @@ AssetInfo::AssetInfo(const ::CEconItem_Description& description)
     if (description.has_type())
     {
         type=description.type();
-
-        if (type=="Steam Gems")
-        {
-            assert(itemType==AssetInfo::ItemType::Unknown);
-            itemType=AssetInfo::ItemType::Gems;
-        }
     }
 
     if (description.has_market_fee_app())
@@ -168,29 +222,21 @@ AssetInfo::AssetInfo(const ::CEconItem_Description& description)
         marketFeeApp=static_cast<SteamBot::AppID>(description.market_fee_app());
     }
 
-    for (int j=0; j<description.owner_actions_size(); j++)
     {
-        const auto& ownerAction=description.owner_actions(j);
-        if (ownerAction.has_name())
+        typedef AssetInfo::ItemType(*ItemTypeCheck)(const ::CEconItem_Description&, const AssetInfo&);
+        static const ItemTypeCheck itemTypeChecks[]={
+            &checkItemType_TradingCard,
+            &checkItemType_Emoticon,
+            &checkItemType_Gems
+        };
+
+        for (auto checkFunction : itemTypeChecks)
         {
-            if (ownerAction.name()=="#Profile_ViewBadgeProgress")
+            auto detected=checkFunction(description, *this);
+            if (detected!=AssetInfo::ItemType::Unknown)
             {
                 assert(itemType==AssetInfo::ItemType::Unknown);
-                itemType=AssetInfo::ItemType::TradingCard;
-
-                if (ownerAction.has_link())
-                {
-                    std::string_view string=ownerAction.link();
-                    if (SteamBot::AssetKey::parseString(string, "https://steamcommunity.com/my/gamecards/"))
-                    {
-                        uint32_t number;
-                        if (SteamBot::AssetKey::parseNumberSlash(string, number))
-                        {
-                            assert(static_cast<SteamBot::AppID>(number)==marketFeeApp);
-                        }
-                    }
-                    assert(string.size()==0);
-                }
+                itemType=detected;
             }
         }
     }

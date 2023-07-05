@@ -35,7 +35,7 @@ namespace SteamBot
         uint64_t classId=0;
         uint64_t instanceId=0;
 
-    protected:
+    public:
         // Helper functions to parse a "classinfo/..." string
         static bool parseString(std::string_view&, std::string_view);
         static bool parseNumberSlash(std::string_view&, uint32_t&);
