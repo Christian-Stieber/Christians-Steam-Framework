@@ -90,6 +90,7 @@ namespace SteamBot
             static void useClearQueueCommand();
             static void useSaleEventCommand();
             static void useSettingsCommand();
+            static void useLoadInventoryCommand();
         };
     }
 }
