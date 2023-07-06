@@ -85,19 +85,26 @@ void RateLimiter::cancel()
 void RateLimiter::limit(std::function<void()> function)
 {
     std::unique_lock<decltype(mutex)> lock(mutex);
-    condition.wait(lock, [this]() {
-        if (cancelAction(false))
-        {
-            throw SteamBot::OperationCancelledException();
-        }
-        return std::chrono::steady_clock::now()>=nextAccess;
-    });
+
+    do
+    {
+        condition.wait_until(lock, nextAccess, [this]() {
+            if (cancelAction(false))
+            {
+                throw SteamBot::OperationCancelledException();
+            }
+            return false;
+        });
+    }
+    while (std::chrono::steady_clock::now()<nextAccess);
 
     {
+        // We don't need to wake up the condition, since we're only
+        // extending the wait. We can just as well let the existing
+        // waits expire.
+
         SteamBot::ExecuteOnDestruct atEnd([this, &lock]() {
             nextAccess=std::chrono::steady_clock::now()+schedule;
-            lock.unlock();
-            condition.notify_all();
         });
         function();
     }
