@@ -102,6 +102,43 @@ bool AssetKey::init(std::string_view& string)
 }
 
 /************************************************************************/
+/*
+ * This takes a json from the Steam inventory data, which is slightly
+ * different from what our toJson() produces.
+ * I'll update this if I need to read our own json as well.
+ *
+ * {
+ *    "appid": 753,
+ *    "classid": "5295844374",
+ *    "instanceid": "3873503133"
+ * }
+ */
+
+bool AssetKey::init(const boost::json::object& json)
+{
+    try
+    {
+        appId=json.at("appid").to_number<decltype(appId)>();
+
+        if (SteamBot::parseNumber(json.at("classid").as_string(), classId))
+        {
+            if (auto instanceid=json.if_contains("instanceid"))
+            {
+                if (SteamBot::parseNumber(instanceid->as_string(), instanceId))
+                {
+                    return true;
+                }
+            }
+            return true;
+        }
+    }
+    catch(...)
+    {
+    }
+    return false;
+}
+
+/************************************************************************/
 
 boost::json::value AssetKey::toJson() const
 {

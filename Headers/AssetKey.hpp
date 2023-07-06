@@ -51,6 +51,7 @@ namespace SteamBot
 
         virtual boost::json::value toJson() const;
 
+        bool init(const boost::json::object&);
         bool init(std::string_view&);
     };
 }
