@@ -179,6 +179,12 @@ public:
         while (!one);
         return count;
     }
+
+public:
+    void discardMessages()
+    {
+        messages=decltype(messages)();
+    }
 };
 
 /************************************************************************/
