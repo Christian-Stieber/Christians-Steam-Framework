@@ -100,6 +100,7 @@ bool SaleQueueModule::hasSaleCards()
             {
                 auto text=SteamBot::HTML::getCleanText(element);
                 BOOST_LOG_TRIVIAL(debug) << "queue page: found text \"" << text << "\"";
+                SteamBot::UI::OutputText() << "queue status: \"" << text << "\"";
                 if (text.starts_with("You can get "))
                 {
                     hasCards=true;
@@ -150,7 +151,6 @@ void SaleQueueModule::clearSaleQueue()
         }
         else
         {
-            SteamBot::UI::OutputText() << "no sale queue to be cleared";
             return;
         }
 
