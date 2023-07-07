@@ -19,7 +19,79 @@
 
 #pragma once
 
+#include "Helpers/ParseNumber.hpp"
+
 #include <boost/json.hpp>
+
+
+/************************************************************************/
+/*
+ * toNumber(): similar to the value::to_number, but will accept strings.
+ *
+ * optNumber: like toNumber(), but returns true/false depening on whether
+ *    the item was there. Still throws on errors.
+ */
+
+namespace SteamBot
+{
+    namespace JSON
+    {
+        template <typename T> T toNumber(const boost::json::value& json) requires (!std::is_enum_v<T>)
+        {
+            if (auto string=json.if_string())
+            {
+                T result;
+                if (SteamBot::parseNumber(*string, result))
+                {
+                    return result;
+                }
+            }
+            return json.to_number<T>();		// also, throws if invalid string
+        }
+
+        template <typename T> bool optNumber(const boost::json::value& json, std::string_view key, T& number) requires (!std::is_enum_v<T>)
+        {
+            if (auto item=json.as_object().if_contains(key))
+            {
+                number=toNumber<T>(*item);
+                return true;
+            }
+            return false;
+        }
+    }
+}
+
+/************************************************************************/
+/*
+ * Same as the "number" calls, but for enums
+ */
+
+namespace SteamBot
+{
+    namespace JSON
+    {
+        template <typename T> T toNumber(const boost::json::value& json) requires (std::is_enum_v<T>)
+        {
+            return static_cast<T>(toNumber<std::underlying_type_t<T>>(json));
+        }
+
+        template <typename T> bool optNumber(const boost::json::value& json, std::string_view key, T& number) requires (std::is_enum_v<T>)
+        {
+            return optNumber(json, key, (std::underlying_type_t<T>&)(number));
+        }
+    }
+}
+
+/************************************************************************/
+
+namespace SteamBot
+{
+    namespace JSON
+    {
+        const boost::json::string* optString(const boost::json::value&, std::string_view);
+        bool optString(const boost::json::value&, std::string_view, std::string&);
+    }
+}
 
 /************************************************************************/
 /*

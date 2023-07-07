@@ -29,10 +29,6 @@
 
 /************************************************************************/
 
-class CEconItem_Description;
-
-/************************************************************************/
-
 namespace SteamBot
 {
     namespace Modules
@@ -54,7 +50,7 @@ namespace SteamBot
                 SteamBot::AppID marketFeeApp=SteamBot::AppID::None;
 
             public:
-                AssetInfo(const CEconItem_Description&);
+                AssetInfo(const boost::json::value&);
                 virtual ~AssetInfo();
 
                 virtual boost::json::value toJson() const;

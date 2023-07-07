@@ -19,6 +19,7 @@
 
 #include "AssetKey.hpp"
 #include "Helpers/ParseNumber.hpp"
+#include "Helpers/JSON.hpp"
 
 #include <boost/functional/hash.hpp>
 
@@ -114,23 +115,14 @@ bool AssetKey::init(std::string_view& string)
  * }
  */
 
-bool AssetKey::init(const boost::json::object& json)
+bool AssetKey::init(const boost::json::value& json)
 {
     try
     {
         appId=json.at("appid").to_number<decltype(appId)>();
-
-        if (SteamBot::parseNumber(json.at("classid").as_string(), classId))
-        {
-            if (auto instanceid=json.if_contains("instanceid"))
-            {
-                if (SteamBot::parseNumber(instanceid->as_string(), instanceId))
-                {
-                    return true;
-                }
-            }
-            return true;
-        }
+        if (!SteamBot::JSON::optNumber(json, "classid", classId)) return false;
+        SteamBot::JSON::optNumber(json, "instanceid", instanceId);
+        return true;
     }
     catch(...)
     {

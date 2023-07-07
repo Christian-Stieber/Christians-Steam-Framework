@@ -23,6 +23,8 @@
 #include "DerefStuff.hpp"
 #include "Modules/AssetData.hpp"
 #include "Modules/UnifiedMessageClient.hpp"
+#include "Helpers/JSON.hpp"
+#include "Helpers/ProtoBuf.hpp"
 #include "UI/UI.hpp"
 
 #include <unordered_set>
@@ -136,28 +138,27 @@ AssetData::MissingKeys AssetData::getMissingKeys(const KeySet& items) const
 
 /************************************************************************/
 
-static AssetInfo::ItemType checkItemType_TradingCard(const ::CEconItem_Description& description, const AssetInfo& assetInfo)
+static AssetInfo::ItemType checkItemType_TradingCard(const boost::json::value& json, const AssetInfo& assetInfo)
 {
-    for (int j=0; j<description.owner_actions_size(); j++)
+    for (const auto& ownerAction : json.at("owner_actions").as_array())
     {
-        const auto& ownerAction=description.owner_actions(j);
-        if (ownerAction.has_name())
+        if (auto name=SteamBot::JSON::optString(ownerAction, "name"))
         {
-            if (ownerAction.name()=="#Profile_ViewBadgeProgress")
+            if (*name==std::string_view("#Profile_ViewBadgeProgress"))
             {
-                if (ownerAction.has_link())
+                if (auto link=SteamBot::JSON::optString(ownerAction, "link"))
                 {
-                    std::string_view string=ownerAction.link();
+                    std::string_view string(*link);
                     if (SteamBot::AssetKey::parseString(string, "https://steamcommunity.com/my/gamecards/"))
                     {
                         uint32_t number;
                         if (SteamBot::AssetKey::parseNumberSlash(string, number))
                         {
                             assert(static_cast<SteamBot::AppID>(number)==assetInfo.marketFeeApp);
+                            assert(string.size()==0);
+                            return AssetInfo::ItemType::TradingCard;
                         }
                     }
-                    assert(string.size()==0);
-                    return AssetInfo::ItemType::TradingCard;
                 }
             }
         }
@@ -167,17 +168,15 @@ static AssetInfo::ItemType checkItemType_TradingCard(const ::CEconItem_Descripti
 
 /************************************************************************/
 
-static AssetInfo::ItemType checkItemType_Emoticon(const ::CEconItem_Description& description, const AssetInfo&)
+static AssetInfo::ItemType checkItemType_Emoticon(const boost::json::value& json, const AssetInfo&)
 {
-    for (int j=0; j<description.descriptions_size(); j++)
+    for (const auto& description : json.at("descriptions").as_array())
     {
-        const auto& desc=description.descriptions(j);
-        if (desc.has_type() && desc.has_value())
+        if (auto type=SteamBot::JSON::optString(description, "type"); type!=nullptr && *type=="html")
         {
-            if (desc.type()=="html")
+            if (auto value=SteamBot::JSON::optString(description, "value"))
             {
-                auto value=desc.value();
-                if (value.find("class=\"emoticon\"")!=std::string::npos)
+                if (value->find("class=\"emoticon\"")!=std::string::npos)
                 {
                     return AssetInfo::ItemType::Emoticon;
                 }
@@ -189,42 +188,26 @@ static AssetInfo::ItemType checkItemType_Emoticon(const ::CEconItem_Description&
 
 /************************************************************************/
 
-static AssetInfo::ItemType checkItemType_Gems(const ::CEconItem_Description&, const AssetInfo& assetInfo)
+static AssetInfo::ItemType checkItemType_Gems(const boost::json::value&, const AssetInfo& assetInfo)
 {
     return (assetInfo.type=="Steam Gems") ? AssetInfo::ItemType::Gems : AssetInfo::ItemType::Unknown;
 }
 
 /************************************************************************/
+/*
+ * This takes a JSON corresponding to a CEconItem_Description.
+ */
 
-AssetInfo::AssetInfo(const ::CEconItem_Description& description)
+AssetInfo::AssetInfo(const boost::json::value& json)
 {
-    assert(description.has_appid());
-    appId=description.appid();
+    if (!AssetKey::init(json)) throw false;
 
-    assert(description.has_classid());
-    classId=description.classid();
-
-    if (description.has_instanceid())
-    {
-        instanceId=description.instanceid();
-    }
-
-    if (description.has_name())
-    {
-        name=description.name();
-    }
-    if (description.has_type())
-    {
-        type=description.type();
-    }
-
-    if (description.has_market_fee_app())
-    {
-        marketFeeApp=static_cast<SteamBot::AppID>(description.market_fee_app());
-    }
+    SteamBot::JSON::optString(json, "name", name);
+    SteamBot::JSON::optString(json, "type", type);
+    SteamBot::JSON::optNumber(json, "market_fee_app", marketFeeApp);
 
     {
-        typedef AssetInfo::ItemType(*ItemTypeCheck)(const ::CEconItem_Description&, const AssetInfo&);
+        typedef AssetInfo::ItemType(*ItemTypeCheck)(const boost::json::value&, const AssetInfo&);
         static const ItemTypeCheck itemTypeChecks[]={
             &checkItemType_TradingCard,
             &checkItemType_Emoticon,
@@ -233,7 +216,7 @@ AssetInfo::AssetInfo(const ::CEconItem_Description& description)
 
         for (auto checkFunction : itemTypeChecks)
         {
-            auto detected=checkFunction(description, *this);
+            auto detected=checkFunction(json, *this);
             if (detected!=AssetInfo::ItemType::Unknown)
             {
                 assert(itemType==AssetInfo::ItemType::Unknown);
@@ -244,12 +227,23 @@ AssetInfo::AssetInfo(const ::CEconItem_Description& description)
 }
 
 /************************************************************************/
+/*
+ * Note: this is a bit annoying, but the Inventory web query gives
+ * us the same kind of data in JSON. So, to simplify the code,
+ * I'm now converting the protobuf to JSON, and the rest of the
+ * code will process the JSON (effectively converting it back into
+ * binary...).
+ *
+ * Yes, this is inefficient... but I feel it's easier that way,
+ * instead of trying to convert the JSON into the protobuf message.
+ */
 
 void AssetData::storeReceivedData(std::shared_ptr<GetAssetClassInfoInfo::ResultType> response)
 {
     for (int i=0; i<response->descriptions_size(); i++)
     {
-        auto info=std::make_shared<AssetInfo>(response->descriptions(i));
+        auto json=SteamBot::toJson(dynamic_cast<const google::protobuf::Message&>(response->descriptions(i)));
+        auto info=std::make_shared<AssetInfo>(json);
         BOOST_LOG_TRIVIAL(debug) << info->toJson();
 
         auto success=data.insert(std::move(info)).second;

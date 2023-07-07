@@ -18,9 +18,10 @@
  */
 
 #include "Connection/Serialize.hpp"
+#include "Helpers/ProtoBuf.hpp"
 
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
-#include <google/protobuf/util/json_util.h>
+#include <google/protobuf/message.h>
 
 #include <boost/log/trivial.hpp>
 
@@ -55,21 +56,18 @@ namespace
     {
     public:
         std::string name;
-        std::string json;
+        boost::json::value json;
 
         ProtobufDebug(const google::protobuf::MessageLite& protobufMessage)
         {
             auto message=dynamic_cast<const google::protobuf::Message*>(&protobufMessage);
             if (message!=nullptr)
             {
-                static const google::protobuf::util::JsonPrintOptions options=[](){
-                    google::protobuf::util::JsonPrintOptions options;
-                    // options.always_print_primitive_fields=true;
-                    return options;
-                }();
+                static const std::string_view typeNameKey="__type_name__";
 
-                google::protobuf::util::MessageToJsonString(*message, &json, options);
-                name=message->GetTypeName();
+                json=SteamBot::toJson(*message);
+                name=json.at(typeNameKey).as_string();
+                json.as_object().erase(typeNameKey);
             }
         }
     };
