@@ -21,13 +21,14 @@
 
 #include "Client/Module.hpp"
 #include "Modules/WebSession.hpp"
-#include "Modules/AssetData.hpp"
+#include "AssetData.hpp"
 #include "Modules/TradeOffers.hpp"
 #include "Modules/UnifiedMessageClient.hpp"
 #include "Helpers/URLs.hpp"
 #include "Web/CookieJar.hpp"
 #include "Helpers/HTML.hpp"
 #include "Helpers/ParseNumber.hpp"
+#include "UI/UI.hpp"
 #include "Printable.hpp"
 
 #include "HTMLParser/Parser.hpp"
@@ -427,12 +428,67 @@ std::string TradeOffersModule::getIncomingTradeOfferPage() const
 
 /************************************************************************/
 
+static void printOffers(const IncomingTradeOffers& offers)
+{
+    struct PrintItems
+    {
+        static void print(SteamBot::UI::OutputText& output, const std::vector<std::shared_ptr<TradeOffer::Item>>& items)
+        {
+            for (const auto& item : items)
+            {
+                output << "         ";
+                if (item->amount>1)
+                {
+                    output << item->amount << "× ";
+                }
+                if (auto info=SteamBot::AssetData::query(item))
+                {
+                    output << "\"" << info->type << "\" / \"" << info->name << "\" (" << SteamBot::enumToString(info->itemType) << ")";
+                }
+                else
+                {
+                    output << "(unidentified item)";
+                }
+                output << "\n";
+            }
+        }
+    };
+
+    if (offers.offers.size()>0)
+    {
+        SteamBot::UI::OutputText output;
+        output << offers.offers.size() << " incoming trade offers:\n";
+        for (const auto& offer : offers.offers)
+        {
+            output << "   " << offer->tradeOfferId << " from " << offer->partner << ":\n";
+            output << "      my items:\n";
+            PrintItems::print(output, offer->myItems);
+            output << "      for their items:\n";
+            PrintItems::print(output, offer->theirItems);
+        }
+    }
+}
+
+/************************************************************************/
+
 void TradeOffersModule::run(SteamBot::Client& client)
 {
     waitForLogin();
 
     auto html=getIncomingTradeOfferPage();
     auto offers=parseIncomingTradeOffserPage(html);
+
+    {
+        SteamBot::AssetData::KeySet keys;
+        for (const auto& offer : offers->offers)
+        {
+            keys.insert(offer->myItems.begin(), offer->myItems.end());
+            keys.insert(offer->theirItems.begin(), offer->theirItems.end());
+        }
+        SteamBot::AssetData::fetch(keys);
+    }
+
+    printOffers(*offers);
 
     client.messageboard.send(std::shared_ptr<IncomingTradeOffers>(std::move(offers)));
 }
@@ -441,5 +497,4 @@ void TradeOffersModule::run(SteamBot::Client& client)
 
 void SteamBot::Modules::TradeOffers::use()
 {
-    SteamBot::Modules::AssetData::use();
 }

@@ -19,9 +19,7 @@
 
 /************************************************************************/
 
-#include "Client/Module.hpp"
-#include "DerefStuff.hpp"
-#include "Modules/AssetData.hpp"
+#include "AssetData.hpp"
 #include "Modules/UnifiedMessageClient.hpp"
 #include "Helpers/JSON.hpp"
 #include "Helpers/ProtoBuf.hpp"
@@ -33,17 +31,11 @@
 
 /************************************************************************/
 
-typedef SteamBot::Modules::TradeOffers::Messageboard::IncomingTradeOffers IncomingTradeOffers;
-typedef SteamBot::Modules::AssetData::Messageboard::IncomingTradeOffers MyIncomingTradeOffers;
-
-/************************************************************************/
-
-typedef SteamBot::Modules::AssetData::AssetInfo AssetInfo;
-
+typedef SteamBot::AssetData::AssetInfo AssetInfo;
 typedef std::shared_ptr<AssetInfo> AssetInfoPtr;
-typedef std::shared_ptr<SteamBot::AssetKey> AssetKeyPtr;
 
-typedef std::unordered_set<AssetKeyPtr, SteamBot::SmartDerefStuff<AssetKeyPtr>::Hash, SteamBot::SmartDerefStuff<AssetKeyPtr>::Equals> KeySet;
+typedef SteamBot::AssetData::KeyPtr KeyPtr;
+typedef SteamBot::AssetData::KeySet KeySet;
 
 /************************************************************************/
 
@@ -56,7 +48,7 @@ namespace
     class AssetData
     {
     public:
-        typedef std::vector<AssetKeyPtr> KeyList;
+        typedef std::vector<KeyPtr> KeyList;
         typedef std::vector<std::pair<uint32_t, KeyList>> MissingKeys;
 
     private:
@@ -80,8 +72,9 @@ namespace
         }
 
     public:
-        void update(const KeySet&);
-        AssetInfoPtr query(const AssetKeyPtr&) const;
+        bool store(const boost::json::value&);
+        void fetch(const KeySet&);
+        AssetInfoPtr query(const KeyPtr&) const;
     };
 };
 
@@ -227,6 +220,16 @@ AssetInfo::AssetInfo(const boost::json::value& json)
 }
 
 /************************************************************************/
+
+bool AssetData::store(const boost::json::value& json)
+{
+    auto info=std::make_shared<AssetInfo>(json);
+    BOOST_LOG_TRIVIAL(debug) << info->toJson();
+
+    return data.insert(std::move(info)).second;
+}
+
+/************************************************************************/
 /*
  * Note: this is a bit annoying, but the Inventory web query gives
  * us the same kind of data in JSON. So, to simplify the code,
@@ -243,10 +246,7 @@ void AssetData::storeReceivedData(std::shared_ptr<GetAssetClassInfoInfo::ResultT
     for (int i=0; i<response->descriptions_size(); i++)
     {
         auto json=SteamBot::toJson(dynamic_cast<const google::protobuf::Message&>(response->descriptions(i)));
-        auto info=std::make_shared<AssetInfo>(json);
-        BOOST_LOG_TRIVIAL(debug) << info->toJson();
-
-        auto success=data.insert(std::move(info)).second;
+        bool success=store(json);
         assert(success);
     }
 }
@@ -279,7 +279,7 @@ void AssetData::requestData(const MissingKeys& missing)
 
 /************************************************************************/
 
-void AssetData::update(const KeySet& items)
+void AssetData::fetch(const KeySet& items)
 
 {
     std::lock_guard<decltype(mutex)> lock(mutex);
@@ -292,7 +292,7 @@ void AssetData::update(const KeySet& items)
  * This does NOT fetch new data
  */
 
-AssetInfoPtr AssetData::query(const AssetKeyPtr& key) const
+AssetInfoPtr AssetData::query(const KeyPtr& key) const
 {
     AssetInfoPtr result;
     std::lock_guard<decltype(mutex)> lock(mutex);
@@ -312,156 +312,21 @@ AssetInfoPtr AssetData::query(const AssetKeyPtr& key) const
 
 /************************************************************************/
 
-namespace
+void SteamBot::AssetData::fetch(const KeySet& keys)
 {
-    class AssetDataModule : public SteamBot::Client::Module
-    {
-    private:
-        SteamBot::Messageboard::WaiterType<IncomingTradeOffers> incomingTradeOffers;
-
-    public:
-        void handle(std::shared_ptr<const IncomingTradeOffers>);
-
-    public:
-        AssetDataModule() =default;
-        virtual ~AssetDataModule() =default;
-
-        virtual void init(SteamBot::Client&) override;
-        virtual void run(SteamBot::Client&) override;
-    };
-
-    AssetDataModule::Init<AssetDataModule> init;
+    ::AssetData::get().fetch(keys);
 }
 
 /************************************************************************/
 
-MyIncomingTradeOffers::~IncomingTradeOffers() =default;
-
-MyIncomingTradeOffers::TradeOfferAssets::~TradeOfferAssets() =default;
-
-/************************************************************************/
-
-MyIncomingTradeOffers::TradeOfferAssets::TradeOfferAssets(decltype(offer)& offer_)
-    : offer(offer_)
+AssetInfoPtr SteamBot::AssetData::query(KeyPtr key)
 {
-    const auto& assetData=::AssetData::get();
-
-    myItems.reserve(offer.myItems.size());
-    for (auto& item : offer.myItems)
-    {
-        myItems.emplace_back(assetData.query(item));
-    }
-
-    theirItems.reserve(offer.theirItems.size());
-    for (auto& item : offer.theirItems)
-    {
-        theirItems.emplace_back(assetData.query(item));
-    }
-}
-
-/************************************************************************/
-/*
- * This is for human reading; it mixes information from the
- * TradeOffers and the AssetData stuff to make it look unified.
- */
-
-boost::json::value MyIncomingTradeOffers::TradeOfferAssets::toJson() const
-{
-    struct Foo
-    {
-        static void merge(boost::json::object& json, std::string_view key, const std::vector<std::shared_ptr<const AssetInfo>>& assets)
-        {
-            auto& jsonArray=json.at(key).as_array();
-            assert(jsonArray.size()==assets.size());
-            for (size_t i=0; i<assets.size(); i++)
-            {
-                auto& arrayObject=jsonArray[i].as_object();
-                auto myObject=assets[i]->toJson();
-                for (auto& item : myObject.as_object())
-                {
-                    auto iterator=arrayObject.find(item.key());
-                    if (iterator==arrayObject.end())
-                    {
-                        arrayObject.insert(item);
-                    }
-                    else
-                    {
-                        assert(iterator->value()==item.value());
-                    }
-                }
-            }
-        }
-    };
-
-    auto json=offer.toJson();
-    Foo::merge(json.as_object(), "myItems", myItems);
-    Foo::merge(json.as_object(), "theirItems", theirItems);
-    return json;
-};
-
-/************************************************************************/
-
-boost::json::value MyIncomingTradeOffers::toJson() const
-{
-    boost::json::array json;
-    for (const auto& asset : assets)
-    {
-        json.emplace_back(asset.toJson());
-    }
-    return json;
+    return ::AssetData::get().query(key);
 }
 
 /************************************************************************/
 
-MyIncomingTradeOffers::IncomingTradeOffers(std::shared_ptr<const ::IncomingTradeOffers>&& offers_)
-    : offers(std::move(offers_))
+void SteamBot::AssetData::store(const boost::json::value& json)
 {
-    assets.reserve(offers->offers.size());
-    for (const auto& offer : offers->offers)
-    {
-        assets.emplace_back(*offer);
-    }
-}
-
-/************************************************************************/
-
-void AssetDataModule::handle(std::shared_ptr<const IncomingTradeOffers> message)
-{
-    {
-        KeySet keys;
-        for (const auto& offer: message->offers)
-        {
-            keys.insert(offer->myItems.begin(), offer->myItems.end());
-            keys.insert(offer->theirItems.begin(), offer->theirItems.end());
-        }
-        ::AssetData::get().update(keys);
-    }
-
-    auto result=std::make_shared<MyIncomingTradeOffers>(std::move(message));
-    SteamBot::UI::OutputText() << "detected incoming trade offers: " << result->toJson();
-    getClient().messageboard.send(std::move(result));
-}
-
-/************************************************************************/
-
-void AssetDataModule::init(SteamBot::Client& client)
-{
-    incomingTradeOffers=client.messageboard.createWaiter<IncomingTradeOffers>(*waiter);
-}
-
-/************************************************************************/
-
-void AssetDataModule::run(SteamBot::Client&)
-{
-    while (true)
-    {
-        waiter->wait();
-        incomingTradeOffers->handle(this);
-    }
-}
-
-/************************************************************************/
-
-void SteamBot::Modules::AssetData::use()
-{
+    ::AssetData::get().store(json);
 }
