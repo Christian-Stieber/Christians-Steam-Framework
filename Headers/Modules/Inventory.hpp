@@ -64,8 +64,11 @@ namespace SteamBot
                 class Inventory
                 {
                 public:
+                    typedef std::shared_ptr<const Inventory> Ptr;
+
+                public:
                     std::chrono::system_clock::time_point when;
-                    std::vector<std::unique_ptr<InventoryItem>> items;
+                    std::vector<std::shared_ptr<const InventoryItem>> items;
 
                 public:
                     Inventory();

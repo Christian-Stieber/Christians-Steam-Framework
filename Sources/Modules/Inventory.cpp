@@ -28,11 +28,18 @@
  */
 
 /************************************************************************/
+/*
+ * https://dev.doctormckay.com/topic/332-identifying-steam-items/
+ */
+
+/************************************************************************/
 
 #include "Client/Module.hpp"
 #include "Modules/Inventory.hpp"
 #include "Modules/WebSession.hpp"
+#include "AssetData.hpp"
 #include "Helpers/ParseNumber.hpp"
+#include "Helpers/JSON.hpp"
 #include "RateLimit.hpp"
 #include "MiscIDs.hpp"
 #include "SteamID.hpp"
@@ -64,24 +71,6 @@ Inventory::Inventory() =default;
 Inventory::~Inventory() =default;
 
 /************************************************************************/
-
-template <typename T> static bool optJsonStringNumber(const boost::json::object& json, std::string_view key, T& number)
-{
-    if (auto string=json.if_contains(key))
-    {
-        if (SteamBot::parseNumber(string->as_string(), number))
-        {
-            return true;
-        }
-        else
-        {
-            throw false;
-        }
-    }
-    return false;
-}
-
-/************************************************************************/
 /*
  * This takes a json from the inventory:
  * {
@@ -101,9 +90,9 @@ bool InventoryItem::init(const boost::json::object& json)
     {
         try
         {
-            optJsonStringNumber(json, "contextid", contextId);
-            optJsonStringNumber(json, "assetid", assetId);
-            optJsonStringNumber(json, "amount", amount);
+            SteamBot::JSON::optNumber(json, "contextid", contextId);
+            SteamBot::JSON::optNumber(json, "assetid", assetId);
+            SteamBot::JSON::optNumber(json, "amount", amount);
             return true;
         }
         catch(...)
@@ -138,7 +127,8 @@ namespace
         SteamBot::Messageboard::WaiterType<LoadInventory> loadInventory;
 
     private:
-        static void processInventoryPage(Inventory&, const boost::json::value&);
+        static void processInventoryDescriptions(const boost::json::value&);
+        static void processInventoryAssets(Inventory&, const boost::json::value&);
         static void load();
 
     public:
@@ -184,11 +174,11 @@ SteamBot::RateLimiter& InventorysModule::getRateLimiter()
  * Returns the last asset id, or 0.
  */
 
-void InventorysModule::processInventoryPage(Inventory& inventory, const boost::json::value& json)
+void InventorysModule::processInventoryAssets(Inventory& inventory, const boost::json::value& json)
 {
     for (const auto& asset : json.at("assets").as_array())
     {
-        auto item=std::make_unique<InventoryItem>();
+        auto item=std::make_shared<InventoryItem>();
         if (item->init(asset.as_object()))
         {
             BOOST_LOG_TRIVIAL(debug) << "inventory item: " << item->toJson();
@@ -199,7 +189,32 @@ void InventorysModule::processInventoryPage(Inventory& inventory, const boost::j
             BOOST_LOG_TRIVIAL(error) << "unable to process inventory item: " << asset;
         }
     }
-    SteamBot::UI::OutputText() << "processed " << inventory.items.size() << " inventory items out of " << json.at("total_inventory_count").to_number<uint32_t>();
+}
+
+/************************************************************************/
+/*
+ * "descriptions": [
+ *    {
+ *       "appid": 753,
+ *       "classid": "5295844374",
+ *       "instanceid": "3873503133",
+ *       "currency": 0,
+ *       "background_color": "",
+ *       ...
+ *    },
+ *    ...
+ * ]
+ *
+ * Note: this is pretty much the same as the "Econ.GetAssetClassInfo#1" result,
+ * except that we get it in JSON instead of protobuf.
+ */
+
+void InventorysModule::processInventoryDescriptions(const boost::json::value& json)
+{
+    for (const auto& description : json.at("descriptions").as_array())
+    {
+        SteamBot::AssetData::store(description);
+    }
 }
 
 /************************************************************************/
@@ -220,7 +235,7 @@ void InventorysModule::load()
     url.segments().push_back(std::to_string(contextId));
 
     url.params().set("l", "english");
-    url.params().set("count", "50");
+    url.params().set("count", "1000");
 
     auto inventory=std::make_shared<Inventory>();
     uint64_t startAssetId=0;
@@ -245,7 +260,8 @@ void InventorysModule::load()
 
         try
         {
-            processInventoryPage(*inventory, json);
+            processInventoryAssets(*inventory, json);
+            processInventoryDescriptions(json);
 
             /*
              * {
@@ -259,7 +275,18 @@ void InventorysModule::load()
              *    "rwgrsn":-2
              * }
              */
-            if (!(json.at("more_items").to_number<int>()==1 && optJsonStringNumber(json.as_object(), "last_assetid", startAssetId)))
+
+            try
+            {
+                auto total=json.at("total_inventory_count").to_number<uint32_t>();
+                SteamBot::UI::OutputText() << "processed " << inventory->items.size() << " inventory items out of " << total;
+            }
+            catch(...)
+            {
+            }
+
+            bool moreItems=json.at("more_items").to_number<int>()==1 && SteamBot::JSON::optNumber(json, "last_assetid", startAssetId);
+            if (!moreItems)
             {
                 break;
             }
@@ -270,10 +297,10 @@ void InventorysModule::load()
         }
     }
 
-    SteamBot::UI::OutputText() << "inventory loaded";
+    SteamBot::UI::OutputText() << "inventory loaded: " << inventory->items.size() << " items";
 
     inventory->when=std::chrono::system_clock::now();
-    getClient().whiteboard.set(std::move(inventory));
+    getClient().whiteboard.set<Inventory::Ptr>(std::move(inventory));
 }
 
 /************************************************************************/

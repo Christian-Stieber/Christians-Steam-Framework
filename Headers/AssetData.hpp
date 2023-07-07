@@ -55,7 +55,7 @@ namespace SteamBot
         };
 
         // Some types
-        typedef std::shared_ptr<SteamBot::AssetKey> KeyPtr;
+        typedef std::shared_ptr<const SteamBot::AssetKey> KeyPtr;
 
         // Store an existing asset-data chunk (like from the Inventory code) into the data
         void store(const boost::json::value&);
@@ -65,6 +65,6 @@ namespace SteamBot
         void fetch(const KeySet&);
 
         // Query
-        std::shared_ptr<AssetInfo> query(KeyPtr);
+        std::shared_ptr<const AssetInfo> query(KeyPtr);
     }
 }

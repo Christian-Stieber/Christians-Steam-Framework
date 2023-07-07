@@ -32,7 +32,7 @@
 /************************************************************************/
 
 typedef SteamBot::AssetData::AssetInfo AssetInfo;
-typedef std::shared_ptr<AssetInfo> AssetInfoPtr;
+typedef std::shared_ptr<const AssetInfo> AssetInfoPtr;
 
 typedef SteamBot::AssetData::KeyPtr KeyPtr;
 typedef SteamBot::AssetData::KeySet KeySet;
@@ -133,23 +133,26 @@ AssetData::MissingKeys AssetData::getMissingKeys(const KeySet& items) const
 
 static AssetInfo::ItemType checkItemType_TradingCard(const boost::json::value& json, const AssetInfo& assetInfo)
 {
-    for (const auto& ownerAction : json.at("owner_actions").as_array())
+    if (auto ownerActions=json.as_object().if_contains("owner_actions"))
     {
-        if (auto name=SteamBot::JSON::optString(ownerAction, "name"))
+        for (const auto& ownerAction : ownerActions->as_array())
         {
-            if (*name==std::string_view("#Profile_ViewBadgeProgress"))
+            if (auto name=SteamBot::JSON::optString(ownerAction, "name"))
             {
-                if (auto link=SteamBot::JSON::optString(ownerAction, "link"))
+                if (*name==std::string_view("#Profile_ViewBadgeProgress"))
                 {
-                    std::string_view string(*link);
-                    if (SteamBot::AssetKey::parseString(string, "https://steamcommunity.com/my/gamecards/"))
+                    if (auto link=SteamBot::JSON::optString(ownerAction, "link"))
                     {
-                        uint32_t number;
-                        if (SteamBot::AssetKey::parseNumberSlash(string, number))
+                        std::string_view string(*link);
+                        if (SteamBot::AssetKey::parseString(string, "https://steamcommunity.com/my/gamecards/"))
                         {
-                            assert(static_cast<SteamBot::AppID>(number)==assetInfo.marketFeeApp);
-                            assert(string.size()==0);
-                            return AssetInfo::ItemType::TradingCard;
+                            uint32_t number;
+                            if (SteamBot::AssetKey::parseNumberSlash(string, number))
+                            {
+                                assert(static_cast<SteamBot::AppID>(number)==assetInfo.marketFeeApp);
+                                assert(string.size()==0);
+                                return AssetInfo::ItemType::TradingCard;
+                            }
                         }
                     }
                 }
@@ -223,10 +226,18 @@ AssetInfo::AssetInfo(const boost::json::value& json)
 
 bool AssetData::store(const boost::json::value& json)
 {
-    auto info=std::make_shared<AssetInfo>(json);
-    BOOST_LOG_TRIVIAL(debug) << info->toJson();
+    try
+    {
+        auto info=std::make_shared<AssetInfo>(json);
+        BOOST_LOG_TRIVIAL(debug) << info->toJson();
 
-    return data.insert(std::move(info)).second;
+        return data.insert(std::move(info)).second;
+    }
+    catch(...)
+    {
+        BOOST_LOG_TRIVIAL(error) << "unable to process " << json;
+        return false;
+    }
 }
 
 /************************************************************************/
@@ -299,7 +310,7 @@ AssetInfoPtr AssetData::query(const KeyPtr& key) const
     auto iterator=data.find(key);
     if (iterator!=data.end())
     {
-        result=std::dynamic_pointer_cast<AssetInfo>(*iterator);
+        result=std::dynamic_pointer_cast<const AssetInfo>(*iterator);
     }
 
     if (result)

@@ -32,7 +32,7 @@ namespace SteamBot
         {
             std::size_t operator() (const T& item) const
             {
-                return std::hash<typename T::element_type>()(*item);
+                return std::hash<std::remove_cv_t<typename T::element_type>>()(*item);
             }
         };
 
