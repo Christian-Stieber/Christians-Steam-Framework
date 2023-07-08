@@ -24,6 +24,7 @@
 #include "BitField.hpp"
 #include "Steam/AccountType.hpp"
 #include "Universe.hpp"
+#include "MiscIDs.hpp"
 
 /************************************************************************/
 
@@ -49,7 +50,7 @@ class SteamBot::SteamID : public SteamBot::BitField<uint64_t>
 	using BitField::BitField;
 
 private:
-	typedef Accessor<0, 32, uint32_t> AccountIdField;
+	typedef Accessor<0, 32, SteamBot::AccountID> AccountIdField;
 	typedef Accessor<52, 4, Steam::AccountType> AccountTypeField;
 	typedef Accessor<56, 8, Universe::Type> UniverseField;
 

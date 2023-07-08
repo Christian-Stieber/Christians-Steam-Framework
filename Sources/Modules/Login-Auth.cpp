@@ -85,16 +85,6 @@ class AuthenticationFailedException { };
 
 namespace
 {
-    template <typename T> std::underlying_type_t<T> toInteger(T value) requires (std::is_enum_v<T>)
-    {
-        return static_cast<std::underlying_type_t<T>>(value);
-    }
-}
-
-/************************************************************************/
-
-namespace
-{
     class MsgClientLoggedOff : public Message::Serializeable
 	{
 	public:
@@ -262,7 +252,7 @@ BeginAuthSessionViaCredentialsInfo::RequestType LoginModule::makeBeginAuthReques
         auto deviceDetails=request.mutable_device_details();
         deviceDetails->set_device_friendly_name(Steam::MachineInfo::Provider::getMachineName());
         deviceDetails->set_platform_type(platformType);
-        deviceDetails->set_os_type(toInteger(Steam::getOSType()));
+        deviceDetails->set_os_type(SteamBot::toInteger(Steam::getOSType()));
     }
     return request;
 }
@@ -590,8 +580,8 @@ void LoginModule::doLogon()
     message->header.proto.set_client_sessionid(0);
     {
         SteamBot::SteamID steamID;
-        steamID.setAccountId(0);
-        steamID.setAccountInstance(toInteger(AccountInstance::Desktop));
+        steamID.setAccountId(SteamBot::AccountID::None);
+        steamID.setAccountInstance(SteamBot::toInteger(AccountInstance::Desktop));
         steamID.setUniverseType(SteamBot::Client::getClient().universe.type);
         steamID.setAccountType(Steam::AccountType::Individual);
         message->header.proto.set_steamid(steamID.getValue());
@@ -601,7 +591,7 @@ void LoginModule::doLogon()
 	message->content.set_cell_id(0);
 	message->content.set_client_package_version(1771);
 	message->content.set_client_language("english");
-	message->content.set_client_os_type(toInteger(Steam::getOSType()));
+	message->content.set_client_os_type(SteamBot::toInteger(Steam::getOSType()));
     message->content.set_should_remember_password(true);
     {
         const auto& machineId=Steam::MachineInfo::MachineID::getSerialized();

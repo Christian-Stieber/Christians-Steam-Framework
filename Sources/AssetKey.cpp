@@ -98,9 +98,9 @@ bool AssetKey::init(const boost::json::value& json)
 boost::json::value AssetKey::toJson() const
 {
     boost::json::object json;
-    if (appId!=SteamBot::AppID::None) json["appId"]=static_cast<std::underlying_type_t<decltype(appId)>>(appId);
-    if (classId!=SteamBot::ClassID::None) json["classId"]=static_cast<std::underlying_type_t<decltype(classId)>>(classId);
-    if (instanceId!=SteamBot::InstanceID::None) json["instanceId"]=static_cast<std::underlying_type_t<decltype(instanceId)>>(instanceId);
+    if (appId!=SteamBot::AppID::None) json["appId"]=toInteger(appId);
+    if (classId!=SteamBot::ClassID::None) json["classId"]=toInteger(classId);
+    if (instanceId!=SteamBot::InstanceID::None) json["instanceId"]=toInteger(instanceId);
     return json;
 }
 

@@ -176,8 +176,8 @@ boost::json::value TradeOffer::Item::toJson() const
 boost::json::value TradeOffer::toJson() const
 {
     boost::json::object json;
-    json["tradeOfferId"]=tradeOfferId;
-    json["partner"]=partner;
+    json["tradeOfferId"]=toInteger(tradeOfferId);
+    json["partner"]=toInteger(partner);
     {
         boost::json::array array;
         for (const auto& item : myItems)
@@ -316,7 +316,7 @@ bool IncomingOffersParser::handleItemsBanner(const HTMLParser::Tree::Element& el
         if (element.name=="div" && SteamBot::HTML::checkClass(element, "tradeoffer_items_banner"))
         {
 #if 1
-            BOOST_LOG_TRIVIAL(info) << "ignoring trade offer " << currentTradeOffer->tradeOfferId << ": " << SteamBot::HTML::getCleanText(element);
+            BOOST_LOG_TRIVIAL(info) << "ignoring trade offer " << toInteger(currentTradeOffer->tradeOfferId) << ": " << SteamBot::HTML::getCleanText(element);
             currentTradeOffer.reset();
 #endif
             return true;
@@ -372,7 +372,7 @@ std::function<void(const HTMLParser::Tree::Element&)> IncomingOffersParser::hand
             if (number.starts_with(tradeofferid_prefix))
             {
                 number.remove_prefix(strlen(tradeofferid_prefix));
-                uint64_t tradeOfferId;
+                SteamBot::TradeOfferID tradeOfferId;
                 if (SteamBot::parseNumber(number, tradeOfferId))
                 {
                     currentTradeOffer=std::make_unique<TradeOffer>();
@@ -381,7 +381,8 @@ std::function<void(const HTMLParser::Tree::Element&)> IncomingOffersParser::hand
                     result=[this](const HTMLParser::Tree::Element& element) {
                         if (currentTradeOffer)
                         {
-                            if (currentTradeOffer->tradeOfferId!=0 && currentTradeOffer->partner!=0 &&
+                            if (currentTradeOffer->tradeOfferId!=SteamBot::TradeOfferID::None &&
+                                currentTradeOffer->partner!=SteamBot::AccountID::None &&
                                 (currentTradeOffer->myItems.size()!=0 || currentTradeOffer->theirItems.size()!=0))
                             {
                                 this->result.offers.push_back(std::move(currentTradeOffer));
@@ -460,7 +461,7 @@ static void printOffers(const IncomingTradeOffers& offers)
         output << offers.offers.size() << " incoming trade offers:\n";
         for (const auto& offer : offers.offers)
         {
-            output << "   " << offer->tradeOfferId << " from " << offer->partner << ":\n";
+            output << "   " << toInteger(offer->tradeOfferId) << " from " << toInteger(offer->partner) << ":\n";
             output << "      my items:\n";
             PrintItems::print(output, offer->myItems);
             output << "      for their items:\n";

@@ -52,8 +52,8 @@ namespace SteamBot
                 };
 
             public:
-                uint64_t tradeOfferId=0;
-                uint32_t partner=0;	/* Steam32 ID */
+                SteamBot::TradeOfferID tradeOfferId=SteamBot::TradeOfferID::None;
+                SteamBot::AccountID partner=SteamBot::AccountID::None;
 
                 std::vector<std::shared_ptr<Item>> myItems;
                 std::vector<std::shared_ptr<Item>> theirItems;

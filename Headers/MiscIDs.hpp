@@ -20,6 +20,7 @@
 #pragma once
 
 #include <cstdint>
+#include <type_traits>
 
 /************************************************************************/
 
@@ -49,4 +50,23 @@ namespace SteamBot
     enum class InstanceID : uint64_t {
         None=0
     };
+
+    // also known as "Steam32" ID
+    enum class AccountID : uint32_t {
+        None=0
+    };
+
+    enum class TradeOfferID : uint64_t {
+        None=0
+    };
+}
+
+/************************************************************************/
+
+namespace SteamBot
+{
+    template <typename T> auto toInteger(T number) requires(std::is_enum_v<T>)
+    {
+        return static_cast<std::underlying_type_t<T>>(number);
+    }
 }

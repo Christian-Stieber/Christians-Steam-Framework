@@ -45,13 +45,6 @@ namespace
 
 /************************************************************************/
 
-template <typename T> static auto toInteger(T number) requires(std::is_enum_v<T>)
-{
-    return static_cast<std::underlying_type_t<T>>(number);
-}
-
-/************************************************************************/
-
 namespace
 {
     class ListInventoryCommand : public CLI::CLICommandBase
