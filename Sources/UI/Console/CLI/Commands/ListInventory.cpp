@@ -45,6 +45,13 @@ namespace
 
 /************************************************************************/
 
+template <typename T> static auto toInteger(T number) requires(std::is_enum_v<T>)
+{
+    return static_cast<std::underlying_type_t<T>>(number);
+}
+
+/************************************************************************/
+
 namespace
 {
     class ListInventoryCommand : public CLI::CLICommandBase
@@ -127,7 +134,7 @@ static void outputInventory(SteamBot::ClientInfo& clientInfo, const Inventory& i
 
     for (const auto& item : items)
     {
-        std::cout << item.inventoryItem->appId;
+        std::cout << toInteger(item.inventoryItem->appId);
         std::cout << "/" << item.inventoryItem->contextId;
         std::cout << "/" << item.inventoryItem->assetId;
         std::cout << ": ";

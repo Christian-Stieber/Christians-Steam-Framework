@@ -23,6 +23,7 @@
 #include "Modules/UnifiedMessageClient.hpp"
 #include "Helpers/JSON.hpp"
 #include "Helpers/ProtoBuf.hpp"
+#include "Helpers/ParseNumber.hpp"
 #include "UI/UI.hpp"
 
 #include <unordered_set>
@@ -49,7 +50,7 @@ namespace
     {
     public:
         typedef std::vector<KeyPtr> KeyList;
-        typedef std::vector<std::pair<uint32_t, KeyList>> MissingKeys;
+        typedef std::vector<std::pair<SteamBot::AppID, KeyList>> MissingKeys;
 
     private:
         mutable boost::fibers::mutex mutex;
@@ -80,6 +81,13 @@ namespace
 
 /************************************************************************/
 
+template <typename T> static auto toInteger(T number) requires(std::is_enum_v<T>)
+{
+    return static_cast<std::underlying_type_t<T>>(number);
+}
+
+/************************************************************************/
+
 AssetInfo::~AssetInfo() =default;
 
 /************************************************************************/
@@ -91,7 +99,7 @@ boost::json::value AssetInfo::toJson() const
     SteamBot::enumToJson(object, "itemType", itemType);
     if (!name.empty()) object["name"]=name;
     if (!type.empty()) object["type"]=type;
-    if (marketFeeApp!=SteamBot::AppID::None) object["marketFeeApp"]=static_cast<std::underlying_type_t<SteamBot::AppID>>(marketFeeApp);
+    if (marketFeeApp!=SteamBot::AppID::None) object["marketFeeApp"]=toInteger(marketFeeApp);
     return object;
 }
 
@@ -102,7 +110,7 @@ AssetData::MissingKeys AssetData::getMissingKeys(const KeySet& items) const
     AssetData::MissingKeys missing;
     for (const auto& key : items)
     {
-        assert(key->appId!=0 && key->classId!=0);
+        assert(key->appId!=SteamBot::AppID::None && key->classId!=SteamBot::ClassID::None);
         if (!data.contains(key))
         {
             auto iterator=missing.begin();
@@ -146,10 +154,10 @@ static AssetInfo::ItemType checkItemType_TradingCard(const boost::json::value& j
                         std::string_view string(*link);
                         if (SteamBot::AssetKey::parseString(string, "https://steamcommunity.com/my/gamecards/"))
                         {
-                            uint32_t number;
-                            if (SteamBot::AssetKey::parseNumberSlash(string, number))
+                            SteamBot::AppID appId;
+                            if (SteamBot::parseNumberSlash(string, appId))
                             {
-                                assert(static_cast<SteamBot::AppID>(number)==assetInfo.marketFeeApp);
+                                assert(appId==assetInfo.marketFeeApp);
                                 assert(string.size()==0);
                                 return AssetInfo::ItemType::TradingCard;
                             }
@@ -273,14 +281,16 @@ void AssetData::requestData(const MissingKeys& missing)
         {
             GetAssetClassInfoInfo::RequestType request;
             request.set_language("english");
-            request.set_appid(chunk.first);
+            assert(chunk.first!=SteamBot::AppID::None);
+            request.set_appid(toInteger(chunk.first));
             for (const auto& key : chunk.second)
             {
                 auto& item=*(request.add_classes());
-                item.set_classid(key->classId);
-                if (key->instanceId!=0)
+                assert(key->classId!=SteamBot::ClassID::None);
+                item.set_classid(toInteger(key->classId));
+                if (key->instanceId!=SteamBot::InstanceID::None)
                 {
-                    item.set_instanceid(key->instanceId);
+                    item.set_instanceid(toInteger(key->instanceId));
                 }
             }
             response=SteamBot::Modules::UnifiedMessageClient::execute<GetAssetClassInfoInfo::ResultType>("Econ.GetAssetClassInfo#1", std::move(request));

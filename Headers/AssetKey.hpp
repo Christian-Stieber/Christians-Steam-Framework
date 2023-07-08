@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "MiscIDs.hpp"
+
 #include <string_view>
 #include <functional>
 
@@ -31,15 +33,12 @@ namespace SteamBot
     class AssetKey
     {
     public:
-        uint32_t appId=0;
-        uint64_t classId=0;
-        uint64_t instanceId=0;
+        SteamBot::AppID appId=SteamBot::AppID::None;
+        SteamBot::ClassID classId=SteamBot::ClassID::None;
+        SteamBot::InstanceID instanceId=SteamBot::InstanceID::None;
 
     public:
-        // Helper functions to parse a "classinfo/..." string
         static bool parseString(std::string_view&, std::string_view);
-        static bool parseNumberSlash(std::string_view&, uint32_t&);
-        static bool parseNumberSlash(std::string_view&, uint64_t&);
 
     public:
         size_t hash() const;

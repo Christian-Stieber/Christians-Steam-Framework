@@ -33,43 +33,6 @@ AssetKey::AssetKey() =default;
 AssetKey::~AssetKey() =default;
 
 /************************************************************************/
-/*
- * Parse a number. Parsing must stop on end-of-string or a "/"
- * character, which is skipped.
- */
-
-template <typename T> static bool parseNumberSlash(std::string_view& string, T& number)
-{
-    if (SteamBot::parseNumberPrefix(string, number))
-    {
-        if (string.size()==0)
-        {
-            return true;
-        }
-        if (string.front()=='/')
-        {
-            string.remove_prefix(1);
-            return true;
-        }
-    }
-    return false;
-}
-
-/************************************************************************/
-
-bool AssetKey::parseNumberSlash(std::string_view& string, uint64_t& number)
-{
-    return ::parseNumberSlash(string, number);
-}
-
-/************************************************************************/
-
-bool AssetKey::parseNumberSlash(std::string_view& string, uint32_t& number)
-{
-    return ::parseNumberSlash(string, number);
-}
-
-/************************************************************************/
 
 bool AssetKey::parseString(std::string_view& string, std::string_view prefix)
 {
@@ -93,10 +56,10 @@ bool AssetKey::parseString(std::string_view& string, std::string_view prefix)
 bool AssetKey::init(std::string_view& string)
 {
     if (parseString(string, "classinfo/") &&
-        parseNumberSlash(string, appId) &&
-        parseNumberSlash(string, classId))
+        SteamBot::parseNumberSlash(string, appId) &&
+        SteamBot::parseNumberSlash(string, classId))
     {
-        parseNumberSlash(string, instanceId);
+        SteamBot::parseNumberSlash(string, instanceId);
         return true;
     }
     return false;
@@ -119,7 +82,7 @@ bool AssetKey::init(const boost::json::value& json)
 {
     try
     {
-        appId=json.at("appid").to_number<decltype(appId)>();
+        if (!SteamBot::JSON::optNumber(json, "appid", appId)) return false;
         if (!SteamBot::JSON::optNumber(json, "classid", classId)) return false;
         SteamBot::JSON::optNumber(json, "instanceid", instanceId);
         return true;
@@ -135,9 +98,9 @@ bool AssetKey::init(const boost::json::value& json)
 boost::json::value AssetKey::toJson() const
 {
     boost::json::object json;
-    if (appId) json["appId"]=appId;
-    if (classId) json["classId"]=classId;
-    if (instanceId) json["instanceId"]=instanceId;
+    if (appId!=SteamBot::AppID::None) json["appId"]=static_cast<std::underlying_type_t<decltype(appId)>>(appId);
+    if (classId!=SteamBot::ClassID::None) json["classId"]=static_cast<std::underlying_type_t<decltype(classId)>>(classId);
+    if (instanceId!=SteamBot::InstanceID::None) json["instanceId"]=static_cast<std::underlying_type_t<decltype(instanceId)>>(instanceId);
     return json;
 }
 

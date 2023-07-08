@@ -33,4 +33,20 @@ namespace SteamBot
     enum class PackageID : uint32_t {
         Steam=0		// I think?
     };
+
+    enum class AssetID : uint64_t {
+        None=0
+    };
+
+    enum class ContextID : int32_t {
+        None=-1
+    };
+
+    enum class ClassID : uint64_t {
+        None=0
+    };
+
+    enum class InstanceID : uint64_t {
+        None=0
+    };
 }
