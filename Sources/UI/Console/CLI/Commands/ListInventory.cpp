@@ -135,8 +135,8 @@ static void outputInventory(SteamBot::ClientInfo& clientInfo, const Inventory& i
     for (const auto& item : items)
     {
         std::cout << toInteger(item.inventoryItem->appId);
-        std::cout << "/" << item.inventoryItem->contextId;
-        std::cout << "/" << item.inventoryItem->assetId;
+        std::cout << "/" << toInteger(item.inventoryItem->contextId);
+        std::cout << "/" << toInteger(item.inventoryItem->assetId);
         std::cout << ": ";
 
         if (item.inventoryItem->amount>1)

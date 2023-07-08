@@ -35,8 +35,8 @@ namespace SteamBot
             class InventoryItem : public SteamBot::AssetKey
             {
             public:
-                int32_t contextId=-1;
-                uint64_t assetId=0;
+                SteamBot::ContextID contextId=SteamBot::ContextID::None;
+                SteamBot::AssetID assetId=SteamBot::AssetID::None;
                 uint32_t amount=0;
 
             public:

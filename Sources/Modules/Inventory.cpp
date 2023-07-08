@@ -57,6 +57,13 @@ typedef SteamBot::Modules::Inventory::Whiteboard::Inventory Inventory;
 
 /************************************************************************/
 
+template <typename T> static auto toInteger(T number) requires(std::is_enum_v<T>)
+{
+    return static_cast<std::underlying_type_t<T>>(number);
+}
+
+/************************************************************************/
+
 LoadInventory::LoadInventory() =default;
 LoadInventory::~LoadInventory() =default;
 
@@ -108,8 +115,8 @@ boost::json::value InventoryItem::toJson() const
 {
     auto json=AssetKey::toJson();
     auto& object=json.as_object();
-    if (contextId!=0) object["contextId"]=contextId;
-    if (assetId!=0) object["assetId"]=assetId;
+    if (contextId!=SteamBot::ContextID::None) object["contextId"]=toInteger(contextId);
+    if (assetId!=SteamBot::AssetID::None) object["assetId"]=toInteger(assetId);
     if (amount!=0) object["amount"]=amount;
     return json;
 }
