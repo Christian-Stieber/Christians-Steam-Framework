@@ -46,6 +46,7 @@ namespace SteamBot
             std::string name;
             std::string type;
             SteamBot::AppID marketFeeApp=SteamBot::AppID::None;
+            bool isTradable=false;
 
         public:
             AssetInfo(const boost::json::value&);

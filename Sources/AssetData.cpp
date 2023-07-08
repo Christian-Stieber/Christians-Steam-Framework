@@ -201,6 +201,7 @@ AssetInfo::AssetInfo(const boost::json::value& json)
     SteamBot::JSON::optString(json, "name", name);
     SteamBot::JSON::optString(json, "type", type);
     SteamBot::JSON::optNumber(json, "market_fee_app", marketFeeApp);
+    SteamBot::JSON::optBool(json, "tradable", isTradable);
 
     {
         typedef AssetInfo::ItemType(*ItemTypeCheck)(const boost::json::value&, const AssetInfo&);
