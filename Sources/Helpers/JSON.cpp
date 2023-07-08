@@ -41,3 +41,23 @@ bool SteamBot::JSON::optString(const boost::json::value& json, std::string_view 
     }
     return false;
 }
+
+/************************************************************************/
+
+bool SteamBot::JSON::optBool(const boost::json::value& json, std::string_view key, bool& result)
+{
+    if (auto item=json.as_object().if_contains(key))
+    {
+        if (item->is_number())
+        {
+            auto value=item->to_number<unsigned int>();
+            result=(value!=0);
+        }
+        else
+        {
+            result=item->as_bool();
+        }
+        return true;
+    }
+    return false;
+}

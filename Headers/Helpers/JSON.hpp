@@ -88,6 +88,16 @@ namespace SteamBot
 {
     namespace JSON
     {
+        bool optBool(const boost::json::value&, std::string_view, bool&);
+    }
+}
+
+/************************************************************************/
+
+namespace SteamBot
+{
+    namespace JSON
+    {
         const boost::json::string* optString(const boost::json::value&, std::string_view);
         bool optString(const boost::json::value&, std::string_view, std::string&);
     }
