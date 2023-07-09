@@ -22,9 +22,12 @@
 #include "SendTrade.hpp"
 #include "Modules/WebSession.hpp"
 #include "Modules/TradeToken.hpp"
+#include "Modules/Inventory.hpp"
 #include "Web/URLEncode.hpp"
 #include "Helpers/JSON.hpp"
 #include "SteamID.hpp"
+
+#include <boost/log/trivial.hpp>
 
 /************************************************************************/
 
@@ -46,6 +49,16 @@ SendTrade::Item::~Item() =default;
 namespace
 {
     class ErrorException { };
+}
+
+/************************************************************************/
+
+SendTrade::Item::Item(const SteamBot::Modules::Inventory::InventoryItem& item)
+{
+    appId=item.appId;
+    contextId=item.contextId;
+    assetId=item.assetId;
+    amount=item.amount;
 }
 
 /************************************************************************/
@@ -113,9 +126,9 @@ static boost::json::object makeTradeOfferData(const SendTrade& sendTrade)
                 for (const auto item : items)
                 {
                     boost::json::object object;
-                    object["appid"]=toInteger(item.appId);
-                    object["contextid"]=toInteger(item.contextId);
-                    object["assetid"]=toInteger(item.assetId);
+                    object["appid"]=std::to_string(toInteger(item.appId));
+                    object["contextid"]=std::to_string(toInteger(item.contextId));
+                    object["assetid"]=std::to_string(toInteger(item.assetId));
                     object["amount"]=(item.amount==0 ? 1 : item.amount);
                     array.emplace_back(std::move(object));
                 }
@@ -175,29 +188,39 @@ static std::shared_ptr<Request> makeTradeOfferRequest(const SendTrade& sendTrade
 
     std::shared_ptr<Request> request;
 
+    auto params=std::make_shared<Params>(sendTrade);
+    request=std::make_shared<Request>();
+    request->queryMaker=[params=std::move(params)]() {
+        {
+            auto cookies=SteamBot::Client::getClient().whiteboard.has<SteamBot::Modules::WebSession::Whiteboard::Cookies>();
+            assert(cookies!=nullptr);
+            SteamBot::Web::formUrlencode(params->body, "sessionid", cookies->sessionid);
+        }
+
+        auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::post, std::move(params->url));
+        query->request.set(boost::beast::http::field::referer, params->referer);
+        query->request.body()=std::move(params->body);
+        query->request.content_length(query->request.body().size());
+        query->request.base().set("Content-Type", "application/x-www-form-urlencoded");
+        return query;
+    };
+
+    return request;
+}
+
+/************************************************************************/
+
+bool SendTrade::send() const
+{
     try
     {
-        auto params=std::make_shared<Params>(sendTrade);
-        request=std::make_shared<Request>();
-        request->queryMaker=[params=std::move(params)]() {
-            {
-                auto cookies=SteamBot::Client::getClient().whiteboard.has<SteamBot::Modules::WebSession::Whiteboard::Cookies>();
-                assert(cookies!=nullptr);
-                SteamBot::Web::formUrlencode(params->body, "sessionid", cookies->sessionid);
-            }
-
-            auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::post, std::move(params->url));
-            query->request.set(boost::beast::http::field::referer, params->referer);
-            query->request.body()=std::move(params->body);
-            query->request.content_length(query->request.body().size());
-            query->request.base().set("Content-Type", "application/x-www-form-urlencoded");
-
-            return query;
-        };
+        auto request=makeTradeOfferRequest(*this);
+        auto response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
+        auto string=SteamBot::HTTPClient::parseString(*(response->query));
+        return true;
     }
     catch(const ErrorException&)
     {
-        request=nullptr;
+        return false;
     }
-    return request;
 }

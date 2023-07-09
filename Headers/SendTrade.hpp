@@ -28,6 +28,19 @@
 
 namespace SteamBot
 {
+    namespace Modules
+    {
+        namespace Inventory
+        {
+            class InventoryItem;
+        }
+    }
+}
+
+/************************************************************************/
+
+namespace SteamBot
+{
     class SendTrade
     {
     public:
@@ -36,6 +49,9 @@ namespace SteamBot
         public:
             Item();
             ~Item();
+
+        public:
+            Item(const SteamBot::Modules::Inventory::InventoryItem&);
 
         public:
             SteamBot::AppID appId=SteamBot::AppID::None;
@@ -52,5 +68,8 @@ namespace SteamBot
         ClientInfo* partner;
         std::vector<Item> myItems;
         std::vector<Item> theirItems;
+
+    public:
+        bool send() const;
     };
 }
