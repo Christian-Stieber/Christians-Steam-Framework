@@ -76,7 +76,7 @@ namespace SteamBot
 	private:
 		static inline constexpr T valueMask(uint8_t count)
 		{
-			return (1<<count)-1;
+			return (1ULL<<count)-1;
 		}
 
 	private:
