@@ -73,6 +73,15 @@ void TradeTokenModule::run(SteamBot::Client& client)
 
 /************************************************************************/
 
-void SteamBot::Modules::TradeToken::use()
+std::string SteamBot::Modules::TradeToken::get(const SteamBot::DataFile& dataFile)
 {
+    std::string token;
+
+    dataFile.examine([&token](const boost::json::value& json) mutable {
+        if (auto value=SteamBot::JSON::getItem(json, "Info", "TradeToken"))
+        {
+            token=value->as_string();
+        }
+    });
+    return token;
 }

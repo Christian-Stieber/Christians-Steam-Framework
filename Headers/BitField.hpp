@@ -62,6 +62,11 @@ namespace SteamBot
 			return data;
 		}
 
+        void setValue(T newValue)
+        {
+            data=newValue;
+        }
+
 	public:
 		BitField(T myData=0)
 			: data(myData)

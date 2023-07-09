@@ -19,22 +19,38 @@
 
 #pragma once
 
-/************************************************************************/
+#include "Client/Client.hpp"
+#include "MiscIDs.hpp"
 
-namespace SteamBot
-{
-    class DataFile;
-}
+#include <vector>
 
 /************************************************************************/
 
 namespace SteamBot
 {
-    namespace Modules
+    class SendTrade
     {
-        namespace TradeToken
+    public:
+        class Item
         {
-            std::string get(const DataFile&);
-        }
-    }
+        public:
+            Item();
+            ~Item();
+
+        public:
+            SteamBot::AppID appId=SteamBot::AppID::None;
+            SteamBot::ContextID contextId=SteamBot::ContextID::None;
+            SteamBot::AssetID assetId=SteamBot::AssetID::None;
+            uint32_t amount=0;
+        };
+
+    public:
+        SendTrade();
+        ~SendTrade();
+
+    public:
+        ClientInfo* partner;
+        std::vector<Item> myItems;
+        std::vector<Item> theirItems;
+    };
 }
