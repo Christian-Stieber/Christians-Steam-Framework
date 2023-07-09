@@ -92,6 +92,7 @@ namespace SteamBot
             static void useSettingsCommand();
             static void useLoadInventoryCommand();
             static void useListInventoryCommand();
+            static void useSendInventoryCommand();
         };
     }
 }
