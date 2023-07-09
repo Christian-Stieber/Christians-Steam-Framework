@@ -26,4 +26,5 @@
 namespace SteamBot
 {
     bool acceptTrade(SteamBot::TradeOfferID);
+    bool declineTrade(SteamBot::TradeOfferID);
 }
