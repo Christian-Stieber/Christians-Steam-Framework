@@ -62,12 +62,13 @@ static std::vector<SendTrade::Item> collectItems(const Inventory& inventory)
 
 bool SteamBot::sendInventory(SteamBot::ClientInfo* partner)
 {
+    bool result=false;
     if (auto inventory=SteamBot::Client::getClient().whiteboard.has<Inventory::Ptr>())
     {
         SendTrade sendTrade;
         sendTrade.partner=partner;
         sendTrade.myItems=collectItems(**inventory);
-        sendTrade.send();
+        result=sendTrade.send();
     }
-    return false;
+    return result;
 }
