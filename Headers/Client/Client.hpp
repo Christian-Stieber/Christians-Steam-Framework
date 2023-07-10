@@ -24,6 +24,7 @@
 #include "Client/Messageboard.hpp"
 #include "Client/Counter.hpp"
 #include "DataFile.hpp"
+#include "MiscIDs.hpp"
 
 /************************************************************************/
 
@@ -134,6 +135,9 @@ namespace SteamBot
 
         static ClientInfo* create(std::string);
         static ClientInfo* find(std::string_view);
+
+        static ClientInfo* find(std::function<bool(const boost::json::value&)>);
+        static ClientInfo* find(SteamBot::AccountID);
 
     public:
         static std::vector<ClientInfo*> getClients();

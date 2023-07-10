@@ -1,5 +1,7 @@
 #include "Client/Client.hpp"
 #include "Helpers/StringCompare.hpp"
+#include "Helpers/JSON.hpp"
+#include "SteamID.hpp"
 
 #include <filesystem>
 #include <regex>
@@ -110,6 +112,39 @@ ClientInfo* ClientInfo::find(std::string_view accountName)
 {
     std::lock_guard<decltype(mutex)> lock(mutex);
     return doFind(accountName);
+}
+
+/************************************************************************/
+
+ClientInfo* ClientInfo::find(std::function<bool(const boost::json::value&)> pred)
+{
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    for (auto info : clients)
+    {
+        auto& dataFile=SteamBot::DataFile::get(info->accountName, SteamBot::DataFile::FileType::Account);
+        if (dataFile.examine(pred))
+        {
+            return info;
+        }
+    }
+    return nullptr;
+}
+
+/************************************************************************/
+
+ClientInfo* ClientInfo::find(SteamBot::AccountID accountId)
+{
+    return find([accountId](const boost::json::value& json) -> bool {
+        if (auto item=SteamBot::JSON::getItem(json, "Info", "SteamID"))
+        {
+            SteamBot::SteamID steamId(item->to_number<SteamBot::SteamID::valueType>());
+            if (steamId.getAccountId()==accountId)
+            {
+                return true;
+            }
+        }
+        return false;
+    });
 }
 
 /************************************************************************/
