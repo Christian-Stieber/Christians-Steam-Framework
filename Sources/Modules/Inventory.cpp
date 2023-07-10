@@ -47,6 +47,7 @@
 #include "MiscIDs.hpp"
 #include "SteamID.hpp"
 #include "UI/UI.hpp"
+#include "Exceptions.hpp"
 
 #include "Steam/ProtoBuf/steammessages_clientserver_2.hpp"
 
@@ -55,63 +56,71 @@
 typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
 typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
 
-typedef SteamBot::Modules::Inventory::Messageboard::LoadInventory LoadInventory;
-
-typedef SteamBot::Modules::Inventory::InventoryItem InventoryItem;
-typedef SteamBot::Modules::Inventory::Whiteboard::Inventory Inventory;
+typedef SteamBot::Inventory::ItemKey ItemKey;
+typedef SteamBot::Inventory::Item Item;
+typedef SteamBot::Inventory::Inventory Inventory;
 
 typedef SteamBot::Modules::ClientNotification::Messageboard::ClientNotification ClientNotification;
 
 /************************************************************************/
 
-LoadInventory::LoadInventory() =default;
-LoadInventory::~LoadInventory() =default;
+ItemKey::ItemKey() =default;
+ItemKey::~ItemKey() =default;
 
-/************************************************************************/
-
-InventoryItem::InventoryItem() =default;
-InventoryItem::~InventoryItem() =default;
-
-/************************************************************************/
-
-Inventory::Inventory() =default;
+Item::~Item() =default;
 Inventory::~Inventory() =default;
+
+/************************************************************************/
+
+Inventory::Inventory()
+    : when(std::chrono::system_clock::now())
+{
+}
 
 /************************************************************************/
 /*
  * This takes a json from the inventory:
  * {
  *    "appid": 753,
- *    "classid": "5295844374",
- *    "instanceid": "3873503133",
- *
  *    "contextid": "6",
  *    "assetid": "25267868949",
- *    "amount": "1"
+ *    ...
  * }
  */
 
-bool InventoryItem::init(const boost::json::object& json)
+ItemKey::ItemKey(const boost::json::value& json)
 {
-    if (AssetKey::init(json))
-    {
-        try
-        {
-            SteamBot::JSON::optNumber(json, "contextid", contextId);
-            SteamBot::JSON::optNumber(json, "assetid", assetId);
-            SteamBot::JSON::optNumber(json, "amount", amount);
-            return true;
-        }
-        catch(...)
-        {
-        }
-    }
-    return false;
+    appId=SteamBot::JSON::toNumber<SteamBot::AppID>(json.at("appid"));
+    contextId=SteamBot::JSON::toNumber<SteamBot::ContextID>(json.at("contextid"));
+    assetId=SteamBot::JSON::toNumber<SteamBot::AssetID>(json.at("assetid"));
+}
+
+/************************************************************************/
+/*
+ * This takes a json from the inventory:
+ * {
+ *    "appid": 753,
+ *    "contextid": "6",
+ *    "assetid": "25267868949",
+ *    ...
+ *    "classid": "5295844374",
+ *    "instanceid": "3873503133",
+ *    ...
+ *    "amount": "1",
+ *    ...
+ * }
+ */
+
+Item::Item(const boost::json::value& json)
+    : ItemKey(json), AssetKey(json)
+{
+    assert(ItemKey::appId==AssetKey::appId);
+    SteamBot::JSON::optNumber(json, "amount", amount);
 }
 
 /************************************************************************/
 
-boost::json::value InventoryItem::toJson() const
+boost::json::value Item::toJson() const
 {
     auto json=AssetKey::toJson();
     auto& object=json.as_object();
@@ -128,10 +137,11 @@ namespace
     class InventoryModule : public SteamBot::Client::Module
     {
     private:
-        class InventoryUpdate;
+        boost::fibers::mutex mutex;		// locked while we are loading the inventory
 
     private:
-        std::chrono::system_clock::time_point receivedUpdateNotification;
+        std::chrono::system_clock::time_point lastUpdateNotification;
+        std::vector<ItemKey> updateItems;
 
     private:
         static SteamBot::RateLimiter& getRateLimiter();
@@ -139,7 +149,6 @@ namespace
         static std::shared_ptr<const Response> makeInventoryQuery(const boost::urls::url&);
 
     private:
-        SteamBot::Messageboard::WaiterType<LoadInventory> loadInventory;
         SteamBot::Messageboard::WaiterType<ClientNotification> clientNotification;
         SteamBot::Messageboard::WaiterType<Steam::CMsgClientItemAnnouncementsMessageType> clientItemAnnouoncements;
 
@@ -150,7 +159,6 @@ namespace
         void load();
 
     public:
-        void handle(std::shared_ptr<const LoadInventory>);
         void handle(std::shared_ptr<const ClientNotification>);
         void handle(std::shared_ptr<const Steam::CMsgClientItemAnnouncementsMessageType>);
 
@@ -160,6 +168,8 @@ namespace
 
         virtual void init(SteamBot::Client&) override;
         virtual void run(SteamBot::Client&) override;
+
+        std::shared_ptr<const Inventory> get();
     };
 
     InventoryModule::Init<InventoryModule> init;
@@ -189,23 +199,22 @@ SteamBot::RateLimiter& InventoryModule::getRateLimiter()
  *    ]
  *    ...
  * }
- *
- * Returns the last asset id, or 0.
  */
 
 void InventoryModule::processInventoryAssets(Inventory& inventory, const boost::json::value& json)
 {
     for (const auto& asset : json.at("assets").as_array())
     {
-        auto item=std::make_shared<InventoryItem>();
-        if (item->init(asset.as_object()))
+        try
         {
+            auto item=std::make_shared<Item>(asset);
             BOOST_LOG_TRIVIAL(debug) << "inventory item: " << item->toJson();
             inventory.items.emplace_back(std::move(item));
         }
-        else
+        catch(...)
         {
             BOOST_LOG_TRIVIAL(error) << "unable to process inventory item: " << asset;
+            throw;
         }
     }
 }
@@ -278,68 +287,156 @@ void InventoryModule::load()
     static const auto appId=SteamBot::AppID::Steam;
     static const auto contextId=static_cast<SteamBot::ContextID>(6);	// Community Items
 
-    auto url=makeUrl(appId, contextId);
-    
-    auto inventory=std::make_shared<Inventory>();
-    uint64_t startAssetId=0;
-
-    while (true)
+    try
     {
-        if (startAssetId!=0)
-        {
-            url.params().set("start_assetid", std::to_string(startAssetId));
-        }
+        auto url=makeUrl(appId, contextId);
 
-        auto response=makeInventoryQuery(url);
-        const auto json=SteamBot::HTTPClient::parseJson(*(response->query));
+        auto inventory=std::make_shared<Inventory>();
+        uint64_t startAssetId=0;
 
-        try
+        lastUpdateNotification=std::chrono::system_clock::time_point();
+
+        while (true)
         {
+            if (startAssetId!=0)
+            {
+                url.params().set("start_assetid", std::to_string(startAssetId));
+            }
+
+            auto response=makeInventoryQuery(url);
+            const auto json=SteamBot::HTTPClient::parseJson(*(response->query));
+
             processInventoryAssets(*inventory, json);
             processInventoryDescriptions(json);
 
             /*
              * {
-             *    "assets": ...
-             *    "descriptions": ...
-             *
+             *    ...
              *    "more_items":1,
              *    "last_assetid":"14070692302",
              *    "total_inventory_count":100,
-             *    "success":1,
-             *    "rwgrsn":-2
+             *    "success":1
              * }
              */
 
-            try
             {
                 auto total=json.at("total_inventory_count").to_number<uint32_t>();
                 SteamBot::UI::OutputText() << "processed " << inventory->items.size() << " inventory items out of " << total;
             }
-            catch(...)
+
             {
+                int moreItems=0;
+                SteamBot::JSON::optNumber(json, "more_items", moreItems);
+                if (!moreItems) break;
             }
 
-            bool moreItems=json.at("more_items").to_number<int>()==1 && SteamBot::JSON::optNumber(json, "last_assetid", startAssetId);
-            if (!moreItems)
-            {
-                break;
-            }
+            startAssetId=SteamBot::JSON::toNumber<decltype(startAssetId)>(json.at("last_assetid"));
         }
-        catch(...)
-        {
-            break;
-        }
+
+        getClient().whiteboard.set<Inventory::Ptr>(std::move(inventory));
+    }
+    catch(const SteamBot::OperationCancelledException&)
+    {
+        throw;
+    }
+    catch(...)
+    {
+        BOOST_LOG_TRIVIAL(error) << "failed to load inventory";
+        SteamBot::UI::OutputText() << "failed to load inventory";
+        getClient().whiteboard.clear<Inventory::Ptr>();
+    }
+}
+
+/************************************************************************/
+/*
+ * Note: while notifications give me an asset-id, I couldn't figure
+ * out how to get the class-id from it. My only idea was loading the
+ * inventory with a "filters" item, but... that didn't work.
+ *
+ * So, I'll just record the fact that something has been updated,
+ * and reload the inventory after some grace delay.
+ */
+
+void InventoryModule::updateNotification(std::chrono::system_clock::time_point when)
+{
+    if (when>lastUpdateNotification)
+    {
+        lastUpdateNotification=when;
+    }
+}
+
+/************************************************************************/
+
+void InventoryModule::handle(std::shared_ptr<const Steam::CMsgClientItemAnnouncementsMessageType>)
+{
+    // ToDo: should we be using rtime32_gained ??
+    updateNotification(std::chrono::system_clock::now());
+}
+
+/************************************************************************/
+
+void InventoryModule::handle(std::shared_ptr<const ClientNotification> notification)
+{
+    if (notification->type==ClientNotification::Type::InventoryItem)
+    {
+        updateNotification(notification->timestamp);
+    }
+}
+
+/************************************************************************/
+
+void InventoryModule::init(SteamBot::Client& client)
+{
+    clientNotification=client.messageboard.createWaiter<ClientNotification>(*waiter);
+    clientItemAnnouoncements=client.messageboard.createWaiter<Steam::CMsgClientItemAnnouncementsMessageType>(*waiter);
+}
+
+/************************************************************************/
+
+void InventoryModule::run(SteamBot::Client& client)
+{
+    SteamBot::Modules::ClientNotification::use();
+
+    waitForLogin();
+
+    {
+        auto message=std::make_unique<Steam::CMsgClientRequestItemAnnouncementsMessageType>();
+        SteamBot::Modules::Connection::Messageboard::SendSteamMessage::send(std::move(message));
     }
 
-    SteamBot::UI::OutputText() << "inventory loaded: " << inventory->items.size() << " items";
+    while (true)
+    {
+        waiter->wait();
+        clientNotification->handle(this);
+        clientItemAnnouoncements->handle(this);
+    }
+}
 
-    receivedUpdateNotification=std::chrono::system_clock::time_point();
+/************************************************************************/
 
-    inventory->when=std::chrono::system_clock::now();
-    loadInventory->discardMessages();
+std::shared_ptr<const Inventory> InventoryModule::get()
+{
+    std::lock_guard<decltype(mutex)> lock(mutex);
 
-    getClient().whiteboard.set<Inventory::Ptr>(std::move(inventory));
+    if (auto inventory=getClient().whiteboard.has<Inventory::Ptr>())
+    {
+        if ((*inventory)->when>=lastUpdateNotification)
+        {
+            return *inventory;
+        }
+    }
+    load();
+    return getClient().whiteboard.get<Inventory::Ptr>(nullptr);
+}
+
+/************************************************************************/
+/*
+ * Returns the current inventory, possibly loading it if necessary.
+ */
+
+std::shared_ptr<const Inventory> SteamBot::Inventory::get()
+{
+    return SteamBot::Client::getClient().getModule<InventoryModule>()->get();
 }
 
 /************************************************************************/
@@ -347,6 +444,10 @@ void InventoryModule::load()
  * That doesn't seem to work -- I was trying to add a "filter"
  * parameter that the protobuf has, but I'm either doing it
  * incorrectly, or it's not actually supported.
+ *
+ * I'm still leaving it around for a bit, even though it
+ * won't be updated as other code changes so it probably
+ * won't even compile anymore.
  */
 
 #if 0
@@ -410,105 +511,3 @@ public:
     }
 };
 #endif
-
-/************************************************************************/
-/*
- * Note: while notifications give me an assetöid, I couldn't figure
- * out how to get the class-id from it. My only idea was loading the
- * inventory with a "filters" item, but... that didn't work.
- *
- * So, I'll just record the fact that something has been updated,
- * and reload the inventory after some grace delay.
- */
-
-void InventoryModule::updateNotification(std::chrono::system_clock::time_point when)
-{
-    if (when>receivedUpdateNotification)
-    {
-        if (auto inventory=getClient().whiteboard.has<Inventory::Ptr>())
-        {
-            // ToDo: I'll leave it like that for now
-            if (when>(*inventory)->when)
-            {
-                receivedUpdateNotification=when;
-                SteamBot::UI::OutputText() << "received inventory update notification";
-            }
-        }
-    }
-}
-
-/************************************************************************/
-
-void InventoryModule::handle(std::shared_ptr<const Steam::CMsgClientItemAnnouncementsMessageType>)
-{
-    // ToDo: should we be using rtime32_gained ??
-    updateNotification(std::chrono::system_clock::now());
-}
-
-/************************************************************************/
-
-void InventoryModule::handle(std::shared_ptr<const ClientNotification> notification)
-{
-    if (notification->type==ClientNotification::Type::InventoryItem)
-    {
-        updateNotification(notification->timestamp);
-    }
-}
-
-/************************************************************************/
-
-void InventoryModule::handle(std::shared_ptr<const LoadInventory>)
-{
-    load();
-}
-
-/************************************************************************/
-
-void InventoryModule::init(SteamBot::Client& client)
-{
-    loadInventory=client.messageboard.createWaiter<LoadInventory>(*waiter);
-    clientNotification=client.messageboard.createWaiter<ClientNotification>(*waiter);
-    clientItemAnnouoncements=client.messageboard.createWaiter<Steam::CMsgClientItemAnnouncementsMessageType>(*waiter);
-}
-
-/************************************************************************/
-
-void InventoryModule::run(SteamBot::Client& client)
-{
-    waitForLogin();
-
-    {
-        auto message=std::make_unique<Steam::CMsgClientRequestItemAnnouncementsMessageType>();
-        SteamBot::Modules::Connection::Messageboard::SendSteamMessage::send(std::move(message));
-    }
-
-    while (true)
-    {
-        if (receivedUpdateNotification.time_since_epoch().count()>0)
-        {
-            auto duration=receivedUpdateNotification+std::chrono::seconds(30)-std::chrono::system_clock::now();
-            if (duration<=decltype(duration)::zero())
-            {
-                load();
-            }
-            else
-            {
-                waiter->wait(std::chrono::duration_cast<std::chrono::milliseconds>(duration));
-            }
-        }
-        else
-        {
-            waiter->wait();
-        }
-        loadInventory->handle(this);
-        clientNotification->handle(this);
-        clientItemAnnouoncements->handle(this);
-    }
-}
-
-/************************************************************************/
-
-void SteamBot::Modules::Inventory::use()
-{
-    SteamBot::Modules::ClientNotification::use();
-}

@@ -29,8 +29,7 @@
 
 /************************************************************************/
 
-typedef SteamBot::Modules::Inventory::Whiteboard::Inventory Inventory;
-typedef SteamBot::Modules::Inventory::InventoryItem InventoryItem;
+typedef SteamBot::Inventory::Inventory Inventory;
 
 /************************************************************************/
 
@@ -72,10 +71,7 @@ static Inventory::Ptr getInventory(const SteamBot::ClientInfo& clientInfo)
     if (auto client=clientInfo.getClient())
     {
         SteamBot::Modules::Executor::execute(std::move(client), [&result](SteamBot::Client& client) mutable {
-            if (auto inventory=client.whiteboard.has<Inventory::Ptr>())
-            {
-                result=*inventory;
-            }
+            result=SteamBot::Inventory::get();
         });
     }
     return result;
@@ -88,7 +84,7 @@ static void outputInventory(SteamBot::ClientInfo& clientInfo, const Inventory& i
     class Item
     {
     public:
-        std::shared_ptr<const InventoryItem> inventoryItem;
+        std::shared_ptr<const SteamBot::Inventory::Item> inventoryItem;
         std::shared_ptr<const SteamBot::AssetData::AssetInfo> assetInfo;
 
     public:
@@ -179,5 +175,4 @@ bool ListInventoryCommand::execute(SteamBot::ClientInfo* clientInfo, std::vector
 
 void SteamBot::UI::CLI::useListInventoryCommand()
 {
-    useLoadInventoryCommand();
 }

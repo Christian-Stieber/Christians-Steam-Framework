@@ -28,55 +28,73 @@
 
 namespace SteamBot
 {
-    namespace Modules
+    namespace Inventory
     {
-        namespace Inventory
+        class ItemKey
         {
-            void use();
+        public:
+            SteamBot::AppID appId=SteamBot::AppID::None;
+            SteamBot::ContextID contextId=SteamBot::ContextID::None;
+            SteamBot::AssetID assetId=SteamBot::AssetID::None;
 
-            class InventoryItem : public SteamBot::AssetKey
-            {
-            public:
-                SteamBot::ContextID contextId=SteamBot::ContextID::None;
-                SteamBot::AssetID assetId=SteamBot::AssetID::None;
-                uint32_t amount=0;
+        public:
+            ItemKey();
+            ItemKey(const boost::json::value&);
+            virtual ~ItemKey();
+        };
+    }
+}
 
-            public:
-                InventoryItem();
-                virtual ~InventoryItem();
+/************************************************************************/
 
-                bool init(const boost::json::object&);
+namespace SteamBot
+{
+    namespace Inventory
+    {
+        class Item : public ItemKey, public SteamBot::AssetKey
+        {
+        public:
+            using ItemKey::appId;
+            uint32_t amount=0;
 
-                virtual boost::json::value toJson() const override;
-            };
+        public:
+            Item(const boost::json::value&);
+            virtual ~Item();
 
-            namespace Messageboard
-            {
-                class LoadInventory
-                {
-                public:
-                    LoadInventory();
-                    ~LoadInventory();
-                };
-            }
+            bool init(const boost::json::object&);
 
-            namespace Whiteboard
-            {
-                // Note: we store a Inventory::Ptr in the whiteboard
-                class Inventory
-                {
-                public:
-                    typedef std::shared_ptr<const Inventory> Ptr;
+            virtual boost::json::value toJson() const override;
+        };
+    }
+}
 
-                public:
-                    std::chrono::system_clock::time_point when;
-                    std::vector<std::shared_ptr<const InventoryItem>> items;
+/************************************************************************/
+/*
+ * In most cases, you'll be using the get() call to get the inventory
+ * data; this will fetch the data from Steam as needed.
+ *
+ * I'm still storing an Inventory::Ptr into the whiteboard, but I
+ * don't see much use for that.
+ */
 
-                public:
-                    Inventory();
-                    ~Inventory();
-                };
-            }
-        }
+namespace SteamBot
+{
+    namespace Inventory
+    {
+        class Inventory
+        {
+        public:
+            typedef std::shared_ptr<const Inventory> Ptr;
+
+        public:
+            std::chrono::system_clock::time_point when;
+            std::vector<std::shared_ptr<const Item>> items;
+
+        public:
+            Inventory();
+            ~Inventory();
+        };
+
+        std::shared_ptr<const Inventory> get();
     }
 }

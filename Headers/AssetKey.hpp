@@ -44,8 +44,12 @@ namespace SteamBot
         size_t hash() const;
         bool operator==(const AssetKey&) const =default;
 
+    private:
+        void fromJson(const boost::json::value&);
+
     public:
         AssetKey();
+        AssetKey(const  boost::json::value&);
         virtual ~AssetKey();
 
         virtual boost::json::value toJson() const;

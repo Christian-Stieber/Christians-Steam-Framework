@@ -20,6 +20,7 @@
 #pragma once
 
 #include "Client/Client.hpp"
+#include "Modules/Inventory.hpp"
 #include "MiscIDs.hpp"
 
 #include <vector>
@@ -28,35 +29,19 @@
 
 namespace SteamBot
 {
-    namespace Modules
-    {
-        namespace Inventory
-        {
-            class InventoryItem;
-        }
-    }
-}
-
-/************************************************************************/
-
-namespace SteamBot
-{
     class SendTrade
     {
     public:
-        class Item
+        class Item : public SteamBot::Inventory::ItemKey
         {
         public:
             Item();
             ~Item();
 
         public:
-            Item(const SteamBot::Modules::Inventory::InventoryItem&);
+            Item(const SteamBot::Inventory::Item&);
 
         public:
-            SteamBot::AppID appId=SteamBot::AppID::None;
-            SteamBot::ContextID contextId=SteamBot::ContextID::None;
-            SteamBot::AssetID assetId=SteamBot::AssetID::None;
             uint32_t amount=0;
         };
 

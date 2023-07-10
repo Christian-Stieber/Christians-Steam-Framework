@@ -33,6 +33,33 @@ AssetKey::AssetKey() =default;
 AssetKey::~AssetKey() =default;
 
 /************************************************************************/
+/*
+ * This takes a json from the Steam inventory data, which is slightly
+ * different from what our toJson() produces.
+ * I'll update this if I need to read our own json as well.
+ *
+ * {
+ *    "appid": 753,
+ *    "classid": "5295844374",
+ *    "instanceid": "3873503133"
+ * }
+ */
+
+void AssetKey::fromJson(const boost::json::value& json)
+{
+    appId=SteamBot::JSON::toNumber<decltype(appId)>(json.at("appid"));
+    classId=SteamBot::JSON::toNumber<decltype(classId)>(json.at("classid"));
+    SteamBot::JSON::optNumber(json, "instanceid", instanceId);
+}
+
+/************************************************************************/
+
+AssetKey::AssetKey(const boost::json::value& json)
+{
+    fromJson(json);
+}
+
+/************************************************************************/
 
 bool AssetKey::parseString(std::string_view& string, std::string_view prefix)
 {
@@ -66,25 +93,12 @@ bool AssetKey::init(std::string_view& string)
 }
 
 /************************************************************************/
-/*
- * This takes a json from the Steam inventory data, which is slightly
- * different from what our toJson() produces.
- * I'll update this if I need to read our own json as well.
- *
- * {
- *    "appid": 753,
- *    "classid": "5295844374",
- *    "instanceid": "3873503133"
- * }
- */
 
 bool AssetKey::init(const boost::json::value& json)
 {
     try
     {
-        if (!SteamBot::JSON::optNumber(json, "appid", appId)) return false;
-        if (!SteamBot::JSON::optNumber(json, "classid", classId)) return false;
-        SteamBot::JSON::optNumber(json, "instanceid", instanceId);
+        fromJson(json);
         return true;
     }
     catch(...)

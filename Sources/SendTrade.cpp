@@ -58,11 +58,9 @@ namespace
 
 /************************************************************************/
 
-SendTrade::Item::Item(const SteamBot::Modules::Inventory::InventoryItem& item)
+SendTrade::Item::Item(const SteamBot::Inventory::Item& item)
+    : ItemKey(item)
 {
-    appId=item.appId;
-    contextId=item.contextId;
-    assetId=item.assetId;
     amount=item.amount;
 }
 

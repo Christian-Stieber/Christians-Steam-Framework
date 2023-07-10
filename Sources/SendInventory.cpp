@@ -26,7 +26,7 @@
 
 /************************************************************************/
 
-typedef SteamBot::Modules::Inventory::Whiteboard::Inventory Inventory;
+typedef SteamBot::Inventory::Inventory Inventory;
 typedef SteamBot::SendTrade SendTrade;
 
 /************************************************************************/
@@ -63,11 +63,11 @@ static std::vector<SendTrade::Item> collectItems(const Inventory& inventory)
 bool SteamBot::sendInventory(SteamBot::ClientInfo* partner)
 {
     bool result=false;
-    if (auto inventory=SteamBot::Client::getClient().whiteboard.has<Inventory::Ptr>())
+    if (auto inventory=SteamBot::Inventory::get())
     {
         SendTrade sendTrade;
         sendTrade.partner=partner;
-        sendTrade.myItems=collectItems(**inventory);
+        sendTrade.myItems=collectItems(*inventory);
         result=sendTrade.send();
     }
     return result;
