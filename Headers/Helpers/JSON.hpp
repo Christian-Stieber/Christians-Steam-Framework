@@ -89,6 +89,13 @@ namespace SteamBot
     namespace JSON
     {
         bool optBool(const boost::json::value&, std::string_view, bool&);
+
+        inline bool optBoolDefault(const boost::json::value& json, std::string_view key, bool value=false)
+        {
+            bool result=value;
+            optBool(json, key, result);
+            return result;
+        }
     }
 }
 
@@ -194,7 +201,6 @@ namespace SteamBot
             {
                 object.erase(first);
             }
-
         }
     }
 }

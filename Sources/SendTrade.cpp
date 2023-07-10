@@ -18,6 +18,11 @@
  */
 
 /************************************************************************/
+/*
+ * Inspired by ASF's SendTradeOffer()
+ */
+
+/************************************************************************/
 
 #include "SendTrade.hpp"
 #include "Modules/WebSession.hpp"
@@ -26,12 +31,12 @@
 #include "Web/URLEncode.hpp"
 #include "Helpers/JSON.hpp"
 #include "SteamID.hpp"
+#include "UI/UI.hpp"
 
 #include <boost/log/trivial.hpp>
 
 /************************************************************************/
 
-typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
 typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
 
 typedef SteamBot::SendTrade SendTrade;
@@ -154,21 +159,17 @@ static boost::json::object makeTradeOfferData(const SendTrade& sendTrade)
 
 /************************************************************************/
 
-static std::shared_ptr<Request> makeTradeOfferRequest(const SendTrade& sendTrade)
+namespace
 {
     static const boost::urls::url_view baseUrl{"https://steamcommunity.com/tradeoffer/new"};
 
-    class Params
+    class Params : public SteamBot::Modules::WebSession::PostWithSession
     {
-    public:
-        std::string body;
-        std::string referer;
-        boost::urls::url url;
-
     public:
         Params(const SendTrade& sendTrade)
         {
             SteamBot::SteamID steamId;
+
             body=makeBasicFormData(sendTrade, steamId);
             {
                 auto tradeOfferData=makeTradeOfferData(sendTrade);
@@ -185,27 +186,13 @@ static std::shared_ptr<Request> makeTradeOfferRequest(const SendTrade& sendTrade
             url.segments().push_back("send");
         }
     };
+}
 
-    std::shared_ptr<Request> request;
+/************************************************************************/
 
-    auto params=std::make_shared<Params>(sendTrade);
-    request=std::make_shared<Request>();
-    request->queryMaker=[params=std::move(params)]() {
-        {
-            auto cookies=SteamBot::Client::getClient().whiteboard.has<SteamBot::Modules::WebSession::Whiteboard::Cookies>();
-            assert(cookies!=nullptr);
-            SteamBot::Web::formUrlencode(params->body, "sessionid", cookies->sessionid);
-        }
-
-        auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::post, std::move(params->url));
-        query->request.set(boost::beast::http::field::referer, params->referer);
-        query->request.body()=std::move(params->body);
-        query->request.content_length(query->request.body().size());
-        query->request.base().set("Content-Type", "application/x-www-form-urlencoded");
-        return query;
-    };
-
-    return request;
+static std::shared_ptr<const Response> makeTradeOfferRequest(const SendTrade& sendTrade)
+{
+    return Params(sendTrade).execute();
 }
 
 /************************************************************************/
@@ -214,13 +201,26 @@ bool SendTrade::send() const
 {
     try
     {
-        auto request=makeTradeOfferRequest(*this);
-        auto response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
-        auto string=SteamBot::HTTPClient::parseString(*(response->query));
-        return true;
+        auto response=makeTradeOfferRequest(*this);
+        if (response->query->response.result()==boost::beast::http::status::ok)
+        {
+            auto json=SteamBot::HTTPClient::parseJson(*(response->query));
+
+            SteamBot::UI::OutputText output;
+            output << "created trade with id " << toInteger(SteamBot::JSON::toNumber<SteamBot::TradeOfferID>(json.at("tradeofferid")));
+            if (SteamBot::JSON::optBoolDefault(json, "needs_mobile_confirmation"))
+            {
+                output << "; needs mobile confirmation";
+            }
+            else if (SteamBot::JSON::optBoolDefault(json, "needs_email_confirmation"))
+            {
+                output << "; needs email confirmation @" << static_cast<std::string_view>(json.at("email_domain").as_string());
+            }
+            return true;
+        }
     }
     catch(const ErrorException&)
     {
-        return false;
     }
+    return false;
 }
