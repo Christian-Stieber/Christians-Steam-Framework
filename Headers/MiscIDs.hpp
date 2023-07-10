@@ -59,6 +59,11 @@ namespace SteamBot
     enum class TradeOfferID : uint64_t {
         None=0
     };
+
+    enum class NotificationID : uint64_t {
+        None=0
+    };
+
 }
 
 /************************************************************************/

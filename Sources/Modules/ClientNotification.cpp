@@ -18,12 +18,29 @@
  */
 
 /************************************************************************/
+/*
+ * Note: for some reason, I couldn't find SteamKit or ASF dealing
+ * with these. I couldn't find enums either.
+ */
+
+/************************************************************************/
 
 #include "Client/Module.hpp"
 #include "Modules/UnifiedMessageServer.hpp"
 #include "Modules/UnifiedMessageClient.hpp"
 #include "Modules/ClientNotification.hpp"
 #include "Helpers/ProtoPuf.hpp"
+#include "Helpers/Time.hpp"
+#include "EnumString.hpp"
+
+/************************************************************************/
+
+typedef SteamBot::Modules::ClientNotification::Messageboard::ClientNotification ClientNotification;
+
+/************************************************************************/
+
+ClientNotification::ClientNotification() =default;
+ClientNotification::~ClientNotification() =default;
 
 /************************************************************************/
 /*
@@ -81,6 +98,9 @@ namespace
     private:
         SteamBot::Messageboard::WaiterType<CSteamNotificationNotificationsReceivedNotificationMessageType> notificationReceived;
 
+    private:
+        void getNotifications();
+
     public:
         void handle(std::shared_ptr<const CSteamNotificationNotificationsReceivedNotificationMessageType>);
 
@@ -103,22 +123,70 @@ void ClientNotificationModule::init(SteamBot::Client& client)
     SteamBot::Modules::UnifiedMessageServer::registerNotification<CSteamNotificationNotificationsReceivedNotificationMessageType>("SteamNotificationClient.NotificationsReceived#1");
 }
 
+
 /************************************************************************/
 
-void ClientNotificationModule::handle(std::shared_ptr<const CSteamNotificationNotificationsReceivedNotificationMessageType> message)
+boost::json::value ClientNotification::toJson() const
+{
+    boost::json::object json;
+    json["id"]=toInteger(notificationId);
+    SteamBot::enumToJson(json, "type", type);
+    json["timestamp"]=SteamBot::Time::toString(timestamp);
+    if (expiry.time_since_epoch().count()!=0) json["expiry"]=SteamBot::Time::toString(expiry);
+    json["read"]=read;
+    json["body"]=body;
+    json["targets"]=targets;
+    json["hidden"]=hidden;
+    return json;
+}
+
+/************************************************************************/
+
+void ClientNotificationModule::getNotifications()
 {
     std::shared_ptr<CSteamNotification_GetSteamNotifications_Response> response;
     {
         CSteamNotification_GetSteamNotifications_Request request;
         response=SteamBot::Modules::UnifiedMessageClient::execute<CSteamNotification_GetSteamNotifications_Response>("SteamNotification.GetSteamNotifications#1", std::move(request));
     }
-    BOOST_LOG_TRIVIAL(info) << "CSteamNotification_GetSteamNotifications_Response: " << SteamBot::ProtoPuf::toJson(*response);
+
+    using namespace pp;
+    const auto& notifications=(*response)["notifications"_f];
+    for (const auto& item : notifications)
+    {
+        auto notification=std::make_shared<ClientNotification>();
+        notification->notificationId=static_cast<SteamBot::NotificationID>(item["notification_id"_f].value());
+        notification->type=static_cast<ClientNotification::Type>(item["notification_type"_f].value());
+        notification->timestamp=std::chrono::system_clock::from_time_t(item["timestamp"_f].value());
+        notification->expiry=std::chrono::system_clock::from_time_t(item["expiry"_f].value());
+        notification->read=item["read"_f].value();
+        notification->body=boost::json::parse(item["body_data"_f].value());
+
+        // No real idea what these fields might be
+        notification->targets=item["notification_targets"_f].value();
+        notification->hidden=item["hidden"_f].value();
+        assert(!notification->hidden);		// Let's see if get any hidden ones...
+
+        getClient().messageboard.send(std::move(notification));
+    }
+}
+
+/************************************************************************/
+
+void ClientNotificationModule::handle(std::shared_ptr<const CSteamNotificationNotificationsReceivedNotificationMessageType> message)
+{
+    getNotifications();
 }
 
 /************************************************************************/
 
 void ClientNotificationModule::run(SteamBot::Client& client)
 {
+    waitForLogin();
+
+    // We shouldn't need that later, but for now...
+    getNotifications();
+
     while (true)
     {
         waiter->wait();
