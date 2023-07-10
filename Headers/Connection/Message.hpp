@@ -102,6 +102,9 @@ namespace SteamBot
                 ClientRequestFreeLicense = 5572,
                 ClientRequestFreeLicenseResponse = 5573,
 
+                ClientItemAnnouncements = 5576,
+                ClientRequestItemAnnouncements = 5577,
+
                 ClientRequestWebAPIAuthenticateUserNonce = 5585,
                 ClientRequestWebAPIAuthenticateUserNonceResponse = 5586,
                 ClientPlayerNicknameList = 5587,

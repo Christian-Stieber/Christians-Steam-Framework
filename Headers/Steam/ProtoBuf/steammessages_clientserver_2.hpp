@@ -60,3 +60,21 @@ namespace Steam
                                                    SteamBot::Connection::Message::Header::ProtoBuf,
                                                    CMsgClientRequestFreeLicenseResponse> CMsgClientRequestFreeLicenseResponseMessageType;
 }
+
+/************************************************************************/
+
+namespace Steam
+{
+	typedef SteamBot::Connection::Message::Message<SteamBot::Connection::Message::Type::ClientRequestItemAnnouncements,
+                                                   SteamBot::Connection::Message::Header::ProtoBuf,
+                                                   CMsgClientRequestItemAnnouncements> CMsgClientRequestItemAnnouncementsMessageType;
+}
+
+/************************************************************************/
+
+namespace Steam
+{
+	typedef SteamBot::Connection::Message::Message<SteamBot::Connection::Message::Type::ClientItemAnnouncements,
+                                                   SteamBot::Connection::Message::Header::ProtoBuf,
+                                                   CMsgClientItemAnnouncements> CMsgClientItemAnnouncementsMessageType;
+}

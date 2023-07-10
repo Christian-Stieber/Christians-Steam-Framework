@@ -32,6 +32,8 @@ namespace SteamBot
     {
         namespace Inventory
         {
+            void use();
+
             class InventoryItem : public SteamBot::AssetKey
             {
             public:
