@@ -461,7 +461,12 @@ static void printOffers(const IncomingTradeOffers& offers)
         output << offers.offers.size() << " incoming trade offers:\n";
         for (const auto& offer : offers.offers)
         {
-            output << "   " << toInteger(offer->tradeOfferId) << " from " << toInteger(offer->partner) << ":\n";
+            output << "   id " << toInteger(offer->tradeOfferId) << " from ";
+            if (auto partner=SteamBot::ClientInfo::find(offer->partner))
+            {
+                output << partner->accountName << " ";
+            }
+            output << " (id " << toInteger(offer->partner) << "):\n";
             output << "      my items:\n";
             PrintItems::print(output, offer->myItems);
             output << "      for their items:\n";
