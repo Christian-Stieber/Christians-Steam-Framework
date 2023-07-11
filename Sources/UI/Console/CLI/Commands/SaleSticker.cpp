@@ -20,53 +20,45 @@
 #include "UI/CLI.hpp"
 #include "../Helpers.hpp"
 
-#include "Modules/SaleQueue.hpp"
 #include "Modules/SaleSticker.hpp"
 #include "Modules/Executor.hpp"
 
 /************************************************************************/
 
-typedef SteamBot::Modules::SaleQueue::Messageboard::ClearSaleQueues ClearSaleQueues;
-
-/************************************************************************/
-
 namespace
 {
-    class SaleEventCommand : public CLI::CLICommandBase
+    class SaleStickerCommand : public CLI::CLICommandBase
     {
     public:
-        SaleEventCommand(CLI& cli_)
-            : CLICommandBase(cli_, "sale-event", "", "clear sale queues and stickers", true)
+        SaleStickerCommand(CLI& cli_)
+            : CLICommandBase(cli_, "sale-sticker", "", "claim a sale sticker", true)
         {
         }
 
-        virtual ~SaleEventCommand() =default;
+        virtual ~SaleStickerCommand() =default;
 
     public:
         virtual bool execute(SteamBot::ClientInfo*, std::vector<std::string>&) override;
     };
 
-    SaleEventCommand::InitClass<SaleEventCommand> init;
+    SaleStickerCommand::InitClass<SaleStickerCommand> init;
 }
 
 /************************************************************************/
 
-bool SaleEventCommand::execute(SteamBot::ClientInfo* clientInfo, std::vector<std::string>& words)
+bool SaleStickerCommand::execute(SteamBot::ClientInfo* clientInfo, std::vector<std::string>& words)
 {
     if (words.size()==1)
     {
         if (auto client=clientInfo->getClient())
         {
             bool success=SteamBot::Modules::Executor::executeWithFiber(client, [](SteamBot::Client& client) {
-                client.messageboard.send(std::make_shared<ClearSaleQueues>());
-                {
-                    auto json=SteamBot::SaleSticker::claim().toJson();
-                    SteamBot::UI::OutputText() << "Sale sticker: " << json;
-                }
+                auto json=SteamBot::SaleSticker::claim().toJson();
+                SteamBot::UI::OutputText() << "Sale sticker: " << json;
             });
             if (success)
             {
-                std::cout << "requested sale queue clearing and sticker claiming for account " << client->getClientInfo().accountName << std::endl;
+                std::cout << "requested sale sticker for account " << client->getClientInfo().accountName << std::endl;
             }
         }
         return true;
@@ -79,7 +71,6 @@ bool SaleEventCommand::execute(SteamBot::ClientInfo* clientInfo, std::vector<std
 
 /************************************************************************/
 
-void SteamBot::UI::CLI::useSaleEventCommand()
+void SteamBot::UI::CLI::useSaleStickerCommand()
 {
-    useSaleStickerCommand();
 }
