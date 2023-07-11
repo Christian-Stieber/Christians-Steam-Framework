@@ -100,7 +100,7 @@ static std::vector<SteamBot::AppID> getQueueApps(std::shared_ptr<const Response>
 
 static std::shared_ptr<const Response> clearItem(SteamBot::AppID appId)
 {
-    static const boost::urls::url_view baseUrl("https://store.steampowered.com/app");
+    static const boost::urls::url_view baseUrl("https://store.steampowered.com/app?l=english");
 
     class Params : public SteamBot::Modules::WebSession::PostWithSession
     {
