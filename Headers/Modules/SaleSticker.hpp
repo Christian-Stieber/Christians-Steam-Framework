@@ -19,26 +19,83 @@
 
 #pragma once
 
+#include <chrono>
+
+/************************************************************************/
+/*
+ * ClaimResult status codes:
+ *   Ok -> we have claimed a sticker
+ *   AlreadyClaimed -> we have claimed the sticker before
+ *   NoSale -> we could not find a claimable sticker
+ *   Error -> we have encountered an error
+ *
+ * "nextClaimTime" might be faked in some situations:
+ *   NoSale -> a fabricated "10am Valve Time"
+ *   Error -> some time after the attempt
+ *
+ * "errorCount" is the number of consecutive errors
+ * we have gotten; it's use to calculate a good
+ * nextClaimTime.
+ *
+ * "item" will be filled in on "Ok" status
+ */
+
+#pragma once
+
+#include "Steam/CommunityItemClass.hpp"
+
 /************************************************************************/
 
 namespace SteamBot
 {
-    namespace Modules
+    namespace SaleSticker
     {
-        namespace SaleSticker
+        class Status
         {
-            namespace Messageboard
-            {
-                class ClaimSaleSticker
-                {
-                public:
-                    bool force;		// not used, currently. Intended to ignore a previously obtained nextClaimTime
+        public:
+            enum ClaimResult {
+                Invalid,
+                Ok,
+                AlreadyClaimed,
+                NoSale,
+                Error
+            };
 
-                public:
-                    ClaimSaleSticker(bool _=false);
-                    ~ClaimSaleSticker();
-                };
-            }
-        }
+        public:
+            class Item
+            {
+            public:
+                SteamBot::CommunityItemClass type=SteamBot::CommunityItemClass::Invalid;
+
+                std::string name;
+                std::string title;
+                std::string description;
+
+            public:
+                Item();
+                ~Item();
+
+                boost::json::value toJson() const;
+            };
+
+        public:
+            std::chrono::system_clock::time_point when;
+
+            ClaimResult result=ClaimResult::Invalid;
+            unsigned int errorCount=0;
+            std::chrono::system_clock::time_point nextClaimTime;
+
+            Item item;
+
+        public:
+            Status();
+            ~Status();
+
+        public:
+            boost::json::value toJson() const;
+        };
+
+        // Points into the whiteboard, so it's valid until yield
+        const Status& claim();
     }
 }

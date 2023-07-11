@@ -27,7 +27,6 @@
 /************************************************************************/
 
 typedef SteamBot::Modules::SaleQueue::Messageboard::ClearSaleQueues ClearSaleQueues;
-typedef SteamBot::Modules::SaleSticker::Messageboard::ClaimSaleSticker ClaimSaleSticker;
 
 /************************************************************************/
 
@@ -58,9 +57,12 @@ bool SaleEventCommand::execute(SteamBot::ClientInfo* clientInfo, std::vector<std
     {
         if (auto client=clientInfo->getClient())
         {
-            bool success=SteamBot::Modules::Executor::execute(client, [](SteamBot::Client& client) {
+            bool success=SteamBot::Modules::Executor::executeWithFiber(client, [](SteamBot::Client& client) {
                 client.messageboard.send(std::make_shared<ClearSaleQueues>());
-                client.messageboard.send(std::make_shared<ClaimSaleSticker>());
+                {
+                    auto json=SteamBot::SaleSticker::claim().toJson();
+                    SteamBot::UI::OutputText() << "Sale sticker: " << json;
+                }
             });
             if (success)
             {

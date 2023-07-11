@@ -17,7 +17,7 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "Client/Module.hpp"
+#include "Client/Client.hpp"
 #include "Modules/WebSession.hpp"
 #include "Modules/SaleSticker.hpp"
 #include "Web/URLEncode.hpp"
@@ -25,14 +25,15 @@
 #include "UI/UI.hpp"
 #include "Helpers/Time.hpp"
 #include "Helpers/JSON.hpp"
-#include "Steam/CommunityItemClass.hpp"
 #include "Random.hpp"
 #include "Base64.hpp"
 #include "EnumString.hpp"
+#include "Exceptions.hpp"
 
 #include <regex>
 
 #include <boost/url/url_view.hpp>
+#include <boost/exception/diagnostic_information.hpp>
 
 #include "Helpers/ProtoPuf.hpp"
 
@@ -101,46 +102,45 @@ namespace
 typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
 typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
 
-typedef SteamBot::Modules::SaleSticker::Messageboard::ClaimSaleSticker ClaimSaleSticker;
+typedef SteamBot::SaleSticker::Status Status;
 
 typedef SteamBot::HTTPClient::Query Query;
 
 /************************************************************************/
 
-ClaimSaleSticker::ClaimSaleSticker(bool force_)
-    : force(force_)
+namespace
 {
-}
+    class MyClaim : public Status
+    {
+    private:
+        std::string token;
 
-ClaimSaleSticker::~ClaimSaleSticker() =default;
+    private:
+        void fakeNextClaimTime();
+        void initItem(const boost::json::value&);
+
+        void claim();
+        bool canClaim();
+        bool getToken();
+
+    public:
+        MyClaim();
+    };
+}
 
 /************************************************************************/
 
-namespace
+Status::Status()
+    : when(std::chrono::system_clock::now())
 {
-    class SaleStickerModule : public SteamBot::Client::Module
-    {
-    private:
-        SteamBot::Messageboard::WaiterType<ClaimSaleSticker> claimSaleStickerWaiter;
-
-    private:
-        static void claimItem(std::string_view);
-        static bool canClaimItem(std::string_view);
-        static std::string getIoken();
-
-    public:
-        SaleStickerModule()
-            : claimSaleStickerWaiter(getClient().messageboard.createWaiter<ClaimSaleSticker>(*waiter))
-        {
-        }
-
-        virtual ~SaleStickerModule() =default;
-
-        virtual void run(SteamBot::Client&) override;
-    };
-
-    SaleStickerModule::Init<SaleStickerModule> init;
 }
+
+/************************************************************************/
+
+Status::~Status() =default;
+
+Status::Item::Item() =default;
+Status::Item::~Item() =default;
 
 /************************************************************************/
 /*
@@ -174,176 +174,284 @@ static const std::array<boost::urls::url_view, 20> categoryUrls={{
 /************************************************************************/
 /*
  * Note: my HTML parser can't (currently?) parse these pages, but
- * I don't really need to.
+ * I don't really need to -- the regex works just fine.
  *
  * Note: apparently, when we access an account with a language that's
  * english, Steam will set a "Steam-Language" cookie and redirect to
- * the same page again. We don't currently support cookies like that
- * so this would lead to an endless redirection loop; we can work
- * around this by setting l=english on the URL.
+ * the same page again. This can be avoided by explicitly asking for
+ * the english page.
  */
 
-std::string SaleStickerModule::getIoken()
+bool MyClaim::getToken()
 {
-    std::string result;
+    assert(token.empty());
+    assert(result==Status::ClaimResult::Invalid);
 
     auto request=std::make_shared<Request>();
     request->queryMaker=[](){
         auto index=SteamBot::Random::generateRandomNumber()%categoryUrls.size();
         auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, categoryUrls.at(index));
-        query->url.params().set("l", "english");	// we should support cookies, but for now, this works
+        query->url.params().set("l", "english");
         return query;
     };
 
     auto response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
-
-    auto html=SteamBot::HTTPClient::parseString(*(response->query));
-    static const std::regex regex(" data-loyalty_webapi_token=\"&quot;([a-f0-9]+)&quot;\"");
-    std::smatch match;
-    if (std::regex_search(html, match, regex))
+    if (response->query->response.result()==boost::beast::http::status::ok)
     {
-        assert(match.size()==2);
-        result=match[1];
-        BOOST_LOG_TRIVIAL(debug) << "SaleSticker: loyalty_webapi_token is \"" << result << "\"";
+        auto html=SteamBot::HTTPClient::parseString(*(response->query));
+        static const std::regex regex(" data-loyalty_webapi_token=\"&quot;([a-f0-9]+)&quot;\"");
+        std::smatch match;
+        if (std::regex_search(html, match, regex))
+        {
+            assert(match.size()==2);
+            token=match[1];
+            BOOST_LOG_TRIVIAL(debug) << "SaleSticker: loyalty_webapi_token is \"" << token << "\"";
+            return true;
+        }
+        BOOST_LOG_TRIVIAL(debug) << "SaleSticker: cannot find a token";
+        result=Status::ClaimResult::NoSale;
     }
     else
     {
-        SteamBot::UI::OutputText() << "cannot find a token to claim a sticker";
+        result=Status::ClaimResult::Error;
     }
-
-    return result;
+    return false;
 }
 
 /************************************************************************/
 
-void SaleStickerModule::claimItem(std::string_view token)
+bool MyClaim::canClaim()
 {
-    boost::urls::url url("https://api.steampowered.com/ISaleItemRewardsService/ClaimItem/v1");
-    url.params().set("access_token", token);
+    assert(nextClaimTime.time_since_epoch().count()==0);
+    assert(result==Status::ClaimResult::Invalid);
 
-    auto bytes=SteamBot::ProtoPuf::encode(CSaleItemRewards_ClaimItem_Request("english"));
-
-    std::string body;
-    SteamBot::Web::formUrlencode(body, "input_protobuf_encoded", SteamBot::Base64::encode(bytes));
-
-    auto query=std::make_unique<Query>(boost::beast::http::verb::post, url);
-    query->request.body()=std::move(body);
-    query->request.content_length(query->request.body().size());
-    query->request.base().set("Content-Type", "application/x-www-form-urlencoded");
-
-    query=SteamBot::HTTPClient::perform(std::move(query));
-
-    body=SteamBot::HTTPClient::parseString(*query);
-    std::span<std::byte> bodyBytes(static_cast<std::byte*>(static_cast<void*>(body.data())), body.size());
-
-    auto response=SteamBot::ProtoPuf::decode<CSaleItemRewards_ClaimItem_Response>(bodyBytes);
-    BOOST_LOG_TRIVIAL(debug) << SteamBot::ProtoPuf::toJson(response);
-
+    std::unique_ptr<Query> query;
     {
-        using namespace pp;
-        if (auto rewardItem=SteamBot::ProtoPuf::getItem(&response, "reward_item"_f))
+        boost::urls::url url("https://api.steampowered.com/ISaleItemRewardsService/CanClaimItem/v1");
+        url.params().set("access_token", token);
+
+        query=std::make_unique<Query>(boost::beast::http::verb::get, std::move(url));
+        query=SteamBot::HTTPClient::perform(std::move(query));
+    }
+
+    if (query->response.result()==boost::beast::http::status::ok)
+    {
+        auto json=SteamBot::HTTPClient::parseJson(*query);
+        // {"response":{"can_claim":true,"next_claim_time":1688230800}}
+
+        auto& response=json.at("response");
+
         {
-            SteamBot::UI::OutputText output;
-            output << "claimed a community item";
-
-            if (auto communityItemClass=SteamBot::ProtoPuf::getItem(rewardItem, "community_item_class"_f))
-            {
-                output << "; class " << SteamBot::enumToStringAlways(static_cast<SteamBot::CommunityItemClass>(*communityItemClass));
-            }
-
-            if (auto communityItemData=SteamBot::ProtoPuf::getItem(rewardItem, "community_item_data"_f))
-            {
-                if (auto itemName=SteamBot::ProtoPuf::getItem(communityItemData, "item_name"_f))
-                {
-                    output << "; name \"" << *itemName << "\"";
-                }
-
-                if (auto itemTitle=SteamBot::ProtoPuf::getItem(communityItemData, "item_title"_f))
-                {
-                    output << "; title \"" << *itemTitle << "\"";
-                }
-
-                if (auto itemDescription=SteamBot::ProtoPuf::getItem(communityItemData, "item_description"_f))
-                {
-                    output << "; description \"" << *itemDescription << "\"";
-                }
-            }
+            auto next_claim_time=response.at("next_claim_time").to_number<std::time_t>();
+            nextClaimTime=std::chrono::system_clock::from_time_t(next_claim_time);
         }
+
+        if (response.at("can_claim").as_bool())
+        {
+            return true;
+        }
+        else
+        {
+            BOOST_LOG_TRIVIAL(debug) << "SaleSticker: already claimed";
+            result=Status::ClaimResult::AlreadyClaimed;
+        }
+    }
+    else
+    {
+        result=Status::ClaimResult::Error;
+    }
+    return false;
+}
+
+/************************************************************************/
+
+void MyClaim::initItem(const boost::json::value& json)
+{
+    try
+    {
+        const auto& reward=json.at("reward_item");
+        item.type=SteamBot::JSON::toNumber<decltype(item.type)>(reward.at("community_item_class"));
+
+        const auto& data=reward.at("community_item_data");
+        SteamBot::JSON::optString(data, "item_name", item.name);
+        SteamBot::JSON::optString(data, "item_title", item.title);
+        SteamBot::JSON::optString(data, "item_description", item.description);
+    }
+    catch(...)
+    {
     }
 }
 
 /************************************************************************/
 
-bool SaleStickerModule::canClaimItem(std::string_view token)
+void MyClaim::claim()
 {
-    boost::urls::url url("https://api.steampowered.com/ISaleItemRewardsService/CanClaimItem/v1");
-    url.params().set("access_token", token);
+    assert(result==Status::ClaimResult::Invalid);
 
-    auto query=std::make_unique<Query>(boost::beast::http::verb::get, url);
-
-    query=SteamBot::HTTPClient::perform(std::move(query));
-
-    auto json=SteamBot::HTTPClient::parseJson(*query);
-    // {"response":{"can_claim":true,"next_claim_time":1688230800}}
-
-    bool canClaim=false;
-    if (auto can_claim=SteamBot::JSON::getItem(json, "response", "can_claim"))
+    std::unique_ptr<Query> query;
     {
-        if (auto can_claim_bool=can_claim->if_bool())
-        {
-            canClaim=*can_claim_bool;
-        }
+        boost::urls::url url("https://api.steampowered.com/ISaleItemRewardsService/ClaimItem/v1");
+        url.params().set("access_token", token);
+
+        auto bytes=SteamBot::ProtoPuf::encode(CSaleItemRewards_ClaimItem_Request("english"));
+
+        std::string body;
+        SteamBot::Web::formUrlencode(body, "input_protobuf_encoded", SteamBot::Base64::encode(bytes));
+
+        query=std::make_unique<Query>(boost::beast::http::verb::post, std::move(url));
+        query->request.body()=std::move(body);
+        query->request.content_length(query->request.body().size());
+        query->request.base().set("Content-Type", "application/x-www-form-urlencoded");
+
+        query=SteamBot::HTTPClient::perform(std::move(query));
     }
 
-    std::chrono::system_clock::time_point nextClaimTime;
-    if (auto next_claim_time=SteamBot::JSON::getItem(json, "response", "next_claim_time"))
+    if (query->response.result()==boost::beast::http::status::ok)
     {
-        try
+        boost::json::value json;
         {
-            nextClaimTime=std::chrono::system_clock::from_time_t(next_claim_time->to_number<std::time_t>());
+            auto body=SteamBot::HTTPClient::parseString(*query);
+            std::span<std::byte> bodyBytes(static_cast<std::byte*>(static_cast<void*>(body.data())), body.size());
+            auto response=SteamBot::ProtoPuf::decode<CSaleItemRewards_ClaimItem_Response>(bodyBytes);
+            json=SteamBot::ProtoPuf::toJson(response);
         }
-        catch(const boost::json::system_error&)
-        {
-        }
+        BOOST_LOG_TRIVIAL(debug) << json;
+        initItem(json);
+
+        result=Status::ClaimResult::Ok;
     }
-
-    SteamBot::UI::OutputText output;
-
-    output << "a sale sticker ";
-    output << (canClaim ? "can" : "can't");
-    output << " be claimed";
-
-    if (nextClaimTime.time_since_epoch().count()!=0)
+    else
     {
-        output << "; next claim time is " << SteamBot::Time::toString(nextClaimTime, false);
+        result=Status::ClaimResult::Error;
     }
-
-    return canClaim;
 }
 
 /************************************************************************/
 
-void SaleStickerModule::run(SteamBot::Client& client)
+void MyClaim::fakeNextClaimTime()
 {
-    waitForLogin();
-
-    while (true)
+    switch(result)
     {
-        waiter->wait();
+    case ClaimResult::Invalid:
+        assert(false);
+        break;
 
-        if (auto message=claimSaleStickerWaiter->fetch())
+    case ClaimResult::Ok:
+    case ClaimResult::AlreadyClaimed:
+        assert(nextClaimTime.time_since_epoch().count()>0);
+        break;
+
+    case ClaimResult::NoSale:
+        SteamBot::Time::nextSteamDay(nextClaimTime=when);
+        break;
+
+    case ClaimResult::Error:
+        nextClaimTime=std::chrono::system_clock::now();
+        if (errorCount<5)
         {
-            auto token=getIoken();
-            if (!token.empty())
-            {
-                if (canClaimItem(token))
-                {
-                    claimItem(token);
-                }
-            }
+            nextClaimTime+=std::chrono::seconds(30);
+        }
+        else if (errorCount<10)
+        {
+            nextClaimTime+=std::chrono::minutes(2);
+        }
+        else if (errorCount<20)
+        {
+            nextClaimTime+=std::chrono::minutes(10);
+        }
+        else
+        {
+            nextClaimTime+=std::chrono::minutes(30);
+        }
+        break;
+    }
+}
 
-            while (claimSaleStickerWaiter->fetch())
-                ;
+/************************************************************************/
+
+MyClaim::MyClaim()
+{
+    try
+    {
+        result=Status::ClaimResult::NoSale;
+#if 0
+        if (getToken() && canClaim())
+        {
+            claim();
+        }
+#endif
+    }
+    catch(const SteamBot::OperationCancelledException&)
+    {
+        throw;
+    }
+    catch(...)
+    {
+        BOOST_LOG_TRIVIAL(error) << "SaleSticker: exception " << boost::current_exception_diagnostic_information();
+        result=Status::ClaimResult::Error;
+    }
+
+    assert(result!=ClaimResult::Invalid);
+
+    if (result==ClaimResult::Error)
+    {
+        errorCount++;
+    }
+    else
+    {
+        errorCount=0;
+    }
+
+    fakeNextClaimTime();
+
+    BOOST_LOG_TRIVIAL(debug) << "SaleSticker status: " << toJson();
+}
+
+/************************************************************************/
+
+boost::json::value Status::Item::toJson() const
+{
+    boost::json::object json;
+    if (type!=SteamBot::CommunityItemClass::Invalid)
+    {
+        SteamBot::enumToJson(json, "type", type);
+        if (!name.empty()) json["name"]=name;
+        if (!title.empty()) json["title"]=title;
+        if (!description.empty()) json["description"]=description;
+    }
+    return json;
+}
+
+/************************************************************************/
+
+boost::json::value Status::toJson() const
+{
+    boost::json::object json;
+    SteamBot::enumToJson(json, "result", result);
+    json["when"]=SteamBot::Time::toString(when);
+    json["nextClaimTime"]=SteamBot::Time::toString(nextClaimTime);
+    if (errorCount>0) json["errorCount"]=errorCount;
+    {
+        auto object=item.toJson();
+        if (!object.as_object().empty())
+        {
+            json["item"]=std::move(object);
         }
     }
+    return json;
+}
+
+/************************************************************************/
+
+const Status& SteamBot::SaleSticker::claim()
+{
+    static thread_local boost::fibers::mutex mutex;
+    std::lock_guard<decltype(mutex)> lock(mutex);
+
+    auto& whiteboard=SteamBot::Client::getClient().whiteboard;
+    whiteboard.set<Status>(MyClaim());
+
+    auto result=whiteboard.has<Status>();
+    assert(result!=nullptr);
+    return *result;
 }
