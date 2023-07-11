@@ -32,3 +32,13 @@ namespace SteamBot
         std::string toString(std::chrono::minutes);
     }
 }
+
+/************************************************************************/
+
+namespace SteamBot
+{
+    namespace Time
+    {
+        void nextSteamDay(std::chrono::system_clock::time_point&);
+    }
+}
