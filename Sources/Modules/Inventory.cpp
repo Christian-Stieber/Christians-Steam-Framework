@@ -141,7 +141,6 @@ namespace
 
     private:
         std::chrono::system_clock::time_point lastUpdateNotification;
-        std::vector<ItemKey> updateItems;
 
     private:
         static SteamBot::RateLimiter& getRateLimiter();

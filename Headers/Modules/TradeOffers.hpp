@@ -28,57 +28,56 @@
 
 namespace SteamBot
 {
-    namespace Modules
+    namespace TradeOffers
     {
-        namespace TradeOffers
+        class TradeOffer
         {
-            void use();
-
-            class TradeOffer
+        public:
+            class Item : public SteamBot::AssetKey
             {
             public:
-                class Item : public SteamBot::AssetKey
-                {
-                public:
-                    uint32_t amount=0;
-
-                public:
-                    Item();
-                    virtual ~Item();
-
-                    bool init(std::string_view);
-
-                    virtual boost::json::value toJson() const override;
-                };
+                uint32_t amount=0;
 
             public:
-                SteamBot::TradeOfferID tradeOfferId=SteamBot::TradeOfferID::None;
-                SteamBot::AccountID partner=SteamBot::AccountID::None;
+                Item();
+                virtual ~Item();
 
-                std::vector<std::shared_ptr<Item>> myItems;
-                std::vector<std::shared_ptr<Item>> theirItems;
+                bool init(std::string_view);
 
-            public:
-                TradeOffer();
-                ~TradeOffer();
-
-                boost::json::value toJson() const;
+                virtual boost::json::value toJson() const override;
             };
 
-            namespace Messageboard
-            {
-                class IncomingTradeOffers
-                {
-                public:
-                    std::vector<std::unique_ptr<TradeOffer>> offers;
+        public:
+            SteamBot::TradeOfferID tradeOfferId=SteamBot::TradeOfferID::None;
+            SteamBot::AccountID partner=SteamBot::AccountID::None;
 
-                public:
-                    IncomingTradeOffers();
-                    ~IncomingTradeOffers();
+            std::vector<std::shared_ptr<Item>> myItems;
+            std::vector<std::shared_ptr<Item>> theirItems;
 
-                    boost::json::value toJson() const;
-                };
-            }
-        }
+        public:
+            TradeOffer();
+            ~TradeOffer();
+
+            boost::json::value toJson() const;
+        };
+
+        // A IncomingTradeOffers::Ptr is also stored in the whiteboard
+        class IncomingTradeOffers
+        {
+        public:
+            typedef std::shared_ptr<const IncomingTradeOffers> Ptr;
+
+        public:
+            std::chrono::system_clock::time_point when;
+            std::vector<std::unique_ptr<TradeOffer>> offers;
+
+        public:
+            IncomingTradeOffers();
+            ~IncomingTradeOffers();
+
+            boost::json::value toJson() const;
+        };
+
+        std::shared_ptr<const IncomingTradeOffers> getIncoming();
     }
 }

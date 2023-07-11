@@ -30,6 +30,7 @@
 #include "Helpers/ParseNumber.hpp"
 #include "UI/UI.hpp"
 #include "Printable.hpp"
+#include "Modules/ClientNotification.hpp"
 
 #include "HTMLParser/Parser.hpp"
 
@@ -42,8 +43,10 @@
 typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
 typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
 
-typedef SteamBot::Modules::TradeOffers::TradeOffer TradeOffer;
-typedef SteamBot::Modules::TradeOffers::Messageboard::IncomingTradeOffers IncomingTradeOffers;
+typedef SteamBot::TradeOffers::TradeOffer TradeOffer;
+typedef SteamBot::TradeOffers::IncomingTradeOffers IncomingTradeOffers;
+
+typedef SteamBot::Modules::ClientNotification::Messageboard::ClientNotification ClientNotification;
 
 /************************************************************************/
 
@@ -52,15 +55,31 @@ namespace
     class TradeOffersModule : public SteamBot::Client::Module
     {
     private:
+        boost::fibers::mutex mutex;		// locked while we loading the tradeoffers
+
+        std::chrono::system_clock::time_point lastUpdateNotification;
+
+    private:
+        SteamBot::Messageboard::WaiterType<ClientNotification> clientNotification;
+
+    private:
+        void updateNotification(std::chrono::system_clock::time_point);
+        void loadIncoming();
         void getAssetData(IncomingTradeOffers&) const;
         std::unique_ptr<IncomingTradeOffers> parseIncomingTradeOffserPage(std::string_view) const;
         std::string getIncomingTradeOfferPage() const;
 
     public:
+        void handle(std::shared_ptr<const ClientNotification>);
+
+    public:
         TradeOffersModule() =default;
         virtual ~TradeOffersModule() =default;
 
+        virtual void init(SteamBot::Client&) override;
         virtual void run(SteamBot::Client&) override;
+
+        std::shared_ptr<const IncomingTradeOffers> getIncoming();
     };
 
     TradeOffersModule::Init<TradeOffersModule> init;
@@ -429,58 +448,8 @@ std::string TradeOffersModule::getIncomingTradeOfferPage() const
 
 /************************************************************************/
 
-static void printOffers(const IncomingTradeOffers& offers)
+void TradeOffersModule::loadIncoming()
 {
-    struct PrintItems
-    {
-        static void print(SteamBot::UI::OutputText& output, const std::vector<std::shared_ptr<TradeOffer::Item>>& items)
-        {
-            for (const auto& item : items)
-            {
-                output << "         ";
-                if (item->amount>1)
-                {
-                    output << item->amount << "× ";
-                }
-                if (auto info=SteamBot::AssetData::query(item))
-                {
-                    output << "\"" << info->type << "\" / \"" << info->name << "\" (" << SteamBot::enumToString(info->itemType) << ")";
-                }
-                else
-                {
-                    output << "(unidentified item)";
-                }
-                output << "\n";
-            }
-        }
-    };
-
-    if (offers.offers.size()>0)
-    {
-        SteamBot::UI::OutputText output;
-        output << offers.offers.size() << " incoming trade offers:\n";
-        for (const auto& offer : offers.offers)
-        {
-            output << "   id " << toInteger(offer->tradeOfferId) << " from ";
-            if (auto partner=SteamBot::ClientInfo::find(offer->partner))
-            {
-                output << partner->accountName << " ";
-            }
-            output << " (id " << toInteger(offer->partner) << "):\n";
-            output << "      my items:\n";
-            PrintItems::print(output, offer->myItems);
-            output << "      for their items:\n";
-            PrintItems::print(output, offer->theirItems);
-        }
-    }
-}
-
-/************************************************************************/
-
-void TradeOffersModule::run(SteamBot::Client& client)
-{
-    waitForLogin();
-
     auto html=getIncomingTradeOfferPage();
     auto offers=parseIncomingTradeOffserPage(html);
 
@@ -494,13 +463,73 @@ void TradeOffersModule::run(SteamBot::Client& client)
         SteamBot::AssetData::fetch(keys);
     }
 
-    printOffers(*offers);
-
-    client.messageboard.send(std::shared_ptr<IncomingTradeOffers>(std::move(offers)));
+    getClient().whiteboard.set<IncomingTradeOffers::Ptr>(std::move(offers));
 }
 
 /************************************************************************/
 
-void SteamBot::Modules::TradeOffers::use()
+std::shared_ptr<const IncomingTradeOffers> TradeOffersModule::getIncoming()
 {
+    std::lock_guard<decltype(mutex)> lock(mutex);
+
+    if (auto incoming=getClient().whiteboard.has<IncomingTradeOffers::Ptr>())
+    {
+        if ((*incoming)->when>=lastUpdateNotification)
+        {
+            return *incoming;
+        }
+    }
+    loadIncoming();
+    return getClient().whiteboard.get<IncomingTradeOffers::Ptr>(nullptr);
+}
+
+/************************************************************************/
+
+void TradeOffersModule::handle(std::shared_ptr<const ClientNotification> notification)
+{
+    if (notification->type==ClientNotification::Type::TradeOffer)
+    {
+        updateNotification(notification->timestamp);
+    }
+}
+
+/************************************************************************/
+
+void TradeOffersModule::init(SteamBot::Client& client)
+{
+    clientNotification=client.messageboard.createWaiter<ClientNotification>(*waiter);
+}
+
+/************************************************************************/
+
+void TradeOffersModule::updateNotification(std::chrono::system_clock::time_point when)
+{
+    if (when>lastUpdateNotification)
+    {
+        SteamBot::UI::OutputTexta() << "New trade offer";
+        lastUpdateNotification=when;
+    }
+}
+
+/************************************************************************/
+
+void TradeOffersModule::run(SteamBot::Client& client)
+{
+    waitForLogin();
+
+    while (true)
+    {
+        waiter->wait();
+        clientNotification->handle(this);
+    }
+}
+
+/************************************************************************/
+/*
+ * Returns the current trade offers, possibly loading it if necessary.
+ */
+
+std::shared_ptr<const IncomingTradeOffers> SteamBot::TradeOffers::getIncoming()
+{
+    return SteamBot::Client::getClient().getModule<TradeOffersModule>()->getIncoming();
 }
