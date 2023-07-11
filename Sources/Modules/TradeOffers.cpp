@@ -506,7 +506,7 @@ void TradeOffersModule::updateNotification(std::chrono::system_clock::time_point
 {
     if (when>lastUpdateNotification)
     {
-        SteamBot::UI::OutputTexta() << "New trade offer";
+        SteamBot::UI::OutputText() << "New trade offer";
         lastUpdateNotification=when;
     }
 }
@@ -515,6 +515,8 @@ void TradeOffersModule::updateNotification(std::chrono::system_clock::time_point
 
 void TradeOffersModule::run(SteamBot::Client& client)
 {
+    SteamBot::Modules::ClientNotification::use();
+
     waitForLogin();
 
     while (true)
