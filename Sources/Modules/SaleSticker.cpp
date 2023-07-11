@@ -373,13 +373,10 @@ MyClaim::MyClaim()
 {
     try
     {
-        result=Status::ClaimResult::NoSale;
-#if 0
         if (getToken() && canClaim())
         {
             claim();
         }
-#endif
     }
     catch(const SteamBot::OperationCancelledException&)
     {

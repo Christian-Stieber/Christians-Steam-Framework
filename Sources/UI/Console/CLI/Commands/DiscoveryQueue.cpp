@@ -25,10 +25,6 @@
 
 /************************************************************************/
 
-typedef SteamBot::Modules::DiscoveryQueue::Messageboard::ClearQueue ClearQueue;
-
-/************************************************************************/
-
 namespace
 {
     class ClearQueueCommand : public CLI::CLICommandBase
@@ -56,8 +52,8 @@ bool ClearQueueCommand::execute(SteamBot::ClientInfo* clientInfo, std::vector<st
     {
         if (auto client=clientInfo->getClient())
         {
-            bool success=SteamBot::Modules::Executor::execute(client, [](SteamBot::Client& client) {
-                client.messageboard.send(std::make_shared<ClearQueue>());
+            bool success=SteamBot::Modules::Executor::executeWithFiber(client, [](SteamBot::Client& client) {
+                SteamBot::DiscoveryQueue::clear();
             });
             if (success)
             {

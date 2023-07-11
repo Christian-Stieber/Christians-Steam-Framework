@@ -51,4 +51,5 @@ SteamBot::ExecuteFibers::~ExecuteFibers()
 {
     std::unique_lock<decltype(mutex)> lock(mutex);
     condition.wait(lock, [this]() { return counter==0; });
+    BOOST_LOG_TRIVIAL(debug) << "ExecuteFibers: completed";
 };

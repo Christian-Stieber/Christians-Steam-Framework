@@ -20,22 +20,14 @@
 #pragma once
 
 /************************************************************************/
+/*
+ * Returns true if we've cleared all sale queues, false for error.
+ */
 
 namespace SteamBot
 {
-    namespace Modules
+    namespace SaleQueue
     {
-        namespace SaleQueue
-        {
-            namespace Messageboard
-            {
-                class ClearSaleQueues
-                {
-                public:
-                    ClearSaleQueues();
-                    ~ClearSaleQueues();
-                };
-            }
-        }
+        bool clear();
     }
 }

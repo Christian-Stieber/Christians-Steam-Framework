@@ -19,10 +19,9 @@
 
 /************************************************************************/
 
-#include "Client/Module.hpp"
 #include "Modules/WebSession.hpp"
-#include "Modules/DiscoveryQueue.hpp"
 #include "Modules/SaleQueue.hpp"
+#include "Modules/DiscoveryQueue.hpp"
 #include "Helpers/HTML.hpp"
 #include "UI/UI.hpp"
 #include "Client/Sleep.hpp"
@@ -31,46 +30,18 @@
 
 #include <boost/url/url_view.hpp>
 
+#include <boost/exception/diagnostic_information.hpp>
+
 /************************************************************************/
 
 typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
 typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
 
-typedef SteamBot::Modules::DiscoveryQueue::Messageboard::ClearQueue ClearQueue;
-typedef SteamBot::Modules::DiscoveryQueue::Messageboard::QueueCompleted QueueCompleted;
-
-typedef SteamBot::Modules::SaleQueue::Messageboard::ClearSaleQueues ClearSaleQueues;
-
-/************************************************************************/
-
-ClearSaleQueues::ClearSaleQueues() =default;
-ClearSaleQueues::~ClearSaleQueues() =default;
-
 /************************************************************************/
 
 namespace
 {
-    class SaleQueueModule : public SteamBot::Client::Module
-    {
-    private:
-        SteamBot::Messageboard::WaiterType<ClearSaleQueues> clearSaleQueueWaiter;
-
-    private:
-        static bool hasSaleCards();
-        void clearSaleQueue();
-
-    public:
-        SaleQueueModule()
-            : clearSaleQueueWaiter(getClient().messageboard.createWaiter<ClearSaleQueues>(*waiter))
-        {
-        }
-
-        virtual ~SaleQueueModule() =default;
-
-        virtual void run(SteamBot::Client&) override;
-    };
-
-    SaleQueueModule::Init<SaleQueueModule> init;
+    class Error { };
 }
 
 /************************************************************************/
@@ -78,8 +49,10 @@ namespace
  * Again, inspired by ASF
  */
 
-bool SaleQueueModule::hasSaleCards()
+static bool hasSaleCards()
 {
+    BOOST_LOG_TRIVIAL(debug) << "SaleQueue.cpp: hasSaleCards()";
+
     class QueuePageParser : public HTMLParser::Parser
     {
     public:
@@ -115,6 +88,10 @@ bool SaleQueueModule::hasSaleCards()
         return std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, url);
     };
     auto response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
+    if (response->query->response.result()!=boost::beast::http::status::ok)
+    {
+        throw Error();
+    }
 
     auto html=SteamBot::HTTPClient::parseString(*(response->query));
     QueuePageParser parser(html);
@@ -125,55 +102,45 @@ bool SaleQueueModule::hasSaleCards()
 
 /************************************************************************/
 
-void SaleQueueModule::clearSaleQueue()
+static bool performClear()
 {
-    auto& client=getClient();
-
-    auto myWaiter=SteamBot::Waiter::create();
-    auto cancellation=client.cancel.registerObject(*myWaiter);
-
-    while (true)
+    BOOST_LOG_TRIVIAL(debug) << "SaleQueue.cpp: performClear()";
+    try
     {
-        auto queueCompleted=client.messageboard.createWaiter<QueueCompleted>(*myWaiter);
-
-        if (hasSaleCards())
+        while (hasSaleCards())
         {
-            if (!queueCompleted->fetch())
+            if (!SteamBot::DiscoveryQueue::clear())
             {
-                getClient().messageboard.send(std::make_shared<ClearQueue>());
-
-                do
-                {
-                    myWaiter->wait();
-                }
-                while (!queueCompleted->fetch());
+                return false;
             }
+            SteamBot::sleep(std::chrono::seconds(30));
         }
-        else
-        {
-            return;
-        }
-
-        SteamBot::sleep(std::chrono::seconds(30));
+        SteamBot::UI::OutputText() << "no sale queue to be cleared";
+        return true;
     }
+    catch(const Error&)
+    {
+    }
+    catch(...)
+    {
+        BOOST_LOG_TRIVIAL(error) << "SaleQueue: exception " << boost::current_exception_diagnostic_information();
+    }
+    return false;
 }
 
 /************************************************************************/
 
-void SaleQueueModule::run(SteamBot::Client& client)
+bool SteamBot::SaleQueue::clear()
 {
-    waitForLogin();
+    static thread_local boost::fibers::mutex mutex;
+    static thread_local bool lastResult=false;
 
-    while (true)
+    std::unique_lock<decltype(mutex)> lock(mutex, std::try_to_lock);
+    if (!lock.owns_lock())
     {
-        waiter->wait();
-
-        if (clearSaleQueueWaiter->fetch())
-        {
-            clearSaleQueue();
-
-            while (clearSaleQueueWaiter->fetch())
-                ;
-        }
+        lock.lock();
+        return lastResult;
     }
+
+    return lastResult=performClear();
 }

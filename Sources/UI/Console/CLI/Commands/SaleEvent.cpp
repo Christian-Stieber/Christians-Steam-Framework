@@ -23,10 +23,7 @@
 #include "Modules/SaleQueue.hpp"
 #include "Modules/SaleSticker.hpp"
 #include "Modules/Executor.hpp"
-
-/************************************************************************/
-
-typedef SteamBot::Modules::SaleQueue::Messageboard::ClearSaleQueues ClearSaleQueues;
+#include "ExecuteFibers.hpp"
 
 /************************************************************************/
 
@@ -58,11 +55,17 @@ bool SaleEventCommand::execute(SteamBot::ClientInfo* clientInfo, std::vector<std
         if (auto client=clientInfo->getClient())
         {
             bool success=SteamBot::Modules::Executor::executeWithFiber(client, [](SteamBot::Client& client) {
-                client.messageboard.send(std::make_shared<ClearSaleQueues>());
-                {
+                SteamBot::ExecuteFibers execute;
+                execute.run([](){
+                    if (!SteamBot::SaleQueue::clear())
+                    {
+                        SteamBot::UI::OutputText() << "Sale queue: error";
+                    }
+                });
+                execute.run([](){
                     auto json=SteamBot::SaleSticker::claim().toJson();
                     SteamBot::UI::OutputText() << "Sale sticker: " << json;
-                }
+                });
             });
             if (success)
             {
