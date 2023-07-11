@@ -126,6 +126,7 @@ namespace
 
     public:
         static bool execute(std::shared_ptr<SteamBot::Client>, FunctionType);
+        static bool executeWithFiber(std::shared_ptr<SteamBot::Client>, FunctionType);
     };
 
     ExecutorModule::Init<ExecutorModule> init;
@@ -218,7 +219,25 @@ bool ExecutorModule::execute(std::shared_ptr<SteamBot::Client> client, FunctionT
 
 /************************************************************************/
 
+bool ExecutorModule::executeWithFiber(std::shared_ptr<SteamBot::Client> client, FunctionType function_)
+{
+    return execute(std::move(client), [function_=std::move(function_)](SteamBot::Client& client) mutable {
+        client.launchFiber("ExecutorModule::executeWithFiber", [&client, function_=std::move(function_)]() {
+            function_(client);
+        });
+    });
+}
+
+/************************************************************************/
+
 bool SteamBot::Modules::Executor::execute(std::shared_ptr<SteamBot::Client> client, FunctionType function)
 {
     return ExecutorModule::execute(std::move(client), std::move(function));
+}
+
+/************************************************************************/
+
+bool SteamBot::Modules::Executor::executeWithFiber(std::shared_ptr<SteamBot::Client> client, FunctionType function)
+{
+    return ExecutorModule::executeWithFiber(std::move(client), std::move(function));
 }

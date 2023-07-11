@@ -35,6 +35,8 @@ namespace SteamBot
         namespace Executor
         {
             bool execute(std::shared_ptr<SteamBot::Client>, std::function<void(Client&)>);
+
+            bool executeWithFiber(std::shared_ptr<SteamBot::Client>, std::function<void(Client&)>);
         }
     }
 }
