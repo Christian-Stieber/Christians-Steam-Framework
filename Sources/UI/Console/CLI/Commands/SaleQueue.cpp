@@ -21,55 +21,46 @@
 #include "../Helpers.hpp"
 
 #include "Modules/SaleQueue.hpp"
-#include "Modules/SaleSticker.hpp"
 #include "Modules/Executor.hpp"
-#include "ExecuteFibers.hpp"
 
 /************************************************************************/
 
 namespace
 {
-    class SaleEventCommand : public CLI::CLICommandBase
+    class SaleQueueCommand : public CLI::CLICommandBase
     {
     public:
-        SaleEventCommand(CLI& cli_)
-            : CLICommandBase(cli_, "sale-event", "", "clear sale queues and stickers", true)
+        SaleQueueCommand(CLI& cli_)
+            : CLICommandBase(cli_, "sale-queue", "", "clear all sale queues", true)
         {
         }
 
-        virtual ~SaleEventCommand() =default;
+        virtual ~SaleQueueCommand() =default;
 
     public:
         virtual bool execute(SteamBot::ClientInfo*, std::vector<std::string>&) override;
     };
 
-    SaleEventCommand::InitClass<SaleEventCommand> init;
+    SaleQueueCommand::InitClass<SaleQueueCommand> init;
 }
 
 /************************************************************************/
 
-bool SaleEventCommand::execute(SteamBot::ClientInfo* clientInfo, std::vector<std::string>& words)
+bool SaleQueueCommand::execute(SteamBot::ClientInfo* clientInfo, std::vector<std::string>& words)
 {
     if (words.size()==1)
     {
         if (auto client=clientInfo->getClient())
         {
             bool success=SteamBot::Modules::Executor::executeWithFiber(client, [](SteamBot::Client& client) {
-                SteamBot::ExecuteFibers execute;
-                execute.run([](){
-                    if (!SteamBot::SaleQueue::clear())
-                    {
-                        SteamBot::UI::OutputText() << "Sale queue: error";
-                    }
-                });
-                execute.run([](){
-                    auto json=SteamBot::SaleSticker::claim().toJson();
-                    SteamBot::UI::OutputText() << "Sale sticker: " << json;
-                });
+                if (!SteamBot::SaleQueue::clear())
+                {
+                    SteamBot::UI::OutputText() << "Sale queue: error";
+                }
             });
             if (success)
             {
-                std::cout << "requested sale queue clearing and sticker claiming for account " << client->getClientInfo().accountName << std::endl;
+                std::cout << "requested sale queue for account " << client->getClientInfo().accountName << std::endl;
             }
         }
         return true;
@@ -82,8 +73,6 @@ bool SaleEventCommand::execute(SteamBot::ClientInfo* clientInfo, std::vector<std
 
 /************************************************************************/
 
-void SteamBot::UI::CLI::useSaleEventCommand()
+void SteamBot::UI::CLI::useSaleQueueCommand()
 {
-    useSaleStickerCommand();
-    useSaleQueueCommand();
 }

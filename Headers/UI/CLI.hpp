@@ -88,13 +88,16 @@ namespace SteamBot
             static void usePlayStopGameCommands();
             static void useAddLicenseCommand();
             static void useClearQueueCommand();
-            static void useSaleEventCommand();
-            static void useSaleStickerCommand();
             static void useSettingsCommand();
             static void useListInventoryCommand();
             static void useSendInventoryCommand();
             static void useAcceptTradeCommand();
             static void useDeclineTradeCommand();
+
+            static void useSaleEventCommand();
+            static void useSaleStickerCommand();
+            static void useSaleQueueCommand();
+
         };
     }
 }
