@@ -93,6 +93,7 @@ namespace SteamBot
             static void useSendInventoryCommand();
             static void useAcceptTradeCommand();
             static void useDeclineTradeCommand();
+            static void useListTradeOffersCommand();
 
             static void useSaleEventCommand();
             static void useSaleStickerCommand();
