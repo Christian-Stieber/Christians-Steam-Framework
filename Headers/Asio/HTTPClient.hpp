@@ -73,8 +73,6 @@ namespace SteamBot
  * This is a blocking call.
  * It will cancel.
  * Can also set and update cookies.
- *
- * Throws on errors.
  */
 
 namespace SteamBot

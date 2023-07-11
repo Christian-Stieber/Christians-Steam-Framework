@@ -349,6 +349,8 @@ HTTPClient::Query::~Query() =default;
 
 boost::json::value SteamBot::HTTPClient::parseJson(const SteamBot::HTTPClient::Query& query)
 {
+    assert(query.response.result()==boost::beast::http::status::ok);
+
     boost::json::stream_parser parser;
     const auto buffers=query.response.body().cdata();
     for (auto iterator=boost::asio::buffer_sequence_begin(buffers); iterator!=boost::asio::buffer_sequence_end(buffers); ++iterator)
@@ -365,6 +367,8 @@ boost::json::value SteamBot::HTTPClient::parseJson(const SteamBot::HTTPClient::Q
 
 std::string SteamBot::HTTPClient::parseString(const SteamBot::HTTPClient::Query& query)
 {
+    assert(query.response.result()==boost::beast::http::status::ok);
+
     std::string result;
     const auto buffers=query.response.body().cdata();
     for (auto iterator=boost::asio::buffer_sequence_begin(buffers); iterator!=boost::asio::buffer_sequence_end(buffers); ++iterator)
@@ -388,10 +392,6 @@ HTTPClient::Query::QueryPtr HTTPClient::perform(HTTPClient::Query::QueryPtr quer
         waiter->wait();
         if (auto response=responseWaiter->getResult())
         {
-            if ((*response)->error)
-            {
-                throw boost::system::system_error((*response)->error);
-            }
             return std::move(*response);
         }
     }
