@@ -60,8 +60,18 @@ namespace SteamBot
 
             boost::json::value toJson() const;
         };
+    }
+}
 
-        // A IncomingTradeOffers::Ptr is also stored in the whiteboard
+/************************************************************************/
+/*
+ * An IncomingTradeOffers::Ptr is also stored in the whiteboard
+ */
+
+namespace SteamBot
+{
+    namespace TradeOffers
+    {
         class IncomingTradeOffers
         {
         public:
@@ -77,14 +87,34 @@ namespace SteamBot
 
             boost::json::value toJson() const;
         };
+    }
+}
 
-        std::shared_ptr<const IncomingTradeOffers> getIncoming();
+/************************************************************************/
 
+namespace SteamBot
+{
+    namespace TradeOffers
+    {
         namespace Whiteboard
         {
             class LastIncoming : public std::chrono::system_clock::time_point
             {
             };
         }
+    }
+}
+
+/************************************************************************/
+/*
+ * This will load the tradeoffers if update notifications have been
+ * received.
+ */
+
+namespace SteamBot
+{
+    namespace TradeOffers
+    {
+        std::shared_ptr<const IncomingTradeOffers> getIncoming();
     }
 }
