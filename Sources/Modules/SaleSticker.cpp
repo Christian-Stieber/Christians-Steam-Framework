@@ -116,7 +116,6 @@ namespace
         std::string token;
 
     private:
-        void fakeNextClaimTime();
         void initItem(const boost::json::value&);
 
         void claim();
@@ -237,13 +236,17 @@ bool MyClaim::canClaim()
     if (query->response.result()==boost::beast::http::status::ok)
     {
         auto json=SteamBot::HTTPClient::parseJson(*query);
+        BOOST_LOG_TRIVIAL(debug) << json;
         // {"response":{"can_claim":true,"next_claim_time":1688230800}}
 
         auto& response=json.at("response");
 
         {
-            auto next_claim_time=response.at("next_claim_time").to_number<std::time_t>();
-            nextClaimTime=std::chrono::system_clock::from_time_t(next_claim_time);
+            std::time_t next_claim_time;
+            if (SteamBot::JSON::optNumber(response, "next_claim_time", next_claim_time))
+            {
+                nextClaimTime=std::chrono::system_clock::from_time_t(next_claim_time);
+            }
         }
 
         if (response.at("can_claim").as_bool())
@@ -328,47 +331,6 @@ void MyClaim::claim()
 
 /************************************************************************/
 
-void MyClaim::fakeNextClaimTime()
-{
-    switch(result)
-    {
-    case ClaimResult::Invalid:
-        assert(false);
-        break;
-
-    case ClaimResult::Ok:
-    case ClaimResult::AlreadyClaimed:
-        assert(nextClaimTime.time_since_epoch().count()>0);
-        break;
-
-    case ClaimResult::NoSale:
-        SteamBot::Time::nextSteamDay(nextClaimTime=when);
-        break;
-
-    case ClaimResult::Error:
-        nextClaimTime=std::chrono::system_clock::now();
-        if (errorCount<5)
-        {
-            nextClaimTime+=std::chrono::seconds(30);
-        }
-        else if (errorCount<10)
-        {
-            nextClaimTime+=std::chrono::minutes(2);
-        }
-        else if (errorCount<20)
-        {
-            nextClaimTime+=std::chrono::minutes(10);
-        }
-        else
-        {
-            nextClaimTime+=std::chrono::minutes(30);
-        }
-        break;
-    }
-}
-
-/************************************************************************/
-
 MyClaim::MyClaim()
 {
     try
@@ -389,17 +351,6 @@ MyClaim::MyClaim()
     }
 
     assert(result!=ClaimResult::Invalid);
-
-    if (result==ClaimResult::Error)
-    {
-        errorCount++;
-    }
-    else
-    {
-        errorCount=0;
-    }
-
-    fakeNextClaimTime();
 
     BOOST_LOG_TRIVIAL(debug) << "SaleSticker status: " << toJson();
 }
@@ -426,8 +377,7 @@ boost::json::value Status::toJson() const
     boost::json::object json;
     SteamBot::enumToJson(json, "result", result);
     json["when"]=SteamBot::Time::toString(when);
-    json["nextClaimTime"]=SteamBot::Time::toString(nextClaimTime);
-    if (errorCount>0) json["errorCount"]=errorCount;
+    if (nextClaimTime.time_since_epoch().count()!=0) json["nextClaimTime"]=SteamBot::Time::toString(nextClaimTime);
     {
         auto object=item.toJson();
         if (!object.as_object().empty())

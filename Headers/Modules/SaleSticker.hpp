@@ -29,14 +29,6 @@
  *   NoSale -> we could not find a claimable sticker
  *   Error -> we have encountered an error
  *
- * "nextClaimTime" might be faked in some situations:
- *   NoSale -> a fabricated "10am Valve Time"
- *   Error -> some time after the attempt
- *
- * "errorCount" is the number of consecutive errors
- * we have gotten; it's use to calculate a good
- * nextClaimTime.
- *
  * "item" will be filled in on "Ok" status
  */
 
@@ -82,7 +74,6 @@ namespace SteamBot
             std::chrono::system_clock::time_point when;
 
             ClaimResult result=ClaimResult::Invalid;
-            unsigned int errorCount=0;
             std::chrono::system_clock::time_point nextClaimTime;
 
             Item item;
