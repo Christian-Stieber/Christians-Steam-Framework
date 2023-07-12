@@ -26,6 +26,8 @@
 #include "Modules/MultiPacket.hpp"
 #include "Modules/Login.hpp"
 #include "TypeName.hpp"
+#include "Client/Fiber.hpp"
+#include "Client/Counter.hpp"
 
 #include <thread>
 #include <boost/log/trivial.hpp>
@@ -127,7 +129,8 @@ void SteamBot::Client::main()
     SteamBot::UI::Thread::outputText(std::string("running client ")+clientInfo.accountName);
 
     initModules();
-    fiberCounter.wait();
+
+    SteamBot::ClientFiber::Properties::counter.wait();
 
     SteamBot::UI::Thread::outputText(std::string("exiting client ")+clientInfo.accountName);
 }
@@ -144,6 +147,8 @@ void SteamBot::Client::launch(SteamBot::ClientInfo& clientInfo)
         BOOST_LOG_TRIVIAL(debug) << "Client::launch()";
 
         std::thread([counter = threadCounter(), &clientInfo]() mutable {
+            boost::fibers::use_scheduling_algorithm<ClientFiber::Scheduler>();
+
             currentClient=std::make_shared<Client>(clientInfo);
 
             clientInfo.setClient(currentClient);
@@ -206,10 +211,14 @@ SteamBot::Client& SteamBot::Client::getClient()
 }
 
 /************************************************************************/
+/*
+ * ToDo: add the name into the properties, and track which fibers
+ * are still active instead of just counting?
+ */
 
 void SteamBot::Client::launchFiber(std::string name, std::function<void()> body)
 {
-	boost::fibers::fiber([this, name=std::move(name), body=std::move(body), counter=fiberCounter()](){
+	boost::fibers::fiber([this, name=std::move(name), body=std::move(body)](){
         std::string fiberName;
         {
             std::stringstream stream;
@@ -221,12 +230,11 @@ void SteamBot::Client::launchFiber(std::string name, std::function<void()> body)
 		try
         {
             body();
+            BOOST_LOG_TRIVIAL(debug) << "fiber " << fiberName << " ending";
         }
         catch(const OperationCancelledException&)
         {
             BOOST_LOG_TRIVIAL(debug) << "fiber " << fiberName << " was cancelled";
         }
-
-        BOOST_LOG_TRIVIAL(debug) << "fiber " << fiberName << " ending; fiber count is currently at " << fiberCounter.getCount();
 	}).detach();
 }

@@ -22,7 +22,6 @@
 #include "Client/Cancel.hpp"
 #include "Client/Whiteboard.hpp"
 #include "Client/Messageboard.hpp"
-#include "Client/Counter.hpp"
 #include "DataFile.hpp"
 #include "MiscIDs.hpp"
 
@@ -71,7 +70,6 @@ namespace SteamBot
         mutable boost::fibers::mutex modulesMutex;
         std::unordered_map<std::type_index, std::shared_ptr<Module>> modules;
 
-        Counter fiberCounter;
         ClientInfo& clientInfo;
 
     private:
