@@ -30,6 +30,7 @@
 /************************************************************************/
 
 #include "Client/Module.hpp"
+#include "Client/Signal.hpp"
 #include "Modules/TradeOffers.hpp"
 #include "Modules/AutoLoadTradeoffers.hpp"
 
@@ -45,15 +46,28 @@ namespace
     {
     private:
         SteamBot::Whiteboard::WaiterType<LastIncoming> incomingNotification;
+        SteamBot::Signal::WaiterType stateChangeSignal;
 
         std::chrono::seconds reload;
+        unsigned int enabled=0;
 
     public:
-        AutoLoadTradeoffersModule() =default;
+        AutoLoadTradeoffersModule()
+            : stateChangeSignal(SteamBot::Signal::createWaiter(*waiter))
+        {
+        }
+
         virtual ~AutoLoadTradeoffersModule() =default;
 
-        virtual void init(SteamBot::Client&) override;
+        virtual void init(SteamBot::Client& client) override
+        {
+            incomingNotification=client.whiteboard.createWaiter<LastIncoming>(*waiter);
+        }
+
         virtual void run(SteamBot::Client&) override;
+
+    public:
+        void enable(bool);
     };
 
     AutoLoadTradeoffersModule::Init<AutoLoadTradeoffersModule> init;
@@ -61,19 +75,13 @@ namespace
 
 /************************************************************************/
 
-void AutoLoadTradeoffersModule::init(SteamBot::Client& client)
-{
-    incomingNotification=client.whiteboard.createWaiter<LastIncoming>(*waiter);
-}
-
-/************************************************************************/
-
 void AutoLoadTradeoffersModule::run(SteamBot::Client& client)
 {
-    reload=std::chrono::seconds(15);
     while (true)
     {
-        if (reload.count()==0)
+        stateChangeSignal->testAndClear();
+
+        if (!enabled || reload.count()==0)
         {
             waiter->wait();
         }
@@ -81,9 +89,12 @@ void AutoLoadTradeoffersModule::run(SteamBot::Client& client)
         {
             if (!waiter->wait(reload))
             {
-                reload=decltype(reload)::zero();
-                SteamBot::TradeOffers::getIncoming();
-                BOOST_LOG_TRIVIAL(debug) << "AutoLoadTradeoffersModule: loaded tradeoffers";
+                if (enabled)
+                {
+                    reload=decltype(reload)::zero();
+                    SteamBot::TradeOffers::getIncoming();
+                    BOOST_LOG_TRIVIAL(debug) << "AutoLoadTradeoffersModule: loaded tradeoffers";
+                }
             }
         }
 
@@ -103,6 +114,46 @@ void AutoLoadTradeoffersModule::run(SteamBot::Client& client)
 
 /************************************************************************/
 
-void SteamBot::AutoLoadTradeoffers::use()
+void AutoLoadTradeoffersModule::enable(bool state)
 {
+    if (state)
+    {
+        if (enabled++==0)
+        {
+            stateChangeSignal->signal();
+        }
+    }
+    else
+    {
+        assert(enabled>0);
+        if (--enabled==0)
+        {
+            stateChangeSignal->signal();
+        }
+    }
+}
+
+/************************************************************************/
+
+static void enable(bool state)
+{
+    SteamBot::Client::getClient().getModule<AutoLoadTradeoffersModule>()->enable(state);
+}
+
+/************************************************************************/
+
+SteamBot::AutoLoadTradeoffers::Enable::Enable()
+    : owner(SteamBot::Client::getClientShared())
+{
+    enable(true);
+}
+
+/************************************************************************/
+
+SteamBot::AutoLoadTradeoffers::Enable::~Enable()
+{
+    const auto locked=owner.lock();
+    assert(locked && locked==SteamBot::Client::getClientShared());
+
+    enable(false);
 }

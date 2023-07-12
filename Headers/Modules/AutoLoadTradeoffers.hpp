@@ -23,8 +23,26 @@
 
 namespace SteamBot
 {
+    class Client;
+}
+
+/************************************************************************/
+/*
+ * "Enables" need to stack, so create/destroy the enabler as needed.
+ */
+
+namespace SteamBot
+{
     namespace AutoLoadTradeoffers
     {
-        void use();
+        class Enable
+        {
+        private:
+            std::weak_ptr<Client> owner;
+
+        public:
+            Enable();
+            ~Enable();
+        };
     }
 }
