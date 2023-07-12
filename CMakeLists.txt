@@ -91,6 +91,7 @@ list(APPEND SRCS UI/Console/CLI/Commands/AddLicense UI/Console/CLI/Commands/Disc
 list(APPEND SRCS UI/Console/CLI/Commands/Settings UI/Console/CLI/Commands/ListInventory UI/Console/CLI/Commands/SaleSticker)
 list(APPEND SRCS UI/Console/CLI/Commands/SendInventory UI/Console/CLI/Commands/AcceptTrade UI/Console/CLI/Commands/DeclineTrade)
 list(APPEND SRCS UI/Console/CLI/Commands/SaleQueue UI/Console/CLI/Commands/ListTradeOffers)
+list(APPEND SRCS Modules/AutoLoadTradeoffers)
 list(APPEND SRCS Modules/Executor)
 list(APPEND SRCS Modules/Connection)
 list(APPEND SRCS Modules/MultiPacket)
