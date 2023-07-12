@@ -140,6 +140,8 @@ namespace SteamBot
         static ClientInfo* find(std::function<bool(const boost::json::value&)>);
         static ClientInfo* find(SteamBot::AccountID);
 
+        static std::string prettyName(SteamBot::AccountID);
+
     public:
         static std::vector<ClientInfo*> getClients();
     };

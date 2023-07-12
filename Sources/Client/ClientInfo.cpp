@@ -185,3 +185,22 @@ std::vector<ClientInfo*> ClientInfo::getClients()
     }
     return result;
 }
+
+/************************************************************************/
+
+std::string ClientInfo::prettyName(SteamBot::AccountID accountId)
+{
+    std::string result;
+    if (auto clientInfo=find(accountId))
+    {
+        result.append(clientInfo->accountName);
+        result.append(" (");
+        result.append(std::to_string(toInteger(accountId)));
+        result.append(")");
+    }
+    else
+    {
+        result=std::to_string(toInteger(accountId));
+    }
+    return result;
+}
