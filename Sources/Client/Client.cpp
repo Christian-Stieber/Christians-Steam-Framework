@@ -34,7 +34,7 @@
 
 /************************************************************************/
 
-static thread_local SteamBot::Client* currentClient=nullptr;
+static thread_local std::shared_ptr<SteamBot::Client> currentClient;;
 
 /************************************************************************/
 
@@ -47,8 +47,6 @@ SteamBot::Client::Client(SteamBot::ClientInfo& clientInfo_)
       dataFile(SteamBot::DataFile::get(clientInfo_.accountName, SteamBot::DataFile::FileType::Account)),
       clientInfo(clientInfo_)
 {
-	assert(currentClient==nullptr);
-	currentClient=this;
 }
 
 /************************************************************************/
@@ -146,22 +144,21 @@ void SteamBot::Client::launch(SteamBot::ClientInfo& clientInfo)
         BOOST_LOG_TRIVIAL(debug) << "Client::launch()";
 
         std::thread([counter = threadCounter(), &clientInfo]() mutable {
-            std::shared_ptr<Client> client;
-            client=std::make_shared<Client>(clientInfo);
+            currentClient=std::make_shared<Client>(clientInfo);
 
-            clientInfo.setClient(client);
-            client->main();
+            clientInfo.setClient(currentClient);
+            currentClient->main();
             clientInfo.setClient(nullptr);
 
-            BOOST_LOG_TRIVIAL(info) << "client quit with mode \"" << SteamBot::enumToStringAlways(client->quitMode) << "\"";
-            switch(client->quitMode)
+            BOOST_LOG_TRIVIAL(info) << "client quit with mode \"" << SteamBot::enumToStringAlways(currentClient->quitMode) << "\"";
+            switch(currentClient->quitMode)
             {
             case QuitMode::None:
             case QuitMode::Quit:
                 break;
 
             case QuitMode::Restart:
-                client.reset();
+                currentClient.reset();
                 std::this_thread::sleep_for(std::chrono::seconds(15));
                 launch(clientInfo);
                 break;
@@ -188,16 +185,23 @@ void SteamBot::Client::waitAll()
 
 /************************************************************************/
 
-SteamBot::Client* SteamBot::Client::getClientPtr()
+std::shared_ptr<SteamBot::Client> SteamBot::Client::getClientShared()
 {
     return currentClient;
 }
 
 /************************************************************************/
 
+SteamBot::Client* SteamBot::Client::getClientPtr()
+{
+    return currentClient.get();
+}
+
+/************************************************************************/
+
 SteamBot::Client& SteamBot::Client::getClient()
 {
-    assert(currentClient!=nullptr);
+    assert(currentClient);
     return *currentClient;
 }
 

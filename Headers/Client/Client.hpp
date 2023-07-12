@@ -60,6 +60,7 @@ namespace SteamBot
         static void waitAll();
 
 	public:
+		static std::shared_ptr<Client> getClientShared();
 		static Client* getClientPtr();
 		static Client& getClient();
 
