@@ -111,7 +111,6 @@ void AutoAcceptModule::handleOffers(const IncomingTradeOffers& offers)
         SteamBot::UI::OutputText output;
         output << (accept ? "auto-accepting" : "ignoring");
         output << " tradeoffer id " << toInteger(offer->tradeOfferId) << " from ";
-        output << " from ";
         if (clientInfo!=nullptr)
         {
             output << clientInfo->accountName;
