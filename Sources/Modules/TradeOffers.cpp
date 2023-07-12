@@ -45,6 +45,7 @@ typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
 
 typedef SteamBot::TradeOffers::TradeOffer TradeOffer;
 typedef SteamBot::TradeOffers::IncomingTradeOffers IncomingTradeOffers;
+typedef SteamBot::TradeOffers::Whiteboard::LastIncoming LastIncoming;
 
 typedef SteamBot::Modules::ClientNotification::Messageboard::ClientNotification ClientNotification;
 
@@ -56,8 +57,6 @@ namespace
     {
     private:
         boost::fibers::mutex mutex;		// locked while we loading the tradeoffers
-
-        std::chrono::system_clock::time_point lastUpdateNotification;
 
     private:
         SteamBot::Messageboard::WaiterType<ClientNotification> clientNotification;
@@ -450,36 +449,48 @@ std::string TradeOffersModule::getIncomingTradeOfferPage() const
 
 void TradeOffersModule::loadIncoming()
 {
-    auto html=getIncomingTradeOfferPage();
-    auto offers=parseIncomingTradeOffserPage(html);
+    getClient().whiteboard.clear<LastIncoming>();
+    getClient().whiteboard.clear<IncomingTradeOffers::Ptr>();
 
+    try
     {
-        SteamBot::AssetData::KeySet keys;
-        for (const auto& offer : offers->offers)
-        {
-            keys.insert(offer->myItems.begin(), offer->myItems.end());
-            keys.insert(offer->theirItems.begin(), offer->theirItems.end());
-        }
-        SteamBot::AssetData::fetch(keys);
-    }
+        auto html=getIncomingTradeOfferPage();
+        auto offers=parseIncomingTradeOffserPage(html);
 
-    getClient().whiteboard.set<IncomingTradeOffers::Ptr>(std::move(offers));
+        {
+            SteamBot::AssetData::KeySet keys;
+            for (const auto& offer : offers->offers)
+            {
+                keys.insert(offer->myItems.begin(), offer->myItems.end());
+                keys.insert(offer->theirItems.begin(), offer->theirItems.end());
+            }
+            SteamBot::AssetData::fetch(keys);
+        }
+
+        getClient().whiteboard.set<IncomingTradeOffers::Ptr>(std::move(offers));
+    }
+    catch(...)
+    {
+    }
 }
 
 /************************************************************************/
 
 std::shared_ptr<const IncomingTradeOffers> TradeOffersModule::getIncoming()
 {
+    auto& whiteboard=getClient().whiteboard;
+
     std::lock_guard<decltype(mutex)> lock(mutex);
 
-    if (auto incoming=getClient().whiteboard.has<IncomingTradeOffers::Ptr>())
     {
-        if ((*incoming)->when>=lastUpdateNotification)
+        auto lastIncoming=whiteboard.has<LastIncoming>();
+        auto offers=whiteboard.has<IncomingTradeOffers::Ptr>();
+        if (offers==nullptr || lastIncoming!=nullptr)
         {
-            return *incoming;
+            loadIncoming();
         }
     }
-    loadIncoming();
+
     return getClient().whiteboard.get<IncomingTradeOffers::Ptr>(nullptr);
 }
 
@@ -504,10 +515,13 @@ void TradeOffersModule::init(SteamBot::Client& client)
 
 void TradeOffersModule::updateNotification(std::chrono::system_clock::time_point when)
 {
-    if (when>lastUpdateNotification)
+    auto& whiteboard=getClient().whiteboard;
+
+    auto lastUpdate=whiteboard.has<LastIncoming>();
+    if (lastUpdate==nullptr || when>*lastUpdate)
     {
         SteamBot::UI::OutputText() << "New trade offer";
-        lastUpdateNotification=when;
+        getClient().whiteboard.set<LastIncoming>(when);
     }
 }
 

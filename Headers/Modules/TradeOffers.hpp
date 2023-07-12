@@ -79,5 +79,12 @@ namespace SteamBot
         };
 
         std::shared_ptr<const IncomingTradeOffers> getIncoming();
+
+        namespace Whiteboard
+        {
+            class LastIncoming : public std::chrono::system_clock::time_point
+            {
+            };
+        }
     }
 }

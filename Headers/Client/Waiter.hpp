@@ -157,7 +157,11 @@ namespace SteamBot
         void wait();
         bool wait(std::chrono::milliseconds);
 
+        template <typename CLOCK> bool wait(CLOCK::time_point);
+
     public:
         static std::shared_ptr<Waiter> create();
     };
+
+    extern template bool Waiter::wait<std::chrono::steady_clock>(std::chrono::steady_clock::time_point);
 }

@@ -121,6 +121,21 @@ bool Waiter::wait(std::chrono::milliseconds timeout)
 
 /************************************************************************/
 
+template <typename CLOCK> bool Waiter::wait(CLOCK::time_point when)
+{
+    std::unique_lock<decltype(mutex)> lock(mutex);
+    bool result=condition.wait_until(lock, when, [this](){ return cancelled || isWoken(); });
+    if (cancelled)
+    {
+        throw OperationCancelledException();
+    }
+    return result;
+}
+
+// template bool Waiter::wait<std::chrono::steady_clock>(std::chrono::steady_clock::time_point);
+
+/************************************************************************/
+
 void Waiter::wakeup(ItemBase*)
 {
     condition.notify_all();
