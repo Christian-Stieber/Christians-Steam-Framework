@@ -38,7 +38,12 @@
 
 /************************************************************************/
 /*
- * IMPORTANT: when calling "use", you MUST use a char-literal.
+ * ToDo: we probably need a notification when settings change...
+ */
+
+/************************************************************************/
+/*
+ * IMPORTANT: when calling "use", you MUST use a static string
  */
 
 /************************************************************************/
@@ -86,6 +91,17 @@ namespace SteamBot
 {
     class ClientSettings : public SettingsBase
     {
+    public:
+        // This is sent as a message on the client
+        class Changed
+        {
+        public:
+            std::string name;
+
+        public:
+            static void send(SteamBot::DataFile&, std::string_view);
+        };
+
     private:
         ClientSettings();
 

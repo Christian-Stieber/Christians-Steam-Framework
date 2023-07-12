@@ -49,7 +49,7 @@ namespace SteamBot
     public:
         enum class FileType { Account, Steam };
 
-	private:
+	public:
         const FileType fileType;
         std::string name;
 

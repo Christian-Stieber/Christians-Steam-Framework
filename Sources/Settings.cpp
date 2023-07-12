@@ -21,6 +21,7 @@
 #include "DataFile.hpp"
 #include "Client/Client.hpp"
 #include "Helpers/JSON.hpp"
+#include "Modules/Executor.hpp"
 
 /************************************************************************/
 
@@ -168,10 +169,29 @@ void SteamBot::ClientSettings::setBool(std::string_view settingName, bool value)
 
 /************************************************************************/
 
+void SteamBot::ClientSettings::Changed::send(SteamBot::DataFile& file, std::string_view settingName)
+{
+    assert(file.fileType==SteamBot::DataFile::FileType::Account);
+    if (auto clientInfo=SteamBot::ClientInfo::find(file.name))
+    {
+        if (auto client=clientInfo->getClient())
+        {
+            SteamBot::Modules::Executor::execute(std::move(client), [settingName](SteamBot::Client& client) {
+                auto message=std::make_shared<Changed>();
+                message->name=std::string(settingName);
+                client.messageboard.send(std::move(message));
+            });
+        }
+    }
+}
+
+/************************************************************************/
+
 void SteamBot::ClientSettings::clear(std::string_view settingName, std::string_view accountName) const
 {
     auto& file=SteamBot::DataFile::get(accountName, SteamBot::DataFile::FileType::Account);
     SettingsBase::clear(file, settingName);
+    Changed::send(file, settingName);
 }
 
 /************************************************************************/
@@ -188,4 +208,5 @@ void SteamBot::ClientSettings::setBool(std::string_view settingName, std::string
 {
     auto& file=SteamBot::DataFile::get(accountName, SteamBot::DataFile::FileType::Account);
     SettingsBase::setBool(file, settingName, value);
+    Changed::send(file, settingName);
 }
