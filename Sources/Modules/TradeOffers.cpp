@@ -25,6 +25,7 @@
 #include "Modules/TradeOffers.hpp"
 #include "Modules/UnifiedMessageClient.hpp"
 #include "Helpers/URLs.hpp"
+#include "Helpers/JSON.hpp"
 #include "Web/CookieJar.hpp"
 #include "Helpers/HTML.hpp"
 #include "Helpers/ParseNumber.hpp"
@@ -60,6 +61,8 @@ namespace
 
     private:
         SteamBot::Messageboard::WaiterType<ClientNotification> clientNotification;
+
+        std::unordered_set<SteamBot::TradeOfferID> newOffersNotifications;
 
     private:
         void updateNotification(std::chrono::system_clock::time_point);
@@ -222,7 +225,7 @@ boost::json::value IncomingTradeOffers::toJson() const
     boost::json::array json;
     for (const auto& offer : offers)
     {
-        json.emplace_back(offer->toJson());
+        json.emplace_back(offer.second->toJson());
     }
     return json;
 }
@@ -403,7 +406,9 @@ std::function<void(const HTMLParser::Tree::Element&)> IncomingOffersParser::hand
                                 currentTradeOffer->partner!=SteamBot::AccountID::None &&
                                 (currentTradeOffer->myItems.size()!=0 || currentTradeOffer->theirItems.size()!=0))
                             {
-                                this->result.offers.push_back(std::move(currentTradeOffer));
+                                auto& item=this->result.offers[currentTradeOffer->tradeOfferId];
+                                assert(!item);
+                                item=std::move(currentTradeOffer);
                             }
                             currentTradeOffer.reset();
                         }
@@ -449,6 +454,7 @@ std::string TradeOffersModule::getIncomingTradeOfferPage() const
 
 void TradeOffersModule::loadIncoming()
 {
+    newOffersNotifications.clear();
     getClient().whiteboard.clear<LastIncoming>();
     getClient().whiteboard.clear<IncomingTradeOffers::Ptr>();
 
@@ -461,8 +467,8 @@ void TradeOffersModule::loadIncoming()
             SteamBot::AssetData::KeySet keys;
             for (const auto& offer : offers->offers)
             {
-                keys.insert(offer->myItems.begin(), offer->myItems.end());
-                keys.insert(offer->theirItems.begin(), offer->theirItems.end());
+                keys.insert(offer.second->myItems.begin(), offer.second->myItems.end());
+                keys.insert(offer.second->theirItems.begin(), offer.second->theirItems.end());
             }
             SteamBot::AssetData::fetch(keys);
         }
@@ -481,17 +487,14 @@ std::shared_ptr<const IncomingTradeOffers> TradeOffersModule::getIncoming()
     auto& whiteboard=getClient().whiteboard;
 
     std::lock_guard<decltype(mutex)> lock(mutex);
-
     {
-        auto lastIncoming=whiteboard.has<LastIncoming>();
         auto offers=whiteboard.has<IncomingTradeOffers::Ptr>();
-        if (offers==nullptr || lastIncoming!=nullptr)
+        if (offers==nullptr || !newOffersNotifications.empty())
         {
             loadIncoming();
         }
+        return whiteboard.get<IncomingTradeOffers::Ptr>(nullptr);
     }
-
-    return getClient().whiteboard.get<IncomingTradeOffers::Ptr>(nullptr);
 }
 
 /************************************************************************/
@@ -500,7 +503,24 @@ void TradeOffersModule::handle(std::shared_ptr<const ClientNotification> notific
 {
     if (notification->type==ClientNotification::Type::TradeOffer)
     {
-        updateNotification(notification->timestamp);
+        auto tradeOfferId=SteamBot::JSON::toNumber<SteamBot::TradeOfferID>(notification->body.at("tradeoffer_id"));
+        auto sender=SteamBot::JSON::toNumber<SteamBot::AccountID>(notification->body.at("sender"));
+        if (auto offers=getClient().whiteboard.has<IncomingTradeOffers::Ptr>())
+        {
+            auto iterator=(*offers)->offers.find(tradeOfferId);
+            if (iterator!=(*offers)->offers.end())
+            {
+                assert(iterator->second.get()->tradeOfferId==tradeOfferId);
+                assert(iterator->second.get()->partner==sender);
+                return;
+            }
+        }
+
+        if (newOffersNotifications.insert(tradeOfferId).second)
+        {
+            SteamBot::UI::OutputText() << "new trade offer id " << toInteger(tradeOfferId) << " from " << SteamBot::ClientInfo::prettyName(sender);
+            getClient().whiteboard.set<LastIncoming>(std::chrono::system_clock::now());
+        }
     }
 }
 
@@ -509,20 +529,6 @@ void TradeOffersModule::handle(std::shared_ptr<const ClientNotification> notific
 void TradeOffersModule::init(SteamBot::Client& client)
 {
     clientNotification=client.messageboard.createWaiter<ClientNotification>(*waiter);
-}
-
-/************************************************************************/
-
-void TradeOffersModule::updateNotification(std::chrono::system_clock::time_point when)
-{
-    auto& whiteboard=getClient().whiteboard;
-
-    auto lastUpdate=whiteboard.has<LastIncoming>();
-    if (lastUpdate==nullptr || when>*lastUpdate)
-    {
-        SteamBot::UI::OutputText() << "New trade offer";
-        getClient().whiteboard.set<LastIncoming>(when);
-    }
 }
 
 /************************************************************************/

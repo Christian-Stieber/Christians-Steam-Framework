@@ -24,6 +24,7 @@
 #include "UI/UI.hpp"
 #include "Client/Signal.hpp"
 #include "EnumString.hpp"
+#include "AcceptTrade.hpp"
 
 /************************************************************************/
 
@@ -77,11 +78,9 @@ void AutoAcceptModule::handleOffers(const IncomingTradeOffers& offers)
 {
     for (const auto& offer : offers.offers)
     {
-        auto clientInfo=SteamBot::ClientInfo::find(offer->partner);
-
         SteamBot::AutoAccept::Items items=SteamBot::AutoAccept::Items::None;
         {
-            if (clientInfo!=nullptr)
+            if (SteamBot::ClientInfo::find(offer.second->partner)!=nullptr)
             {
                 items=botItems;
             }
@@ -99,7 +98,7 @@ void AutoAcceptModule::handleOffers(const IncomingTradeOffers& offers)
                 break;
 
             case SteamBot::AutoAccept::Items::Gifts:
-                accept=offer->myItems.empty();
+                accept=offer.second->myItems.empty();
                 break;
 
             case SteamBot::AutoAccept::Items::All:
@@ -108,17 +107,25 @@ void AutoAcceptModule::handleOffers(const IncomingTradeOffers& offers)
             }
         }
 
-        SteamBot::UI::OutputText output;
-        output << (accept ? "auto-accepting" : "ignoring");
-        output << " tradeoffer id " << toInteger(offer->tradeOfferId) << " from ";
-        if (clientInfo!=nullptr)
         {
-            output << clientInfo->accountName;
-            output << " (" << toInteger(offer->partner) << ")";
+            SteamBot::UI::OutputText output;
+            output << (accept ? "auto-accepting" : "ignoring");
+            output << " tradeoffer id " << toInteger(offer.second->tradeOfferId);
+            output << " from " << SteamBot::ClientInfo::prettyName(offer.second->partner);
         }
-        else
+
+        if (accept)
         {
-            output << toInteger(offer->partner);
+            SteamBot::UI::OutputText output;
+            output << "accepting " << toInteger(offer.second->tradeOfferId);
+            if (SteamBot::acceptTrade(offer.second->tradeOfferId))
+            {
+                output << " succeeded";
+            }
+            else
+            {
+                output << " FAILED";
+            }
         }
     }
 }

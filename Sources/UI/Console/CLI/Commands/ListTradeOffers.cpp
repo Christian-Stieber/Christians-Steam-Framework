@@ -80,16 +80,12 @@ static void printOffers(const SteamBot::TradeOffers::IncomingTradeOffers& offers
         output << offers.offers.size() << " incoming trade offers:\n";
         for (const auto& offer : offers.offers)
         {
-            output << "   id " << toInteger(offer->tradeOfferId) << " from ";
-            if (auto partner=SteamBot::ClientInfo::find(offer->partner))
-            {
-                output << partner->accountName << " ";
-            }
-            output << " (id " << toInteger(offer->partner) << "):\n";
+            output << "   id " << toInteger(offer.second->tradeOfferId);
+            output << " from " << SteamBot::ClientInfo::prettyName(offer.second->partner) << ":\n";
             output << "      my items:\n";
-            PrintItems::print(output, offer->myItems);
+            PrintItems::print(output, offer.second->myItems);
             output << "      for their items:\n";
-            PrintItems::print(output, offer->theirItems);
+            PrintItems::print(output, offer.second->theirItems);
         }
     }
     else

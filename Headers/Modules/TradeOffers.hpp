@@ -79,7 +79,7 @@ namespace SteamBot
 
         public:
             std::chrono::system_clock::time_point when;
-            std::vector<std::unique_ptr<TradeOffer>> offers;
+            std::unordered_map<SteamBot::TradeOfferID, std::unique_ptr<TradeOffer>> offers;
 
         public:
             IncomingTradeOffers();
