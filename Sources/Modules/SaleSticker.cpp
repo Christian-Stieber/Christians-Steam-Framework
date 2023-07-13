@@ -249,14 +249,25 @@ bool MyClaim::canClaim()
             }
         }
 
-        if (response.at("can_claim").as_bool())
         {
-            return true;
-        }
-        else
-        {
-            BOOST_LOG_TRIVIAL(debug) << "SaleSticker: already claimed";
-            result=Status::ClaimResult::AlreadyClaimed;
+            bool canClaim=false;
+            if (SteamBot::JSON::optBool(response, "can_claim", canClaim))
+            {
+                if (canClaim)
+                {
+                    return true;
+                }
+                else
+                {
+                    BOOST_LOG_TRIVIAL(debug) << "SaleSticker: already claimed";
+                    result=Status::ClaimResult::AlreadyClaimed;
+                }
+            }
+            else
+            {
+                BOOST_LOG_TRIVIAL(debug) << "SaleSticker: no sale";
+                result=Status::ClaimResult::NoSale;
+            }
         }
     }
     else
