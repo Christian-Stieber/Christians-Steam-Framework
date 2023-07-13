@@ -136,6 +136,7 @@ void SteamBot::Client::launch(SteamBot::ClientInfo& clientInfo)
         std::thread([counter = threadCounter(), &clientInfo]() mutable {
             ClientFiber::Scheduler* scheduler=nullptr;
             boost::fibers::use_scheduling_algorithm<ClientFiber::Scheduler>(scheduler);
+            scheduler->setBaseCounter();
 
             currentClient=std::make_shared<Client>(clientInfo);
 

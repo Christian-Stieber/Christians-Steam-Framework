@@ -41,13 +41,14 @@ namespace SteamBot
         public:
             boost::fibers::condition_variable condition;
             unsigned int counter=0;
+            unsigned int baseCounter=0;
 
         public:
             void wait()
             {
                 boost::fibers::mutex mutex;
                 std::unique_lock<decltype(mutex)> lock(mutex);
-                condition.wait(lock, [this](){ return counter<=2; });
+                condition.wait(lock, [this](){ return counter<=baseCounter; });
             }
 
             void print()
@@ -66,6 +67,13 @@ namespace SteamBot
                 counter--;
                 print();
                 condition.notify_one();
+            }
+
+        public:
+            void setBaseCounter()
+            {
+                boost::this_fiber::yield();
+                baseCounter=counter;
             }
         };
     }
@@ -156,6 +164,11 @@ namespace SteamBot
             void wait()
             {
                 tracker->wait();
+            }
+
+            void setBaseCounter()
+            {
+                tracker->setBaseCounter();
             }
         };
     }
