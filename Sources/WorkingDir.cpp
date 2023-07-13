@@ -26,9 +26,12 @@
 #include <filesystem>
 #include <unistd.h>
 #include <pwd.h>
+#include <sys/stat.h>
 
 void SteamBot::setWorkingDir()
 {
+    umask(S_IXOTH | S_IWOTH | S_IROTH | S_IXGRP | S_IWGRP | S_IRGRP);
+
 	static const std::filesystem::path homeDir=[](){
 		// I don't use getpwuid_r(), since this is only meant to be called
 		// once on startup.
@@ -41,7 +44,9 @@ void SteamBot::setWorkingDir()
 		return entry->pw_dir;
 	}();
 
-	std::filesystem::current_path(homeDir / ".SteamBot");
+    auto dirPath=(homeDir / ".Christians-Steam-Framework");
+    std::filesystem::create_directory(dirPath);
+    std::filesystem::current_path(dirPath);
 }
 
 /************************************************************************/
