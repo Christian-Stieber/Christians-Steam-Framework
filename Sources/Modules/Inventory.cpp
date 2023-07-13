@@ -34,11 +34,11 @@
 
 /************************************************************************/
 
+#include "Modules/Connection.hpp"
 #include "Client/Module.hpp"
 #include "Modules/Inventory.hpp"
 #include "Modules/WebSession.hpp"
 #include "Modules/ClientNotification.hpp"
-#include "Modules/Connection.hpp"
 #include "AssetData.hpp"
 #include "Helpers/ParseNumber.hpp"
 #include "Helpers/JSON.hpp"

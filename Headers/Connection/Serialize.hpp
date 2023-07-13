@@ -207,7 +207,7 @@ namespace SteamBot
                 message=std::move(result.first);
 
                 auto size=result.second.data()-bytes.data();
-                assert(size<=messageSize);
+                assert(size<=static_cast<decltype(size)>(messageSize));
 
                 BOOST_LOG_TRIVIAL(debug) << "deserialized protopuf message "
                                          << SteamBot::typeName<T>()

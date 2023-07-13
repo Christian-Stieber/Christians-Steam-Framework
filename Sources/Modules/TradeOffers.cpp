@@ -19,11 +19,11 @@
 
 /************************************************************************/
 
+#include "Modules/UnifiedMessageClient.hpp"
 #include "Client/Module.hpp"
 #include "Modules/WebSession.hpp"
 #include "AssetData.hpp"
 #include "Modules/TradeOffers.hpp"
-#include "Modules/UnifiedMessageClient.hpp"
 #include "Helpers/URLs.hpp"
 #include "Helpers/JSON.hpp"
 #include "Web/CookieJar.hpp"

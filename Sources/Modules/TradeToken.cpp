@@ -17,9 +17,9 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#include "Modules/UnifiedMessageClient.hpp"
 #include "Client/Module.hpp"
 #include "Modules/TradeToken.hpp"
-#include "Modules/UnifiedMessageClient.hpp"
 #include "Helpers/JSON.hpp"
 
 #include "steamdatabase/protobufs/steam/steammessages_econ.steamclient.pb.h"
