@@ -123,19 +123,6 @@ void SteamBot::Client::initModules()
 }
 
 /************************************************************************/
-
-void SteamBot::Client::main()
-{
-    SteamBot::UI::Thread::outputText(std::string("running client ")+clientInfo.accountName);
-
-    initModules();
-
-    SteamBot::ClientFiber::Properties::counter.wait();
-
-    SteamBot::UI::Thread::outputText(std::string("exiting client ")+clientInfo.accountName);
-}
-
-/************************************************************************/
 /*
  * Start a new client
  */
@@ -147,12 +134,18 @@ void SteamBot::Client::launch(SteamBot::ClientInfo& clientInfo)
         BOOST_LOG_TRIVIAL(debug) << "Client::launch()";
 
         std::thread([counter = threadCounter(), &clientInfo]() mutable {
-            boost::fibers::use_scheduling_algorithm<ClientFiber::Scheduler>();
+            ClientFiber::Scheduler* scheduler=nullptr;
+            boost::fibers::use_scheduling_algorithm<ClientFiber::Scheduler>(scheduler);
 
             currentClient=std::make_shared<Client>(clientInfo);
 
             clientInfo.setClient(currentClient);
-            currentClient->main();
+            {
+                SteamBot::UI::Thread::outputText(std::string("running client ")+clientInfo.accountName);
+                currentClient->initModules();
+                scheduler->wait();
+                SteamBot::UI::Thread::outputText(std::string("exiting client ")+clientInfo.accountName);
+            }
             clientInfo.setClient(nullptr);
 
             BOOST_LOG_TRIVIAL(info) << "client quit with mode \"" << SteamBot::enumToStringAlways(currentClient->quitMode) << "\"";

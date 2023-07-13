@@ -26,7 +26,52 @@
 /************************************************************************/
 /*
  * This is a fiber-scheduler that counts the number of fibers...
+ *
+ * Note: https://github.com/boostorg/fiber/issues/308#
  */
+
+/************************************************************************/
+
+namespace SteamBot
+{
+    namespace ClientFiber
+    {
+        class Tracker
+        {
+        public:
+            boost::fibers::condition_variable condition;
+            unsigned int counter=0;
+
+        public:
+            void wait()
+            {
+                boost::fibers::mutex mutex;
+                std::unique_lock<decltype(mutex)> lock(mutex);
+                condition.wait(lock, [this](){ return counter<=2; });
+            }
+
+            void print()
+            {
+                BOOST_LOG_TRIVIAL(debug) << "Fiber count: " << counter;
+            }
+
+            void increase()
+            {
+                counter++;
+                print();
+            }
+
+            void decrease()
+            {
+                counter--;
+                print();
+                condition.notify_one();
+            }
+        };
+    }
+}
+
+/************************************************************************/
 
 namespace SteamBot
 {
@@ -34,95 +79,83 @@ namespace SteamBot
     {
         class Properties : public boost::fibers::fiber_properties
         {
-        public:
-            class Counter
-            {
-            private:
-                boost::fibers::mutex mutex;
-                boost::fibers::condition_variable condition;
-                unsigned int counter;
-
-            public:
-                Counter()
-                    : counter(0)
-                {
-                }
-
-                void print() const
-                {
-                    BOOST_LOG_TRIVIAL(debug) << "Fiber count: " << counter;
-                }
-
-                void increase()
-                {
-                    counter++;
-                    print();
-                }
-
-                void decrease()
-                {
-                    counter--;
-                    print();
-                    condition.notify_all();
-                }
-
-                void wait()
-                {
-                    BOOST_LOG_TRIVIAL(debug) << "Waiting for fibers...";
-                    std::unique_lock<decltype(mutex)> lock(mutex);
-                    condition.wait(lock, [this]() { return counter==1; } );		// ignore calling fiber, of course
-                }
-            };
-
-            inline static thread_local Counter counter;
-
         private:
-            std::thread::id myThread;
+            std::shared_ptr<Tracker> tracker;
 
         public:
             Properties(boost::fibers::context* context)
-                : fiber_properties(context),
-                  myThread(std::this_thread::get_id())
+                : fiber_properties(context)
             {
-                counter.increase();
+                assert(false);
             }
 
-            virtual ~Properties()
+            Properties(boost::fibers::context* context, std::shared_ptr<Tracker> tracker_)
+                : fiber_properties(context), tracker(std::move(tracker_))
             {
-                assert(myThread==std::this_thread::get_id());
-                counter.decrease();
+                tracker->increase();
+            }
+
+            ~Properties()
+            {
+                tracker->decrease();
             }
         };
+    }
+}
 
+/************************************************************************/
+
+namespace SteamBot
+{
+    namespace ClientFiber
+    {
         class Scheduler : public boost::fibers::algo::algorithm_with_properties<Properties>
         {
-        private:
+        public:
             boost::fibers::algo::round_robin scheduler;
+            std::shared_ptr<Tracker> tracker{std::make_shared<Tracker>()};
 
         public:
-            virtual void awakened(boost::fibers::context* context, Properties&) noexcept
+            Scheduler(Scheduler*& self)
+            {
+                self=this;
+            }
+
+        public:
+            virtual void awakened(boost::fibers::context* context, Properties&) noexcept // override
             {
                 return scheduler.awakened(context);
             }
 
-            virtual boost::fibers::context* pick_next() noexcept
+            virtual boost::fibers::context* pick_next() noexcept override
             {
                 return scheduler.pick_next();
             }
 
-            virtual bool has_ready_fibers() const noexcept
+            virtual bool has_ready_fibers() const noexcept override
             {
                 return scheduler.has_ready_fibers();
             }
 
-            virtual void suspend_until(std::chrono::steady_clock::time_point const& when) noexcept
+            virtual void suspend_until(std::chrono::steady_clock::time_point const& when) noexcept override
             {
                 return scheduler.suspend_until(when);
             }
 
-            virtual void notify() noexcept
+            virtual void notify() noexcept override
             {
                 return scheduler.notify();
+            }
+
+        public:
+            virtual boost::fibers::fiber_properties* new_properties(boost::fibers::context* context) override
+            {
+                return new Properties(context, tracker);
+            }
+
+            void wait()
+            {
+                tracker->wait();
             }
         };
     }

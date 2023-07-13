@@ -77,7 +77,6 @@ namespace SteamBot
         QuitMode quitMode=QuitMode::None;
 
 	private:
-        void main();
         void initModules();
 
 	public:
