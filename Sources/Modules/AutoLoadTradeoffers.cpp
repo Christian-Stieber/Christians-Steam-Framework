@@ -153,7 +153,8 @@ SteamBot::AutoLoadTradeoffers::Enable::Enable()
 SteamBot::AutoLoadTradeoffers::Enable::~Enable()
 {
     const auto locked=owner.lock();
-    assert(locked && locked==SteamBot::Client::getClientShared());
+    assert(locked);
+    assert(locked==SteamBot::Client::getClientShared());
 
     enable(false);
 }

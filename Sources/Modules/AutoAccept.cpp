@@ -40,14 +40,13 @@ namespace
         SteamBot::Whiteboard::WaiterType<IncomingTradeOffers::Ptr> incomingOffers;
         SteamBot::Signal::WaiterType stateChangeSignal;
 
-        std::unique_ptr<SteamBot::AutoLoadTradeoffers::Enable> autoLoad;
         std::weak_ptr<const IncomingTradeOffers> lastOffers;
 
         SteamBot::AutoAccept::Items botItems=SteamBot::AutoAccept::Items::None;
 
     private:
         void handleOffers(const IncomingTradeOffers&);
-        void updateAutoLoad();
+        void updateAutoLoad(std::unique_ptr<SteamBot::AutoLoadTradeoffers::Enable>&);
         void handleIncoming();
 
     public:
@@ -132,7 +131,7 @@ void AutoAcceptModule::handleOffers(const IncomingTradeOffers& offers)
 
 /************************************************************************/
 
-void AutoAcceptModule::updateAutoLoad()
+void AutoAcceptModule::updateAutoLoad(std::unique_ptr<SteamBot::AutoLoadTradeoffers::Enable>& autoLoad)
 {
     if (stateChangeSignal->testAndClear())
     {
@@ -146,7 +145,7 @@ void AutoAcceptModule::updateAutoLoad()
         {
             if (!autoLoad)
             {
-                autoLoad=std::make_unique<decltype(autoLoad)::element_type>();
+                autoLoad=std::make_unique<SteamBot::AutoLoadTradeoffers::Enable>();
             }
         }
     }
@@ -175,11 +174,12 @@ void AutoAcceptModule::handleIncoming()
 
 void AutoAcceptModule::run(SteamBot::Client& client)
 {
+    std::unique_ptr<SteamBot::AutoLoadTradeoffers::Enable> autoLoad;
     while (true)
     {
         waiter->wait();
 
-        updateAutoLoad();
+        updateAutoLoad(autoLoad);
         handleIncoming();
     }
 }
