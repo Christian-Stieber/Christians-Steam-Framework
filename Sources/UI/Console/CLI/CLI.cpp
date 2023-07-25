@@ -18,6 +18,7 @@
  */
 
 #include "./Helpers.hpp"
+#include "Vector.hpp"
 
 /************************************************************************/
 
@@ -68,51 +69,132 @@ void CLI::showHelp()
 
 /************************************************************************/
 /*
+ * Returns a list of account names to use.
+ *
+ * Expands things like @groupname or *, or just copies the name.
+ */
+
+std::vector<SteamBot::ClientInfo*> expandAccountName(std::string_view name)
+{
+    std::vector<SteamBot::ClientInfo*> result;
+
+    if (name.starts_with('@'))
+    {
+        name.remove_prefix(1);
+        result=SteamBot::ClientInfo::getGroup(name);
+        if (result.empty())
+        {
+            std::cout << "group \"" << name << "\" not found" << std::endl;
+        }
+    }
+    else if (name=="*")
+    {
+        result=SteamBot::ClientInfo::getClients();
+        SteamBot::erase(result, [](const SteamBot::ClientInfo* info) {
+            return !info->getClient();
+        });
+        if (result.empty())
+        {
+            std::cout << "no running accounts found" << std::endl;
+        }
+    }
+    else
+    {
+        if (auto info=SteamBot::ClientInfo::find(name))
+        {
+            result.push_back(info);
+        }
+        else
+        {
+            std::cout << "unknown account \"" << name << "\"" << std::endl;
+        }
+    }
+
+    return result;
+}
+
+/************************************************************************/
+
+static bool executeCommand(SteamBot::ClientInfo* clientInfo, SteamBot::UI::CLI::CLICommandBase* command, std::vector<std::string>& words)
+{
+    if (!command->execute(clientInfo, words))
+    {
+        std::cout << "command syntax: ";
+        command->printSyntax();
+        std::cout << std::endl;
+        return false;
+    }
+    return true;
+}
+
+/************************************************************************/
+/*
  * Note: commands can be oprefixed with "<accountname>:" as the first
  * word (even if it doesn't make sense, like "account: help").
  */
 
 void CLI::command(std::string_view line)
 {
+    std::vector<SteamBot::ClientInfo*> clients;
+
     auto words=getWords(line);
+
     if (words.size()>0)
     {
-        SteamBot::ClientInfo* clientInfo=nullptr;
-
         if (words[0].size()>0 && words[0].back()==':')
         {
             auto name=std::move(words[0]);
             name.pop_back();
             words.erase(words.begin());
 
-            clientInfo=SteamBot::ClientInfo::find(name);
-            if (clientInfo==nullptr)
+            clients=expandAccountName(name);
+            if (clients.empty())
             {
-                std::cout << "unknown account \"" << name << "\"" << std::endl;
                 return;
             }
         }
 
-        if (clientInfo==nullptr)
+        if (clients.empty())
         {
-            clientInfo=currentAccount;
+            if (currentAccount!=nullptr)
+            {
+                clients.push_back(currentAccount);
+            }
         }
+    }
 
+    if (words.size()>0)
+    {
         for (const auto& command : commands)
         {
             if (command->command==words[0])
             {
-                if (command->needsAccount && clientInfo==nullptr)
+                if (command->needsAccount)
                 {
-                    std::cout << "no current account; select one first or specify an account name" << std::endl;
-                    return;
-                }
+                    if (clients.empty())
+                    {
+                        std::cout << "no current account; select one first or specify an account name" << std::endl;
+                        return;
+                    }
 
-                if (!command->execute(clientInfo, words))
+                    bool first=true;
+                    for (SteamBot::ClientInfo* clientInfo : clients)
+                    {
+                        if (!first)
+                        {
+                            boost::this_fiber::sleep_for(std::chrono::seconds(2));
+                        }
+                        first=false;
+
+                        if (!executeCommand(clientInfo, command.get(), words))
+                        {
+                            break;
+                        }
+                    }
+                }
+                else
                 {
-                    std::cout << "command syntax: ";
-                    command->printSyntax();
-                    std::cout << std::endl;
+                    executeCommand(nullptr, command.get(), words);
                 }
                 return;
             }
