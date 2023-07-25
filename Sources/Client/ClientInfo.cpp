@@ -2,6 +2,7 @@
 #include "Helpers/StringCompare.hpp"
 #include "Helpers/JSON.hpp"
 #include "SteamID.hpp"
+#include "Vector.hpp"
 
 #include <filesystem>
 #include <regex>
@@ -179,10 +180,36 @@ std::vector<ClientInfo*> ClientInfo::getClients()
 {
     std::vector<ClientInfo*> result;
     std::lock_guard<decltype(mutex)> lock(mutex);
+    result.reserve(clients.size());
     for (auto info : clients)
     {
         result.push_back(info);
     }
+    return result;
+}
+
+/************************************************************************/
+
+std::vector<ClientInfo*> ClientInfo::getGroup(std::string_view name)
+{
+    auto result=getClients();
+    SteamBot::erase(result, [name](const ClientInfo* info) {
+        auto& dataFile=SteamBot::DataFile::get(info->accountName, SteamBot::DataFile::FileType::Account);
+        bool isMember=dataFile.examine([name](const boost::json::value& json) {
+            if (auto array=SteamBot::JSON::getItem(json, "Groups"))
+            {
+                for (const auto& element : array->as_array())
+                {
+                    if (element.as_string()==name)
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        });
+        return !isMember;
+    });
     return result;
 }
 
