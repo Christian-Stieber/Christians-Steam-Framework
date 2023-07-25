@@ -25,9 +25,9 @@
 
 /************************************************************************/
 
+#include "Modules/UnifiedMessageClient.hpp"
 #include "Client/Module.hpp"
 #include "Modules/UnifiedMessageServer.hpp"
-#include "Modules/UnifiedMessageClient.hpp"
 #include "Modules/ClientNotification.hpp"
 #include "Helpers/ProtoPuf.hpp"
 #include "Helpers/Time.hpp"

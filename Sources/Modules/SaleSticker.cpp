@@ -17,11 +17,11 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#include "Connection/Serialize.hpp"
 #include "Client/Client.hpp"
 #include "Modules/WebSession.hpp"
 #include "Modules/SaleSticker.hpp"
 #include "Web/URLEncode.hpp"
-#include "Connection/Serialize.hpp"
 #include "UI/UI.hpp"
 #include "Helpers/Time.hpp"
 #include "Helpers/JSON.hpp"
