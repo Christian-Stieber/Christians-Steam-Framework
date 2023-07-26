@@ -92,7 +92,10 @@ void ConnectionModule::writePackets(SteamBot::Connections::ConnectResult::elemen
     std::shared_ptr<const SendSteamMessage> message;
     while ((message=sendMessageWaiter->fetch()))
     {
-        BOOST_LOG_TRIVIAL(info) << "sending message: " << boost::typeindex::type_id_runtime(message->payload).pretty_name();
+        if (dynamic_cast<const Steam::CMsgClientHeartBeatMessageType*>(message->payload.get())==nullptr)
+        {
+            BOOST_LOG_TRIVIAL(info) << "sending message: " << boost::typeindex::type_id_runtime(*(message->payload)).pretty_name();
+        }
         connection->writePacket(message->payload->Serializeable::serialize());
 
         typedef SteamBot::Modules::Connection::Whiteboard::LastMessageSent LastMessageSent;

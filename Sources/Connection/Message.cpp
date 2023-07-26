@@ -61,6 +61,8 @@ void SteamBot::Connection::Message::Serializeable::deserialize(SteamBot::Connect
 
 size_t SteamBot::Connection::Message::Header::Base::serialize(SteamBot::Connection::Serializer& serializer) const
 {
+    serializer.noLogging=(msgType==Type::ClientHeartBeat);
+
 	size_t result=Serializeable::serialize(serializer);
 
 	auto msgTypeValue=static_cast<std::underlying_type_t<decltype(msgType)>>(msgType);

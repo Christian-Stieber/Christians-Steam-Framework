@@ -51,11 +51,12 @@ namespace SteamBot
     public:
         template <typename HANDLER> static void post(std::string_view name, HANDLER handler)
         {
-            BOOST_LOG_TRIVIAL(debug) << "Asio: posting \"" << name << "\"";
-            getIoContext().post([name, handler=std::move(handler)]() mutable {
-                BOOST_LOG_TRIVIAL(debug) << "Asio: thread is running \"" << name << "\"";
+            bool noLogging=(name=="Connections::writePacket");
+            if (!noLogging) BOOST_LOG_TRIVIAL(debug) << "Asio: posting \"" << name << "\"";
+            getIoContext().post([name, noLogging, handler=std::move(handler)]() mutable {
+                if (!noLogging) BOOST_LOG_TRIVIAL(debug) << "Asio: thread is running \"" << name << "\"";
                 handler();
-                BOOST_LOG_TRIVIAL(debug) << "Asio: thread is exiting \"" << name << "\"";
+                if (!noLogging) BOOST_LOG_TRIVIAL(debug) << "Asio: thread is exiting \"" << name << "\"";
             });
         }
     };

@@ -72,7 +72,7 @@ namespace
 
             assert(deserializer.data.size()==0);
 
-            BOOST_LOG_TRIVIAL(debug) << "TCP: got packet header for length " << length;
+            // BOOST_LOG_TRIVIAL(debug) << "TCP: got packet header for length " << length;
         }
 
     public:
@@ -131,7 +131,7 @@ TCP::MutableBytes TCP::readPacket()
 	if (header.length>0)
 	{
 		auto bytesRead=boost::asio::async_read(socket, boost::asio::buffer(readBuffer), boost::fibers::asio::yield);
-		BOOST_LOG_TRIVIAL(debug) << "TCP: read " << bytesRead << " data bytes";
+		// BOOST_LOG_TRIVIAL(debug) << "TCP: read " << bytesRead << " data bytes";
 	}
 
 	return readBuffer;
@@ -143,7 +143,7 @@ void TCP::writePacket(TCP::ConstBytes bytes)
 {
 	auto header=PacketHeader(bytes.size()).serialize();
 	std::array<boost::asio::const_buffer, 2> buffers={ boost::asio::buffer(header), boost::asio::const_buffer(bytes.data(), bytes.size()) };
-	BOOST_LOG_TRIVIAL(debug) << "writing packet of " << bytes.size() << " bytes";
+	// BOOST_LOG_TRIVIAL(debug) << "writing packet of " << bytes.size() << " bytes";
 	boost::asio::async_write(socket, buffers, boost::fibers::asio::yield);
 }
 

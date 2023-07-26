@@ -85,6 +85,7 @@ size_t Serializer::storeProto(const google::protobuf::MessageLite& protobufMessa
 		throw std::runtime_error("error while serializing protobuf messsage");
 	}
 
+    if (!noLogging)
 	{
 		const ProtobufDebug info(protobufMessage);
 		BOOST_LOG_TRIVIAL(debug) << "serializing protobuf message " << info.name << " into " << messageSize << " bytes: " << info.json;

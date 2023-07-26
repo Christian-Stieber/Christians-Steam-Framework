@@ -56,6 +56,7 @@ namespace SteamBot
         class Serializer
         {
         public:
+            bool noLogging=false;
             std::vector<std::byte> result;
 
         public:
