@@ -66,7 +66,7 @@ list(APPEND SRCS Boost)
 ######################################################################
 
 list(APPEND SRCS Main Logging WorkingDir Universe Random Base64 DestructMonitor JobID DataFile Settings AssetKey RateLimit)
-list(APPEND SRCS AssetData SendTrade SendInventory PostWithSession AcceptTrade DeclineTrade ExecuteFibers)
+list(APPEND SRCS AssetData SendTrade SendInventory PostWithSession AcceptTrade DeclineTrade CancelTrade ExecuteFibers)
 list(APPEND SRCS Asio/Asio Asio/HTTPClient Asio/Fiber Asio/Connections)
 list(APPEND SRCS Client/Client Client/Waiter Client/Whiteboard Client/Messageboard Client/Module Client/Sleep Client/ClientInfo)
 list(APPEND SRCS Connection/Endpoint Connection/Serialize Connection/Base Connection/TCP Connection/Message Connection/Encrypted)
@@ -89,7 +89,7 @@ list(APPEND SRCS UI/Console/CLI/Commands/ListGames UI/Console/CLI/Commands/Statu
 list(APPEND SRCS UI/Console/CLI/Commands/Help UI/Console/CLI/Commands/Exit UI/Console/CLI/Commands/Create UI/Console/CLI/Commands/PlayStopGame)
 list(APPEND SRCS UI/Console/CLI/Commands/AddLicense UI/Console/CLI/Commands/DiscoveryQueue UI/Console/CLI/Commands/SaleEvent UI/Console/CLI/Commands/Quit)
 list(APPEND SRCS UI/Console/CLI/Commands/Settings UI/Console/CLI/Commands/ListInventory UI/Console/CLI/Commands/SaleSticker)
-list(APPEND SRCS UI/Console/CLI/Commands/SendInventory UI/Console/CLI/Commands/AcceptTrade UI/Console/CLI/Commands/DeclineTrade)
+list(APPEND SRCS UI/Console/CLI/Commands/SendInventory UI/Console/CLI/Commands/AcceptTrade UI/Console/CLI/Commands/DeclineTrade UI/Console/CLI/Commands/CancelTrade)
 list(APPEND SRCS UI/Console/CLI/Commands/SaleQueue UI/Console/CLI/Commands/ListTradeOffers UI/Console/CLI/Commands/CreateAddRemoveGroup UI/Console/CLI/Commands/ListGroups)
 list(APPEND SRCS Modules/AutoLoadTradeoffers)
 list(APPEND SRCS Modules/AutoAccept)
