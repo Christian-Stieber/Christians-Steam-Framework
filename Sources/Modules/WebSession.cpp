@@ -74,6 +74,7 @@ namespace
         Status status=Status::None;
 
         std::queue<std::shared_ptr<const Request>> requests;
+        std::shared_ptr<const Request> forbidden;
 
         SteamBot::Messageboard::WaiterType<NonceMessage> nonceMessage;
         SteamBot::Messageboard::WaiterType<Request> requestWaiter;
@@ -322,16 +323,41 @@ void WebSessionModule::handleRequests()
         {
             std::string myCookies=cookies;
             setTimezoneCookie(myCookies);
+
+#if 0
+            // After 60 seconds, make the cookies invalid
+            if (timestamp<std::chrono::steady_clock::now()-std::chrono::seconds(60))
+            {
+                static const std::string_view cookie="steamLoginSecure=";
+                auto position=myCookies.find(cookie);
+                assert(position!=std::string::npos);
+                assert(position+cookie.size()+1<myCookies.size());
+                myCookies[position+cookie.size()]++;
+            }
+#endif
             query->request.base().set(boost::beast::http::field::cookie, std::move(myCookies));
         }
 
         query=SteamBot::HTTPClient::perform(std::move(query));
 
-        auto reply=std::make_shared<Response>();
-        reply->initiator=std::move(front);
-        reply->query=std::move(query);
-        requests.pop();
-        getClient().messageboard.send(std::move(reply));
+        if (query->response.result()!=boost::beast::http::status::forbidden)
+        {
+            if (forbidden==front) forbidden.reset();
+            assert(!forbidden);
+
+            auto reply=std::make_shared<Response>();
+            reply->initiator=std::move(front);
+            reply->query=std::move(query);
+            requests.pop();
+            getClient().messageboard.send(std::move(reply));
+        }
+        else
+        {
+            assert(!forbidden);
+            forbidden=front;
+
+            status=Status::None;
+        }
     }
 }
 
