@@ -48,7 +48,7 @@ namespace
 
 /************************************************************************/
 
-static void printOffers(const SteamBot::TradeOffers::IncomingTradeOffers& offers)
+static void printOffers(const SteamBot::TradeOffers::TradeOffers& offers)
 {
     struct PrintItems
     {
@@ -74,14 +74,30 @@ static void printOffers(const SteamBot::TradeOffers::IncomingTradeOffers& offers
         }
     };
 
+    const char* direction=nullptr;
+    const char* partnerLabel=nullptr;
+
+    switch(offers.direction)
+    {
+    case SteamBot::TradeOffers::TradeOffers::Direction::Incoming:
+        direction="incoming";
+        partnerLabel="from";
+        break;
+
+    case SteamBot::TradeOffers::TradeOffers::Direction::Outgoing:
+        direction="outgoing";
+        partnerLabel="to";
+        break;
+    }
+
     if (offers.offers.size()>0)
     {
         SteamBot::UI::OutputText output;
-        output << offers.offers.size() << " incoming trade offers:\n";
+        output << offers.offers.size() << " " << direction << " trade offers:\n";
         for (const auto& offer : offers.offers)
         {
             output << "   id " << toInteger(offer.second->tradeOfferId);
-            output << " from " << SteamBot::ClientInfo::prettyName(offer.second->partner) << ":\n";
+            output << " " << partnerLabel << " " << SteamBot::ClientInfo::prettyName(offer.second->partner) << ":\n";
             output << "      my items:\n";
             PrintItems::print(output, offer.second->myItems);
             output << "      for their items:\n";
@@ -90,7 +106,7 @@ static void printOffers(const SteamBot::TradeOffers::IncomingTradeOffers& offers
     }
     else
     {
-        SteamBot::UI::OutputText() << "no trade offers";
+        SteamBot::UI::OutputText() << "no " << direction << " trade offers";
     }
 }
 
@@ -109,7 +125,15 @@ bool ListTradeOffersCommand::execute(SteamBot::ClientInfo* clientInfo, std::vect
                 }
                 else
                 {
-                    SteamBot::UI::OutputText() << "no trade offers";
+                    SteamBot::UI::OutputText() << "no incoming trade offers";
+                }
+                if (auto offers=SteamBot::TradeOffers::getOutgoing())
+                {
+                    printOffers(*offers);
+                }
+                else
+                {
+                    SteamBot::UI::OutputText() << "no outgoing trade offers";
                 }
             });
             if (success)

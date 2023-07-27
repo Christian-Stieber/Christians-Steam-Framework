@@ -64,6 +64,31 @@ namespace SteamBot
 }
 
 /************************************************************************/
+
+namespace SteamBot
+{
+    namespace TradeOffers
+    {
+        class TradeOffers
+        {
+        public:
+            enum class Direction { Incoming, Outgoing };
+
+        public:
+            std::chrono::system_clock::time_point when;
+            Direction direction;
+            std::unordered_map<SteamBot::TradeOfferID, std::unique_ptr<TradeOffer>> offers;
+
+        public:
+            TradeOffers(Direction);
+            ~TradeOffers();
+
+            boost::json::value toJson() const;
+        };
+    }
+}
+
+/************************************************************************/
 /*
  * An IncomingTradeOffers::Ptr is also stored in the whiteboard
  */
@@ -72,20 +97,33 @@ namespace SteamBot
 {
     namespace TradeOffers
     {
-        class IncomingTradeOffers
+        class IncomingTradeOffers : public TradeOffers
         {
         public:
             typedef std::shared_ptr<const IncomingTradeOffers> Ptr;
 
-        public:
-            std::chrono::system_clock::time_point when;
-            std::unordered_map<SteamBot::TradeOfferID, std::unique_ptr<TradeOffer>> offers;
-
-        public:
             IncomingTradeOffers();
             ~IncomingTradeOffers();
+        };
+    }
+}
 
-            boost::json::value toJson() const;
+/************************************************************************/
+/*
+ * An OutgoingTradeOffers::Ptr is also stored in the whiteboard
+ */
+
+namespace SteamBot
+{
+    namespace TradeOffers
+    {
+        class OutgoingTradeOffers : public TradeOffers
+        {
+        public:
+            typedef std::shared_ptr<const OutgoingTradeOffers> Ptr;
+
+            OutgoingTradeOffers();
+            ~OutgoingTradeOffers();
         };
     }
 }
@@ -116,5 +154,6 @@ namespace SteamBot
     namespace TradeOffers
     {
         std::shared_ptr<const IncomingTradeOffers> getIncoming();
+        std::shared_ptr<const OutgoingTradeOffers> getOutgoing();
     }
 }
