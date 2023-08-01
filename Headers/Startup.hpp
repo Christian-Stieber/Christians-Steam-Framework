@@ -34,7 +34,17 @@
  * scheme.
  */
 
- /************************************************************************/
+/************************************************************************/
+/*
+ * Create a global object Init<Base, Class, Args...>.
+ *
+ * "Base" is the virtual baseclass for the stuff you're creating,
+ * while Class is the actual class.
+ *
+ * InitBase::initAll(callback, args...) will create an instance of all
+ * Classes, with args as constructor parameters. It will call
+ * callback(std::unique_ptr<Base>) with each object.
+ */
 
 namespace SteamBot
 {
