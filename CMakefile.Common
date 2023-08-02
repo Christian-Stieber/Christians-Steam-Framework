@@ -13,7 +13,7 @@ add_compile_options(-UNDEBUG)
 ##############################
 
 SET(Boost_USE_STATIC_LIBS ON)
-find_package(Boost 1.81.0 REQUIRED COMPONENTS context coroutine system log log_setup iostreams fiber)
+find_package(Boost 1.81.0 REQUIRED COMPONENTS context coroutine system log log_setup iostreams fiber program_options)
 include_directories(${Boost_INCLUDE_DIRS})
 
 ##############################
