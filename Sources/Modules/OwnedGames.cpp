@@ -175,3 +175,9 @@ void OwnedGamesModule::run(SteamBot::Client& client)
         }
     }
 }
+
+/************************************************************************/
+
+void SteamBot::Modules::OwnedGames::use()
+{
+}

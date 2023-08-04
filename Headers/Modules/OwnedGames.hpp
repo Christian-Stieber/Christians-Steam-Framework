@@ -34,6 +34,8 @@ namespace SteamBot
     {
         namespace OwnedGames
         {
+            void use();
+
             namespace Whiteboard
             {
                 // Note: the whiteboard actually holds an OwnedGames::Ptr!!!!
