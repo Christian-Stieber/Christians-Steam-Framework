@@ -15,7 +15,7 @@ Currently, the main goals are:
 
 As for the time beyond, I don't know yet. This is a one-man spare-time project, so I'm trying to stick to a reasonably realistic plan.
 
-Note that while there's some intention somewhere in the back of my head to allow for other types of UI eventually, current development focuses on a simple console-based CLI.
+Note that the bot is in a separate repository: https://github.com/Christian-Stieber/Christians-Steam-Bot
 
 # PLATFORMS
 
@@ -50,7 +50,6 @@ I think this should do it.
 
 Again, this list might not be complete/current. But, some things that are there include:
 * multiple clients running concurrently, clients are based around internal asynchronicity as well
-* a simple but functional console-based UI
 * modular setup
 * for now, only TCP connections are supported.\
   I guessed it might the easiest of the three, and wanted to get other things done
@@ -77,23 +76,9 @@ Again, this list might not be complete/current. But, some things that are there 
        Only a "blocking" API right now -- but note that this only blocks the fiber making the call, nothing else.
      * server-initiated (notifications in particular) are high up on my ToDo-list
 
-# USAGE
+# DATA FILES
 
-## Using
-
-For now (and the forseeable future) there's only the console UI, and its currently a very basic implementation. Launch the program in a command prompt/terminal window.
-
-You can hit the `Return/Enter` or `TAB` key at any time (when there's no input prompt) to enter command mode. There aren't a whole lot of commands yet, but the basic infrastructure works so I'll be adding more as I go along.
-
-The `help` command gives a list of commands. Note that they are case-sensitive, so the `EXIT` command really needs to be entered like that.
-
-Just hit return to enter an empty command line to exit command mode.
-
-Keep in mind that all other console activity will be blocked while in command mode. In particular, if you `launch`/`create` a bot, and it prompts for a password or a SteamGuard code, you will not see this prompt until you leave command mode.
-
-## Files
-
-The bot stores data in `%LOCALAPPDATA%\Christian-Stieber\Steam-framework` or `~/.SteamBot/`. For now, these are unencrypted, but I'll change that eventually.
+The bot stores data in `%LOCALAPPDATA%\Christian-Stieber\Steam-framework` or `~/.Christians-Steam-Framework`. For now, these are unencrypted, but I'll change that eventually.
 
 You'll find a logfile there as well -- but I'm not sure whether it's properly flushed on Windows.
 
