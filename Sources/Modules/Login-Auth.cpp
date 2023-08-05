@@ -694,8 +694,7 @@ void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMes
 
         case SteamBot::ResultCode::TryAnotherCM:
         case SteamBot::ResultCode::ServiceUnavailable:
-            // ToDo: do something great
-            assert(false);
+            getClient().quit(true);
             break;
 
         default:
