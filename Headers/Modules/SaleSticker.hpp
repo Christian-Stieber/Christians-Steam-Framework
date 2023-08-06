@@ -21,6 +21,8 @@
 
 #include <chrono>
 
+#include <boost/json.hpp>
+
 /************************************************************************/
 /*
  * ClaimResult status codes:
