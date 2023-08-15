@@ -19,7 +19,8 @@
 
 #pragma once
 
-#include <vector>
+#include "Vector.hpp"
+
 #include <memory>
 #include <functional>
 
@@ -95,23 +96,9 @@ namespace SteamBot
         // Removes all expired pointers from the objects
         void cleanup()
         {
-            size_t i=0;
-            while (i<objects.size())
-            {
-                if (objects[i].expired())
-                {
-                    const size_t last=objects.size()-1;
-                    if (i<last)
-                    {
-                        objects[i]=std::move(objects[last]);
-                    }
-                    objects.pop_back();
-                }
-                else
-                {
-                    i++;
-                }
-            }
+            SteamBot::erase(objects, [](const decltype(objects)::value_type& item) {
+                return item.expired();
+            });
         }
 
     public:
