@@ -219,9 +219,9 @@ bool ExecutorModule::execute(std::shared_ptr<SteamBot::Client> client, FunctionT
 
 /************************************************************************/
 
-bool ExecutorModule::executeWithFiber(std::shared_ptr<SteamBot::Client> client, FunctionType function_)
+bool ExecutorModule::executeWithFiber(std::shared_ptr<SteamBot::Client> client_, FunctionType function_)
 {
-    return execute(std::move(client), [function_=std::move(function_)](SteamBot::Client& client) mutable {
+    return execute(std::move(client_), [function_=std::move(function_)](SteamBot::Client& client) mutable {
         client.launchFiber("ExecutorModule::executeWithFiber", [&client, function_=std::move(function_)]() {
             function_(client);
         });

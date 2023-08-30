@@ -130,7 +130,7 @@ TCP::MutableBytes TCP::readPacket()
 	readBuffer.resize(header.length);
 	if (header.length>0)
 	{
-		auto bytesRead=boost::asio::async_read(socket, boost::asio::buffer(readBuffer), boost::fibers::asio::yield);
+		/*auto bytesRead=*/ boost::asio::async_read(socket, boost::asio::buffer(readBuffer), boost::fibers::asio::yield);
 		// BOOST_LOG_TRIVIAL(debug) << "TCP: read " << bytesRead << " data bytes";
 	}
 

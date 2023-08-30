@@ -106,7 +106,11 @@ Licenses::LicenseInfo::LicenseInfo(const CMsgClientLicenseList_License& data)
     : LicenseIdentifier(static_cast<SteamBot::PackageID>(data.package_id()))
 {
     if (data.has_change_number())
-        changeNumber=data.change_number();
+    {
+        const auto number=data.change_number();
+        assert(number>=0);
+        changeNumber=static_cast<uint32_t>(number);
+    }
 
     if (data.has_license_type())
         licenseType=static_cast<SteamBot::LicenseType>(data.license_type());
@@ -228,7 +232,7 @@ void LicenseListModule::init(SteamBot::Client& client)
 
 /************************************************************************/
 
-void LicenseListModule::run(SteamBot::Client& client)
+void LicenseListModule::run(SteamBot::Client&)
 {
     while (true)
     {

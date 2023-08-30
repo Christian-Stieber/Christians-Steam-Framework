@@ -24,9 +24,9 @@
 std::weak_ordering SteamBot::caseInsensitiveStringCompare(std::string_view left, std::string_view right)
 {
     return std::lexicographical_compare_three_way(left.begin(), left.end(), right.begin(), right.end(),
-                                                  [](char left, char right){
-                                                      if (left>='A' && left<='Z') left+=('a'-'A');
-                                                      if (right>='A' && right<='Z') right+=('a'-'A');
-                                                      return left<=>right;
+                                                  [](char cLeft, char cRight){
+                                                      if (cLeft>='A' && cLeft<='Z') cLeft+=('a'-'A');
+                                                      if (cRight>='A' && cRight<='Z') cRight+=('a'-'A');
+                                                      return cLeft<=>cRight;
                                                   });
 }

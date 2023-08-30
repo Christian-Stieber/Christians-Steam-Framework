@@ -77,7 +77,7 @@ void MultiPacketModule::handle(std::shared_ptr<const Steam::CMsgMultiMessageType
 					stream.push(boost::iostreams::gzip_decompressor{});
 					stream.push(boost::iostreams::back_inserter(unzipped));
                     const char* bytes=static_cast<const char*>(static_cast<const void*>(payload.data()));
-					boost::iostreams::write(stream, bytes, payload.size());
+					boost::iostreams::write(stream, bytes, static_cast<std::streamsize>(payload.size()));
 					stream.strict_sync();
 					payload=makePayload(unzipped);
 				}
@@ -114,7 +114,7 @@ void MultiPacketModule::init(SteamBot::Client& client)
 
 /************************************************************************/
 
-void MultiPacketModule::run(SteamBot::Client& client)
+void MultiPacketModule::run(SteamBot::Client&)
 {
     while (true)
     {

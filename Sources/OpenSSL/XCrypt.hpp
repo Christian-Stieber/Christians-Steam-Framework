@@ -97,7 +97,7 @@ namespace SteamBot
                 outputData+=bytesWritten;
 
                 bytesWritten=static_cast<int>(outputData-static_cast<uint8_t*>(output.data()));
-                assert(bytesWritten<=output.size());
+                assert(bytesWritten>=0 && static_cast<size_t>(bytesWritten)<=output.size());
 
                 return static_cast<size_t>(bytesWritten);
             }

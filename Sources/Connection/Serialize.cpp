@@ -115,7 +115,6 @@ void Deserializer::getProto(google::protobuf::MessageLite& protobufMessage, size
 	}
 
 	const auto bytesRead=stream.ByteCount();
-	assert(bytesRead>=0);
-	assert(static_cast<size_t>(bytesRead)<=data.size());
-	getBytes(bytesRead);
+	assert(bytesRead>=0 && static_cast<size_t>(bytesRead)<=data.size());
+	getBytes(static_cast<size_t>(bytesRead));
 }

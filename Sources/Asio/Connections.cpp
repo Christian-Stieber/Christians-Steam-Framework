@@ -37,8 +37,8 @@ Connections::Connections() =default;
 
 /************************************************************************/
 
-Connection::Connection(std::shared_ptr<SteamBot::WaiterBase>&& waiter)
-    : ItemBase(std::move(waiter))
+Connection::Connection(std::shared_ptr<SteamBot::WaiterBase>&& waiter_)
+    : ItemBase(std::move(waiter_))
 {
     auto baseConnection=std::make_unique<SteamBot::Connection::TCP>();
     connection=std::make_shared<SteamBot::Connection::Encrypted>(std::move(baseConnection));

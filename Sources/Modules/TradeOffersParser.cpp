@@ -32,7 +32,7 @@ typedef SteamBot::Modules::TradeOffers::Internal::Parser Parser;
 
 std::function<void(const HTMLParser::Tree::Element&)> Parser::handleTradeOfferItems(const HTMLParser::Tree::Element& element)
 {
-    std::function<void(const HTMLParser::Tree::Element&)> result;
+    std::function<void(const HTMLParser::Tree::Element&)> callback;
 
     // <div class="tradeoffer_items primaty">
     // <div class="tradeoffer_items secondary">
@@ -43,7 +43,7 @@ std::function<void(const HTMLParser::Tree::Element&)> Parser::handleTradeOfferIt
         {
             const char* myItemsClass=nullptr;
             const char* theirItemsClass=nullptr;
-            switch(this->result.direction)
+            switch(result.direction)
             {
             case ::TradeOffers::Direction::Incoming:
                 myItemsClass="secondary";
@@ -54,17 +54,20 @@ std::function<void(const HTMLParser::Tree::Element&)> Parser::handleTradeOfferIt
                 myItemsClass="primary";
                 theirItemsClass="secondary";
                 break;
+
+            default:
+                assert(false);
             }
 
             if (SteamBot::HTML::checkClass(element, theirItemsClass))
             {
                 tradeOfferItems=&currentTradeOffer->theirItems;
-                result=[this](const HTMLParser::Tree::Element& element) { tradeOfferItems=nullptr; };
+                callback=[this](const HTMLParser::Tree::Element&) { tradeOfferItems=nullptr; };
             }
             else if (SteamBot::HTML::checkClass(element, myItemsClass))
             {
                 tradeOfferItems=&currentTradeOffer->myItems;
-                result=[this](const HTMLParser::Tree::Element& element) { tradeOfferItems=nullptr; };
+                callback=[this](const HTMLParser::Tree::Element&) { tradeOfferItems=nullptr; };
             }
             else
             {
@@ -73,7 +76,7 @@ std::function<void(const HTMLParser::Tree::Element&)> Parser::handleTradeOfferIt
         }
     }
 
-    return result;
+    return callback;
 }
 
 /************************************************************************/
@@ -102,7 +105,7 @@ bool Parser::handleCurrencyAmount(const HTMLParser::Tree::Element& element)
 
 std::function<void(const HTMLParser::Tree::Element&)> Parser::handleTradeItem(const HTMLParser::Tree::Element& element)
 {
-    std::function<void(const HTMLParser::Tree::Element&)> result;
+    std::function<void(const HTMLParser::Tree::Element&)> callback;
 
     if (currentTradeOffer)
     {
@@ -119,7 +122,7 @@ std::function<void(const HTMLParser::Tree::Element&)> Parser::handleTradeItem(co
                 if (tradeItem->init(*dataEconomyItem))
                 {
                     BOOST_LOG_TRIVIAL(debug) << "" << *dataEconomyItem << " -> " << tradeItem->toJson();
-                    result=[this](const HTMLParser::Tree::Element& element) {
+                    callback=[this](const HTMLParser::Tree::Element&) {
                         tradeItem=nullptr;
                     };
                 }
@@ -137,7 +140,7 @@ std::function<void(const HTMLParser::Tree::Element&)> Parser::handleTradeItem(co
         }
     }
 
-    return result;
+    return callback;
 }
 
 /************************************************************************/
@@ -208,6 +211,9 @@ bool Parser::handleTradePartner(const HTMLParser::Tree::Element& element)
                 }
             }
             break;
+
+        default:
+            assert(false);
         }
     }
     return false;
@@ -217,7 +223,7 @@ bool Parser::handleTradePartner(const HTMLParser::Tree::Element& element)
 
 std::function<void(const HTMLParser::Tree::Element&)> Parser::handleTradeOffer(const HTMLParser::Tree::Element& element)
 {
-    std::function<void(const HTMLParser::Tree::Element&)> result;
+    std::function<void(const HTMLParser::Tree::Element&)> callback;
 
     // <div class="tradeoffer" id="tradeofferid_6189309615">
     if (element.name=="div" && SteamBot::HTML::checkClass(element, "tradeoffer"))
@@ -237,14 +243,14 @@ std::function<void(const HTMLParser::Tree::Element&)> Parser::handleTradeOffer(c
                     currentTradeOffer=std::make_unique<TradeOffer>();
                     currentTradeOffer->tradeOfferId=tradeOfferId;
 
-                    result=[this](const HTMLParser::Tree::Element& element) {
+                    callback=[this](const HTMLParser::Tree::Element&) {
                         if (currentTradeOffer)
                         {
                             if (currentTradeOffer->tradeOfferId!=SteamBot::TradeOfferID::None &&
                                 currentTradeOffer->partner!=SteamBot::AccountID::None &&
                                 (currentTradeOffer->myItems.size()!=0 || currentTradeOffer->theirItems.size()!=0))
                             {
-                                auto& item=this->result.offers[currentTradeOffer->tradeOfferId];
+                                auto& item=result.offers[currentTradeOffer->tradeOfferId];
                                 assert(!item);
                                 item=std::move(currentTradeOffer);
                             }
@@ -256,7 +262,7 @@ std::function<void(const HTMLParser::Tree::Element&)> Parser::handleTradeOffer(c
         }
     }
 
-    return result;
+    return callback;
 }
 
 /************************************************************************/
@@ -279,16 +285,16 @@ std::function<void(const HTMLParser::Tree::Element&)> Parser::startElement(const
         &Parser::handleTradeOffer
     };
 
-    ResultType result;
+    ResultType callback;
     for (auto function : functions)
     {
-        result=(this->*function)(element);
-        if (result)
+        callback=(this->*function)(element);
+        if (callback)
         {
             break;
         }
     }
-    return result;
+    return callback;
 }
 
 /************************************************************************/

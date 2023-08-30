@@ -63,7 +63,6 @@ struct Keys
 /************************************************************************/
 
 typedef SteamBot::Modules::Connection::Whiteboard::ConnectionStatus ConnectionStatus;
-typedef SteamBot::Modules::Connection::Whiteboard::LocalEndpoint LocalEndpoint;
 typedef SteamBot::Modules::Login::Whiteboard::LoginStatus LoginStatus;
 
 namespace UnifiedMessageClient=SteamBot::Modules::UnifiedMessageClient;
@@ -116,7 +115,7 @@ namespace
 
 namespace
 {
-    enum class AccountInstance {
+    enum class AccountInstance : unsigned int {
         All=0,
         Desktop=1,
         Console=2,
@@ -591,14 +590,14 @@ void LoginModule::doLogon()
 	message->content.set_cell_id(0);
 	message->content.set_client_package_version(1771);
 	message->content.set_client_language("english");
-	message->content.set_client_os_type(SteamBot::toInteger(Steam::getOSType()));
+	message->content.set_client_os_type(static_cast<uint32_t>(SteamBot::toInteger(Steam::getOSType())));
     message->content.set_should_remember_password(true);
     {
         const auto& machineId=Steam::MachineInfo::MachineID::getSerialized();
         message->content.set_machine_id(machineId.data(), machineId.size());
 	}
     message->content.set_account_name(getClient().getClientInfo().accountName);
-    message->content.set_eresult_sentryfile(toInteger(SteamBot::ResultCode::FileNotFound));
+    message->content.set_eresult_sentryfile(static_cast<int32_t>(toInteger(SteamBot::ResultCode::FileNotFound)));
     message->content.set_steam2_ticket_request(false);
 	message->content.set_machine_name(Steam::MachineInfo::Provider::getMachineName());
     message->content.set_supports_rate_limit_response(true);	// ???

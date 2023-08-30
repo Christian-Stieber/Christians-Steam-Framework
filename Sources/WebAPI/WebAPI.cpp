@@ -63,17 +63,17 @@ Query::~Query() =default;
 
 /************************************************************************/
 
-void Query::set(std::string_view key, std::string_view value)
+void Query::set(std::string_view key, std::string_view value_)
 {
     assert(!url.params().contains(key));
-    url.params().set(key, value);
+    url.params().set(key, value_);
 }
 
 /************************************************************************/
 
-void Query::set(std::string_view key, int value)
+void Query::set(std::string_view key, int value_)
 {
-    set(std::move(key), makeString(value));
+    set(std::move(key), makeString(value_));
 }
 
 /************************************************************************/
@@ -81,7 +81,7 @@ void Query::set(std::string_view key, int value)
 void Query::set(std::string_view key, const std::vector<std::string>& values)
 {
     set("count", static_cast<int>(values.size()));
-    for (int i=0; i<values.size(); i++)
+    for (size_t i=0; i<values.size(); i++)
     {
         std::string itemKey{key};
         itemKey+='[';
@@ -98,10 +98,10 @@ void Query::set(std::string_view key, const std::vector<std::string>& values)
 
 std::shared_ptr<Query::WaiterType> SteamBot::WebAPI::perform(std::shared_ptr<SteamBot::WaiterBase> waiter, Query::QueryPtr query)
 {
-    auto initiator=[query=std::move(query)](std::shared_ptr<SteamBot::WaiterBase> waiter, std::shared_ptr<Query::WaiterType> result) mutable {
+    auto initiator=[query=std::move(query)](std::shared_ptr<SteamBot::WaiterBase> waiter_, std::shared_ptr<Query::WaiterType> result) mutable {
         result->setResult()=std::move(query);
         auto httpQuery=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, result->setResult().get()->url);
-        return SteamBot::HTTPClient::perform(std::move(waiter), std::move(httpQuery));
+        return SteamBot::HTTPClient::perform(std::move(waiter_), std::move(httpQuery));
     };
 
     auto completer=[](std::shared_ptr<SteamBot::HTTPClient::Query::WaiterType> http, std::shared_ptr<Query::WaiterType> result) {

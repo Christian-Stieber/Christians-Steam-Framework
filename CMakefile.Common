@@ -48,6 +48,11 @@ endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")	#  -fsanitize=address
 
+# https://stackoverflow.com/questions/2368811/how-to-set-warning-level-in-cmake
+set(WarningOptions "-Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-overflow=2 -Wformat-signedness -Wnull-dereference -Wswitch-default -Wuninitialized -Wduplicated-branches -Wfloat-equal -Wshadow -Wcast-qual -Wcast-align -Wsign-conversion -Wlogical-op -Wmissing-declarations")
+# -Wconversion -Wnrvo
+# target_compile_options(${PROJECT_NAME} PUBLIC ${WarningOptions})
+
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 
 target_link_libraries(${PROJECT_NAME} pthread systemd ${Boost_LIBRARIES})

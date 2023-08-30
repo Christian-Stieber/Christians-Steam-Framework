@@ -53,7 +53,7 @@ typedef SteamBot::OpenSSL::AESCryptoBase AESCryptoBase;
 std::vector<std::byte> AESCryptoBase::encryptWithIV(const std::span<const std::byte>& bytes, const IvType& iv) const
 {
 	// plaintext size, iv size, padding
-	std::vector<std::byte> output((bytes.size()+iv.size()+16)&~0x0f);
+	std::vector<std::byte> output((bytes.size()+iv.size()+16)&~0x0fU);
 	auto outputBuffer=boost::asio::buffer(output);
 
 	static const Encrypt xcrypt;

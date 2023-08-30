@@ -56,7 +56,9 @@ namespace SteamBot
         const auto result=std::from_chars(first, first+string.size(), number);
         if (result.ec==std::errc())
         {
-            string.remove_prefix(result.ptr-first);
+            auto length=result.ptr-first;
+            assert(length>0);
+            string.remove_prefix(static_cast<size_t>(length));
             return true;
         }
         return false;

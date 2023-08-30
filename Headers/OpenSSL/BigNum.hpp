@@ -46,7 +46,7 @@ namespace SteamBot
             BigNum(const std::string& string)
             {
                 const auto length=BN_hex2bn(&number, string.c_str());
-                Exception::throwMaybe(length==string.size());
+                Exception::throwMaybe(static_cast<size_t>(length)==string.size());
             }
 
             BigNum(std::span<const std::byte> bytes)

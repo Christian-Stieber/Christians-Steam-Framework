@@ -128,8 +128,8 @@ namespace SteamBot
             auto result=waiter->createWaiter<typename ResultType::element_type>();
             auto myWaiter=std::make_shared<CallbackWaiterType>();
             myWaiter->self=myWaiter;
-            myWaiter->completer=[result, completer=std::move(completer)](std::shared_ptr<CallbackWaiterType> waiter, SteamBot::Waiter::ItemBase*){
-                return completer(waiter->intermediate, result);
+            myWaiter->completer=[result, completer=std::move(completer)](std::shared_ptr<CallbackWaiterType> waiter_, SteamBot::Waiter::ItemBase*){
+                return completer(waiter_->intermediate, result);
             };
             {
                 std::lock_guard<std::mutex> lock(myWaiter->mutex);

@@ -392,7 +392,7 @@ void InventoryModule::init(SteamBot::Client& client)
 
 /************************************************************************/
 
-void InventoryModule::run(SteamBot::Client& client)
+void InventoryModule::run(SteamBot::Client&)
 {
     SteamBot::Modules::ClientNotification::use();
 

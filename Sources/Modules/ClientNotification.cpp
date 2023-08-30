@@ -173,14 +173,14 @@ void ClientNotificationModule::getNotifications()
 
 /************************************************************************/
 
-void ClientNotificationModule::handle(std::shared_ptr<const CSteamNotificationNotificationsReceivedNotificationMessageType> message)
+void ClientNotificationModule::handle(std::shared_ptr<const CSteamNotificationNotificationsReceivedNotificationMessageType>)
 {
     getNotifications();
 }
 
 /************************************************************************/
 
-void ClientNotificationModule::run(SteamBot::Client& client)
+void ClientNotificationModule::run(SteamBot::Client&)
 {
     waitForLogin();
 

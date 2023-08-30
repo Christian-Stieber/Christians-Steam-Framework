@@ -48,8 +48,8 @@ void Base::executeOnThread(std::function<void()>&& function)
 
 /************************************************************************/
 
-WaiterBase::WaiterBase(std::shared_ptr<SteamBot::WaiterBase>&& waiter)
-    : ItemBase(std::move(waiter))
+WaiterBase::WaiterBase(std::shared_ptr<SteamBot::WaiterBase>&& waiter_)
+    : ItemBase(std::move(waiter_))
 {
 }
 
@@ -242,6 +242,9 @@ Base::ResultParam<std::string> Thread::requestPassword(std::shared_ptr<SteamBot:
     case Base::PasswordType::SteamGuard_App:
         validator=&SteamGuardValidator;
         break;
+
+    default:
+        assert(false);
     }
     assert(validator!=nullptr);
 

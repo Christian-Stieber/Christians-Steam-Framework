@@ -185,9 +185,9 @@ void TradeOffersModule::getTradeOfferPage(TradeOffers& offers) const
             url.segments().push_back("sent");
         }
         url.params().set("l", "english");
-        auto request=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, url);
-        request->cookies=SteamBot::Web::CookieJar::get();
-        return request;
+        auto myRequest=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, url);
+        myRequest->cookies=SteamBot::Web::CookieJar::get();
+        return myRequest;
     };
     auto response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
     std::string html=SteamBot::HTTPClient::parseString(*(response->query));
@@ -239,10 +239,10 @@ std::shared_ptr<const IncomingTradeOffers> TradeOffersModule::getIncoming()
 
             try
             {
-                auto offers=std::make_shared<IncomingTradeOffers>();
-                if (loadOffers(*offers))
+                auto newOffers=std::make_shared<IncomingTradeOffers>();
+                if (loadOffers(*newOffers))
                 {
-                    getClient().whiteboard.set<IncomingTradeOffers::Ptr>(std::move(offers));
+                    getClient().whiteboard.set<IncomingTradeOffers::Ptr>(std::move(newOffers));
                 }
             }
             catch(...)
@@ -267,10 +267,10 @@ std::shared_ptr<const OutgoingTradeOffers> TradeOffersModule::getOutgoing()
             getClient().whiteboard.clear<OutgoingTradeOffers::Ptr>();
             try
             {
-                auto offers=std::make_shared<OutgoingTradeOffers>();
-                if (loadOffers(*offers))
+                auto newOffers=std::make_shared<OutgoingTradeOffers>();
+                if (loadOffers(*newOffers))
                 {
-                    getClient().whiteboard.set<OutgoingTradeOffers::Ptr>(std::move(offers));
+                    getClient().whiteboard.set<OutgoingTradeOffers::Ptr>(std::move(newOffers));
                 }
             }
             catch(...)
@@ -317,7 +317,7 @@ void TradeOffersModule::init(SteamBot::Client& client)
 
 /************************************************************************/
 
-void TradeOffersModule::run(SteamBot::Client& client)
+void TradeOffersModule::run(SteamBot::Client&)
 {
     SteamBot::Modules::ClientNotification::use();
 

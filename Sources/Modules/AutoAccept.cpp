@@ -103,6 +103,9 @@ void AutoAcceptModule::handleOffers(const IncomingTradeOffers& offers)
             case SteamBot::AutoAccept::Items::All:
                 accept=true;
                 break;
+
+            default:
+                assert(false);
             }
         }
 
@@ -172,7 +175,7 @@ void AutoAcceptModule::handleIncoming()
 
 /************************************************************************/
 
-void AutoAcceptModule::run(SteamBot::Client& client)
+void AutoAcceptModule::run(SteamBot::Client&)
 {
     std::unique_ptr<SteamBot::AutoLoadTradeoffers::Enable> autoLoad;
     while (true)

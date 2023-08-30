@@ -80,7 +80,7 @@ namespace
 		std::span<const std::byte> randomChallenge;
 
 	public:
-		virtual size_t serialize(SteamBot::Connection::Serializer& serializer) const override
+		virtual size_t serialize(SteamBot::Connection::Serializer&) const override
 		{
 			// we are not sending these
 			assert(false);
@@ -123,7 +123,7 @@ namespace
 			return serializer.store(protocolVersion, keySize, encryptedHandshakeBlob, keyCRC, static_cast<uint32_t>(0));
 		}
 
-		virtual void deserialize(SteamBot::Connection::Deserializer& deserializer) override
+		virtual void deserialize(SteamBot::Connection::Deserializer&) override
 		{
 			// we are not receiving these
 			assert(false);
@@ -203,7 +203,7 @@ namespace
         SteamBot::ResultCode result=SteamBot::ResultCode::Invalid;
 
 	public:
-		virtual size_t serialize(SteamBot::Connection::Serializer& serializer) const override
+		virtual size_t serialize(SteamBot::Connection::Serializer&) const override
 		{
 			// we are not sending these
 			assert(false);

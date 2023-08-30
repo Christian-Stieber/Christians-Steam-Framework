@@ -52,7 +52,7 @@ namespace
 
 /************************************************************************/
 
-void ClientAppListModule::handle(std::shared_ptr<const Steam::CMsgClientGetClientAppListMessageType> request)
+void ClientAppListModule::handle(std::shared_ptr<const Steam::CMsgClientGetClientAppListMessageType>)
 {
     auto response=std::make_unique<Steam::CMsgClientGetClientAppListResponseMessageType>();
     SteamBot::Modules::Connection::Messageboard::SendSteamMessage::send(std::move(response));
@@ -67,7 +67,7 @@ void ClientAppListModule::init(SteamBot::Client& client)
 
 /************************************************************************/
 
-void ClientAppListModule::run(SteamBot::Client& client)
+void ClientAppListModule::run(SteamBot::Client&)
 {
     while (true)
     {

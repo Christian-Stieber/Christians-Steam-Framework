@@ -111,9 +111,8 @@ void AddFreeLicenseModule::handle(std::shared_ptr<const AddLicense> message)
 {
     auto request=std::make_unique<Steam::CMsgClientRequestFreeLicenseMessageType>();
 
-    const auto appId=static_cast<std::underlying_type_t<decltype(message->appId)>>(message->appId);
+    const auto appId=toUnsignedInteger(message->appId);
     request->content.add_appids(appId);
-
     SteamBot::UI::OutputText() << "requesting a free license for app id " << appId;
 
     SendSteamMessage::send(std::move(request));
@@ -129,7 +128,7 @@ void AddFreeLicenseModule::init(SteamBot::Client& client)
 
 /************************************************************************/
 
-void AddFreeLicenseModule::run(SteamBot::Client& client)
+void AddFreeLicenseModule::run(SteamBot::Client&)
 {
     waitForLogin();
 

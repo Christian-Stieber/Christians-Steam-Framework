@@ -45,8 +45,8 @@ namespace SteamBot
         }
 
     public:
-        Signal(std::shared_ptr<SteamBot::WaiterBase>&& waiter)
-            : ItemBase(std::move(waiter))
+        Signal(std::shared_ptr<SteamBot::WaiterBase>&& waiter_)
+            : ItemBase(std::move(waiter_))
         {
         }
 

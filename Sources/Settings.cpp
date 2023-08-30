@@ -174,9 +174,9 @@ void SteamBot::ClientSettings::Changed::send(SteamBot::DataFile& file, std::stri
     assert(file.fileType==SteamBot::DataFile::FileType::Account);
     if (auto clientInfo=SteamBot::ClientInfo::find(file.name))
     {
-        if (auto client=clientInfo->getClient())
+        if (auto myClient=clientInfo->getClient())
         {
-            SteamBot::Modules::Executor::execute(std::move(client), [settingName](SteamBot::Client& client) {
+            SteamBot::Modules::Executor::execute(std::move(myClient), [settingName](SteamBot::Client& client) {
                 auto message=std::make_shared<Changed>();
                 message->name=std::string(settingName);
                 client.messageboard.send(std::move(message));

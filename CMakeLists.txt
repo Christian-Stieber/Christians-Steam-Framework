@@ -119,3 +119,6 @@ list(TRANSFORM SRCS PREPEND "Sources/")
 list(TRANSFORM SRCS APPEND ".cpp")
 
 target_sources(${PROJECT_NAME} PRIVATE ${SRCS} ${PROTO_SRCS})
+
+# https://stackoverflow.com/questions/13638408/override-compile-flags-for-single-files
+SET_SOURCE_FILES_PROPERTIES( ${SRCS} PROPERTIES COMPILE_FLAGS ${WarningOptions} )

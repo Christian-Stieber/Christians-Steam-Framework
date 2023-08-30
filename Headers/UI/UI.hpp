@@ -93,8 +93,8 @@ namespace SteamBot
             T result;
 
         public:
-            Waiter(std::shared_ptr<SteamBot::WaiterBase> waiter)
-                : WaiterBase(std::move(waiter))
+            Waiter(std::shared_ptr<SteamBot::WaiterBase> waiter_)
+                : WaiterBase(std::move(waiter_))
             {
             }
 

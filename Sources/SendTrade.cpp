@@ -126,14 +126,14 @@ static boost::json::object makeTradeOfferData(const SendTrade& sendTrade)
             boost::json::object json;
             {
                 boost::json::array array;
-                for (const auto item : items)
+                for (const auto& item : items)
                 {
-                    boost::json::object object;
-                    object["appid"]=std::to_string(toInteger(item.appId));
-                    object["contextid"]=std::to_string(toInteger(item.contextId));
-                    object["assetid"]=std::to_string(toInteger(item.assetId));
-                    object["amount"]=(item.amount==0 ? 1 : item.amount);
-                    array.emplace_back(std::move(object));
+                    boost::json::object myObject;
+                    myObject["appid"]=std::to_string(toInteger(item.appId));
+                    myObject["contextid"]=std::to_string(toInteger(item.contextId));
+                    myObject["assetid"]=std::to_string(toInteger(item.assetId));
+                    myObject["amount"]=(item.amount==0 ? 1 : item.amount);
+                    array.emplace_back(std::move(myObject));
                 }
                 json["assets"]=std::move(array);
             }

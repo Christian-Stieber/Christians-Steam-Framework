@@ -81,9 +81,9 @@ std::string SteamBot::HTML::getCleanText(const HTMLParser::Tree::Element& elemen
         {
             for (const auto& node : element.children)
             {
-                if (auto child=dynamic_cast<const HTMLParser::Tree::Text*>(node.get()))
+                if (auto textChild=dynamic_cast<const HTMLParser::Tree::Text*>(node.get()))
                 {
-                    for (char c : child->text)
+                    for (char c : textChild->text)
                     {
                         if (c==0x09 || c==0x0a || c==0x0d)
                         {
@@ -102,9 +102,9 @@ std::string SteamBot::HTML::getCleanText(const HTMLParser::Tree::Element& elemen
                         }
                     }
                 }
-                else if (auto child=dynamic_cast<const HTMLParser::Tree::Element*>(node.get()))
+                else if (auto elementChild=dynamic_cast<const HTMLParser::Tree::Element*>(node.get()))
                 {
-                    collect(*child);
+                    collect(*elementChild);
                 }
                 else
                 {

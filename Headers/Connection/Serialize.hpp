@@ -67,7 +67,7 @@ namespace SteamBot
             /* container of bytes, stored as-is */
             template <typename T> size_t store(T bytes) requires std::ranges::input_range<T> && std::same_as<std::byte, std::remove_cv_t<typename T::value_type>>
             {
-                auto size=bytes.end()-bytes.begin();
+                auto size=static_cast<size_t>(bytes.end()-bytes.begin());
                 result.insert(result.end(), bytes.begin(), bytes.end());
                 return size;
             }
@@ -95,9 +95,9 @@ namespace SteamBot
             /* varargs template to store multiple values */
             template <typename FIRST, typename... REST> size_t store(FIRST&& first, REST&&... rest)
             {
-                size_t result=store(std::forward<FIRST>(first));
-                result+=+store(std::forward<REST>(rest)...);
-                return result;
+                size_t stored=store(std::forward<FIRST>(first));
+                stored+=+store(std::forward<REST>(rest)...);
+                return stored;
             }
 
         public:
@@ -207,8 +207,10 @@ namespace SteamBot
                 auto result=pp::message_coder<T>::decode(bytes);
                 message=std::move(result.first);
 
-                auto size=result.second.data()-bytes.data();
-                assert(size<=static_cast<decltype(size)>(messageSize));
+                auto signedSize=result.second.data()-bytes.data();
+                assert(signedSize>=0);
+                size_t size=static_cast<size_t>(signedSize);
+                assert(size<=messageSize);
 
                 BOOST_LOG_TRIVIAL(debug) << "deserialized protopuf message "
                                          << SteamBot::typeName<T>()

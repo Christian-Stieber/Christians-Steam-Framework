@@ -130,12 +130,14 @@ private:
 			case AF_PACKET:
 				if (packet==nullptr) packet=ifa;
 				break;
+
+            default:
+                break;
 			}
 		}
 
 		return hasInet ? packet : nullptr;
 	}
-
 
 private:
 	/*

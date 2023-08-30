@@ -37,5 +37,5 @@ boost::json::value SteamBot::toJson(const google::protobuf::Message& message, bo
     }
     auto value=boost::json::parse(jsonString);
     value.as_object()["__type_name__"]=message.GetTypeName();
-    return std::move(value);
+    return value;
 }

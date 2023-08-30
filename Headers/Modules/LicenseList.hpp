@@ -45,7 +45,7 @@ namespace SteamBot
                 {
                 public:
                     PackageID packageId;
-                    int32_t changeNumber=0;
+                    uint32_t changeNumber=0;
 
                 public:
                     LicenseIdentifier(PackageID);

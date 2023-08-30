@@ -136,14 +136,14 @@ void PackageData::storeNew_noLock(std::shared_ptr<PackageInfo> packageInfo)
 {
     // If we have a previous item, unlink it from the apps
     {
-        auto iterator=data.find(packageInfo->packageId);
-        if (iterator!=data.end())
+        auto packageIterator=data.find(packageInfo->packageId);
+        if (packageIterator!=data.end())
         {
-            iterateOverAppids(*(iterator->second), [this, packageId=packageInfo->packageId](SteamBot::AppID appId) {
-                auto iterator=appData.find(appId);
-                if (iterator!=appData.end())
+            iterateOverAppids(*(packageIterator->second), [this, packageId=packageInfo->packageId](SteamBot::AppID appId) {
+                auto appIterator=appData.find(appId);
+                if (appIterator!=appData.end())
                 {
-                    auto count=SteamBot::erase(iterator->second, [packageId](SteamBot::PackageID item) { return item==packageId; });
+                    auto count=SteamBot::erase(appIterator->second, [packageId](SteamBot::PackageID item) { return item==packageId; });
                     assert(count==0 || count==1);
                 }
             });

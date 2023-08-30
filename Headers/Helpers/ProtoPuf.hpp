@@ -34,7 +34,18 @@
  * Make" again, so I gave up eventually and used ProtoPuf instead.
  */
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wshadow"
+#endif
+
 #include "External/ProtoPuf/message.h"
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 /************************************************************************/
 

@@ -98,7 +98,7 @@ void PlayGamesModule::reportGames() const
             output << separator;
             separator=", ";
 
-            output << static_cast<std::underlying_type_t<decltype(appId)>>(appId);
+            output << toInteger(appId);
             if (ownedGames)
             {
                 if (auto info=ownedGames->getInfo(appId))
@@ -126,7 +126,7 @@ void PlayGamesModule::sendGames() const
     auto message=std::make_unique<Steam::CMsgClientGamesPlayedMessageType>();
 
     // ToDo: should we use a different OS type?
-    message->content.set_client_os_type(static_cast<std::underlying_type_t<Steam::OSType>>(Steam::getOSType()));
+    message->content.set_client_os_type(static_cast<uint32_t>(SteamBot::toInteger(Steam::getOSType())));
 
     for (const auto& appId : games)
     {
@@ -195,7 +195,7 @@ void PlayGamesModule::init(SteamBot::Client& client)
 
 /************************************************************************/
 
-void PlayGamesModule::run(SteamBot::Client& client)
+void PlayGamesModule::run(SteamBot::Client&)
 {
     waitForLogin();
 

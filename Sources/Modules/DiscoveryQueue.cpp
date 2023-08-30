@@ -108,9 +108,10 @@ static std::shared_ptr<const Response> clearItem(SteamBot::AppID appId)
         Params(SteamBot::AppID appId)
         {
             url=baseUrl;
-            url.segments().push_back(std::to_string(toInteger(appId)));
 
-            SteamBot::Web::formUrlencode(body, "appid_to_clear_from_queue", toInteger(appId));
+            const auto value=toUnsignedInteger(appId);
+            url.segments().push_back(std::to_string(value));
+            SteamBot::Web::formUrlencode(body, "appid_to_clear_from_queue", value);
         }
     };
 

@@ -43,6 +43,16 @@
  * Lots of ArchiSteamFarm "insprations" in here.
  */
 
+/*
+ * To summarize, this requests a "nonce" via the client connection,
+ * then uses it to authenticate the user for the webstuff. This
+ * gives us some session cookies that we add to requests.
+ *
+ * I'm not entirely sure about expirations of the session cookies; for
+ * now, when I get a "forbidden" response, I discard the cookies and
+ * run the above process again to get new ones.
+ */
+
 /************************************************************************/
 /*
  * https://partner.steamgames.com/doc/webapi/ISteamUserAuth#AuthenticateUser
@@ -371,7 +381,7 @@ void WebSessionModule::init(SteamBot::Client& client)
 
 /************************************************************************/
 
-void WebSessionModule::run(SteamBot::Client& client)
+void WebSessionModule::run(SteamBot::Client&)
 {
     waitForLogin();
 

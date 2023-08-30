@@ -172,27 +172,27 @@ bool CookieJar::update(const boost::urls::url_view&, const boost::beast::http::f
     bool wasUpdated=false;
     auto setCookies=headers.equal_range(boost::beast::http::field::set_cookie);
     std::lock_guard<decltype(mutex)> lock(mutex);
-    for (auto iterator=setCookies.first; iterator!=setCookies.second; ++iterator)
+    for (auto setIterator=setCookies.first; setIterator!=setCookies.second; ++setIterator)
     {
         try
         {
             bool found=false;
-            auto cookie=std::make_unique<Cookie>(iterator->value());
-            for (auto iterator=cookies.begin(); iterator!=cookies.end(); ++iterator)
+            auto cookie=std::make_unique<Cookie>(setIterator->value());
+            for (auto cookieIterator=cookies.begin(); cookieIterator!=cookies.end(); ++cookieIterator)
             {
-                if (iterator->get()->match(*cookie))
+                if (cookieIterator->get()->match(*cookie))
                 {
                     found=true;
                     if (cookie->value.empty())
                     {
-                        cookies.erase(iterator);
+                        cookies.erase(cookieIterator);
                         wasUpdated=true;
                     }
                     else
                     {
-                        if (iterator->get()->value!=cookie->value)
+                        if (cookieIterator->get()->value!=cookie->value)
                         {
-                            iterator->operator=(std::move(cookie));
+                            cookieIterator->operator=(std::move(cookie));
                             wasUpdated=true;
                         }
                     }
@@ -207,7 +207,7 @@ bool CookieJar::update(const boost::urls::url_view&, const boost::beast::http::f
         catch(const InvalidCookieException&)
         {
             // Let's just ignore them
-            BOOST_LOG_TRIVIAL(error) << "Invalid set-cookie: " << iterator->value();
+            BOOST_LOG_TRIVIAL(error) << "Invalid set-cookie: " << setIterator->value();
         }
     }
     return wasUpdated;

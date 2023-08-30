@@ -128,7 +128,7 @@ void UnifiedMessageServerModule::handle(std::shared_ptr<const ServiceMethodMessa
 
 /************************************************************************/
 
-void UnifiedMessageServerModule::run(SteamBot::Client& client)
+void UnifiedMessageServerModule::run(SteamBot::Client&)
 {
     while (true)
     {

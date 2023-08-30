@@ -48,8 +48,9 @@ static void logErrors()
         }
         char* data;
         const auto size=BIO_get_mem_data(bio, &data);
+        assert(size>=0);
 
-        BOOST_LOG_TRIVIAL(error) << "OpenSSL error: " << std::string_view(data, size);
+        BOOST_LOG_TRIVIAL(error) << "OpenSSL error: " << std::string_view(data, static_cast<size_t>(size));
 
         BIO_free(bio);
     }

@@ -25,7 +25,7 @@
  * Set in the msgType on the wire
  */
 
-static const uint32_t protoBufFlag=1<<31;
+static const uint32_t protoBufFlag=1U<<31;
 
 /************************************************************************/
 

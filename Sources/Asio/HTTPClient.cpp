@@ -122,6 +122,15 @@ boost::asio::ssl::context& Query::getSslContext()
 }
 
 /************************************************************************/
+
+static inline unsigned long getSslErrorCode(const boost::system::error_code& error)
+{
+    auto errorValue=error.value();
+    assert(errorValue>=0);
+    return static_cast<unsigned long>(errorValue);
+}
+
+/************************************************************************/
 /*
  * https://stackoverflow.com/questions/9828066/how-to-decipher-a-boost-asio-ssl-error-code
  */
@@ -133,14 +142,15 @@ static void printSslError(const boost::system::error_code& error)
 {
     if (error.category() == boost::asio::error::get_ssl_category()) {
         std::string err = error.message();
+        const auto errorCode=getSslErrorCode(error);
         err = std::string(" (")
-            +boost::lexical_cast<std::string>(ERR_GET_LIB(error.value()))+","
-            //+boost::lexical_cast<std::string>(ERR_GET_FUNC(error.value()))+","
-            +boost::lexical_cast<std::string>(ERR_GET_REASON(error.value()))+") "
+            +boost::lexical_cast<std::string>(ERR_GET_LIB(errorCode))+","
+            //+boost::lexical_cast<std::string>(ERR_GET_FUNC(errorCode))+","
+            +boost::lexical_cast<std::string>(ERR_GET_REASON(errorCode))+") "
             ;
         //ERR_PACK /* crypto/err/err.h */
         char buf[128];
-        ::ERR_error_string_n(error.value(), buf, sizeof(buf));
+        ::ERR_error_string_n(getSslErrorCode(error), buf, sizeof(buf));
         err += buf;
         BOOST_LOG_TRIVIAL(error) << "ssl error: " << err;
     }
@@ -185,7 +195,7 @@ void Query::close()
 
 /************************************************************************/
 
-void Query::read_completed(const ErrorCode& error, size_t bytes)
+void Query::read_completed(const ErrorCode& error, size_t)
 {
     if (error)
     {

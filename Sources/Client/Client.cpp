@@ -166,6 +166,9 @@ void SteamBot::Client::launch(SteamBot::ClientInfo& clientInfo)
                         std::this_thread::sleep_for(std::chrono::seconds(15));
                         launch(clientInfo);
                         break;
+
+                    default:
+                        assert(false);
                     }
                     clientInfo.setActive(false);
                 }).detach();

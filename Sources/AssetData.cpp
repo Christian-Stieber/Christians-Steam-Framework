@@ -169,11 +169,11 @@ static AssetInfo::ItemType checkItemType_TradingCard(const boost::json::value& j
 
 static AssetInfo::ItemType checkItemType_Emoticon(const boost::json::value& json, const AssetInfo&)
 {
-    for (const auto& description : json.at("descriptions").as_array())
+    for (const auto& myDescription : json.at("descriptions").as_array())
     {
-        if (auto type=SteamBot::JSON::optString(description, "type"); type!=nullptr && *type=="html")
+        if (auto type=SteamBot::JSON::optString(myDescription, "type"); type!=nullptr && *type=="html")
         {
-            if (auto value=SteamBot::JSON::optString(description, "value"))
+            if (auto value=SteamBot::JSON::optString(myDescription, "value"))
             {
                 if (value->find("class=\"emoticon\"")!=std::string::npos)
                 {
@@ -277,7 +277,9 @@ void AssetData::requestData(const MissingKeys& missing)
             GetAssetClassInfoInfo::RequestType request;
             request.set_language("english");
             assert(chunk.first!=SteamBot::AppID::None);
-            request.set_appid(toInteger(chunk.first));
+            const auto appId=toInteger(chunk.first);
+            assert(appId>=0);
+            request.set_appid(static_cast<uint32_t>(appId));
             for (const auto& key : chunk.second)
             {
                 auto& item=*(request.add_classes());

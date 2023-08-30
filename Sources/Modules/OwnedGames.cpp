@@ -161,7 +161,7 @@ void OwnedGamesModule::init(SteamBot::Client& client)
 
 /************************************************************************/
 
-void OwnedGamesModule::run(SteamBot::Client& client)
+void OwnedGamesModule::run(SteamBot::Client&)
 {
     while (true)
     {

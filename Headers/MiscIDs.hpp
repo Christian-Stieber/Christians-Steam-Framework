@@ -75,3 +75,15 @@ namespace SteamBot
         return static_cast<std::underlying_type_t<T>>(number);
     }
 }
+
+/************************************************************************/
+
+namespace SteamBot
+{
+    template <typename T> auto toUnsignedInteger(T number) requires(std::is_enum_v<T> && std::is_signed_v<std::underlying_type_t<T>>)
+    {
+        const auto value=toInteger(number);
+        assert(value>=0);
+        return std::make_unsigned_t<std::underlying_type_t<T>>(value);
+    }
+}

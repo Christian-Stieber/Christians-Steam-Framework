@@ -75,7 +75,7 @@ namespace
 
 /************************************************************************/
 
-void AutoLoadTradeoffersModule::run(SteamBot::Client& client)
+void AutoLoadTradeoffersModule::run(SteamBot::Client&)
 {
     while (true)
     {
@@ -100,7 +100,8 @@ void AutoLoadTradeoffersModule::run(SteamBot::Client& client)
 
         if (incomingNotification->isWoken())
         {
-            if (auto notification=incomingNotification->has())
+            // ToDo: can we make use of the data?
+            if ([[maybe_unused]] auto notification=incomingNotification->has())
             {
                 reload=std::chrono::seconds(15);
             }

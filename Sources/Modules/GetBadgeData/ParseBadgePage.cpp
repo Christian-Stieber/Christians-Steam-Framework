@@ -153,8 +153,8 @@ bool BadgePageParser::handleStart_badge_row_overlay(const HTMLParser::Tree::Elem
                         {
                             data.badges.try_emplace(static_cast<SteamBot::AppID>(value));
 
-                            auto result=badge_row.emplace(&parent, static_cast<SteamBot::AppID>(value));
-                            assert(result.second);
+                            const bool success=badge_row.emplace(&parent, static_cast<SteamBot::AppID>(value)).second;
+                            assert(success);
                         }
                     }
                 }
@@ -181,7 +181,7 @@ bool BadgePageParser::extractNumber(const HTMLParser::Tree::Element& element, un
             value=0;
             do
             {
-                value=10*value+(*s-'0');
+                value=10*value+static_cast<unsigned char>(*s-'0');
                 s++;
             }
             while (*s>='0' && *s<='9');
