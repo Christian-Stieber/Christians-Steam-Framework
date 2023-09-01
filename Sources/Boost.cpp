@@ -17,5 +17,10 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#include <boost/version.hpp>
+
+#if BOOST_VERSION < 108300
 #include <boost/url/src.hpp>
+#endif
+
 #include <boost/json/src.hpp>
