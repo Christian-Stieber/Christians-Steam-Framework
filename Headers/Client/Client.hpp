@@ -66,6 +66,15 @@ namespace SteamBot
 		void launchFiber(std::string, std::function<void()>);
         void quit(bool restart=false);
 
+    private:
+        mutable boost::fibers::mutex statusMutex;
+        mutable boost::fibers::condition_variable statusCondition;
+
+        enum class Status : uint8_t { Initializing, Ready };
+        Status status=Status::Initializing;
+
+        void waitReady() const;
+
 	private:
         mutable boost::fibers::mutex modulesMutex;
         std::unordered_map<std::type_index, std::shared_ptr<Module>> modules;
@@ -91,6 +100,7 @@ namespace SteamBot
 
         template <typename T> std::shared_ptr<T> getModule() const
         {
+            waitReady();
             std::lock_guard<decltype(modulesMutex)> lock(modulesMutex);
             auto iterator=modules.find(std::type_index(typeid(T)));
             assert(iterator!=modules.end());

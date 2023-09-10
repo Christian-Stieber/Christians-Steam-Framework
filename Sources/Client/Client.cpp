@@ -71,6 +71,29 @@ void SteamBot::Client::quit(bool restart)
 }
 
 /************************************************************************/
+/*
+ * This will wait for "ready" status, ONLY if we call it from another
+ * thread.
+ *
+ * ToDo: I might need to reconsider the various locking and waiting
+ * mechanisms that have been added as I went along, to avoid stuff
+ * like "if called from another thread". But, for now, that's how it's
+ * done.
+ *
+ * Note: I don't have a "shutdown" status right now, but this waits
+ * for anything that's not "initializing".
+ */
+
+void SteamBot::Client::waitReady() const
+{
+    if (currentClient.get()!=this)
+    {
+        std::unique_lock<decltype(statusMutex)> lock(statusMutex);
+        statusCondition.wait(lock, [this]() { return status!=Status::Initializing; });
+    }
+}
+
+/************************************************************************/
 
 void SteamBot::Client::initModules()
 {
@@ -149,6 +172,14 @@ void SteamBot::Client::launch(SteamBot::ClientInfo& clientInfo)
                     {
                         SteamBot::UI::Thread::outputText(std::string("running client ")+clientInfo.accountName);
                         currentClient->initModules();
+
+                        // Note: not sure whether I need the mutex, but it doesn't hurt
+                        {
+                            std::lock_guard<decltype(currentClient->statusMutex)> lock(currentClient->statusMutex);
+                            currentClient->status=Status::Ready;
+                        }
+                        currentClient->statusCondition.notify_all();
+
                         scheduler->wait();
                         SteamBot::UI::Thread::outputText(std::string("exiting client ")+clientInfo.accountName);
                     }
