@@ -26,6 +26,7 @@
 /************************************************************************/
 
 #include "Asio/Asio.hpp"
+#include "Asio/Signals.hpp"
 #include "Asio/Fiber.hpp"
 
 /************************************************************************/
@@ -48,6 +49,7 @@ Asio::Asio()
         BOOST_LOG_TRIVIAL(debug) << "Asio: running thread";
         boost::fibers::asio::setSchedulingAlgorithm(ioContext);
         auto work=boost::asio::make_work_guard(ioContext);
+        handleSignals(*ioContext);
         ioContext->run();
         BOOST_LOG_TRIVIAL(debug) << "Asio: exiting thread";
     });

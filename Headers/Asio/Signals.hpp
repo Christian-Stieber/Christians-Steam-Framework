@@ -17,31 +17,14 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "WorkingDir.hpp"
-#include "Client/Client.hpp"
-#include "Logging.hpp"
-#include "Asio/Signals.hpp"
+#pragma once
 
-#include <locale>
+#include <boost/asio/io_context.hpp>
 
 /************************************************************************/
 
-void application();
-
-/************************************************************************/
-
-int main(void)
+namespace SteamBot
 {
-	std::locale::global(std::locale::classic());
-	SteamBot::setWorkingDir();
-
-    SteamBot::Logging::init();
-    SteamBot::ClientInfo::init();
-
-    SteamBot::initSignals();
-
-    application();
-
-    BOOST_LOG_TRIVIAL(debug) << "exiting";
-	return EXIT_SUCCESS;
+    void initSignals();
+    void handleSignals(boost::asio::io_context&);
 }

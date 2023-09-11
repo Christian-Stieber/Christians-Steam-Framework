@@ -67,7 +67,7 @@ list(APPEND SRCS Boost)
 
 list(APPEND SRCS Main Logging WorkingDir Universe Random Base64 DestructMonitor JobID DataFile Settings AssetKey RateLimit)
 list(APPEND SRCS AssetData SendTrade SendInventory PostWithSession AcceptTrade DeclineTrade CancelTrade ExecuteFibers)
-list(APPEND SRCS Asio/Asio Asio/HTTPClient Asio/Fiber Asio/Connections)
+list(APPEND SRCS Asio/Asio Asio/Signals Asio/HTTPClient Asio/Fiber Asio/Connections)
 list(APPEND SRCS Client/Client Client/Waiter Client/Whiteboard Client/Messageboard Client/Module Client/Sleep Client/ClientInfo)
 list(APPEND SRCS Connection/Endpoint Connection/Serialize Connection/Base Connection/TCP Connection/Message Connection/Encrypted)
 list(APPEND SRCS OpenSSL/Exception OpenSSL/SHA1 OpenSSL/RSA OpenSSL/AESBase OpenSSL/AES OpenSSL/AESHMAC OpenSSL/Random)
