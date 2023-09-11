@@ -216,7 +216,7 @@ void SteamBot::Client::launch(SteamBot::ClientInfo& clientInfo)
 
 /************************************************************************/
 /*
- * Run all clients, and wait for them to terminate
+ * Wait for all clients to quit
  */
 
 void SteamBot::Client::waitAll()

@@ -19,6 +19,8 @@
 
 #include "Asio/Asio.hpp"
 #include "Asio/Signals.hpp"
+#include "UI/UI.hpp"
+#include "Client/Client.hpp"
 
 #include <boost/asio/signal_set.hpp>
 
@@ -86,7 +88,10 @@ void SignalHandler::waitSignal()
             else
             {
                 terminating=true;
-                /* ToDo: do something useful */
+                std::thread([](){
+                    SteamBot::ClientInfo::quitAll();
+                    SteamBot::UI::Thread::quit();
+                }).detach();
             }
         }
         waitSignal();

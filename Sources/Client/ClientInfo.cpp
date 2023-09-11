@@ -3,6 +3,7 @@
 #include "Helpers/JSON.hpp"
 #include "SteamID.hpp"
 #include "Vector.hpp"
+#include "Modules/Executor.hpp"
 
 #include <filesystem>
 #include <regex>
@@ -230,4 +231,26 @@ std::string ClientInfo::prettyName(SteamBot::AccountID accountId)
         result=std::to_string(toInteger(accountId));
     }
     return result;
+}
+
+/************************************************************************/
+/*
+ * ToDo: this is a bit messed up. It is possible that a new client is
+ * launched while we are shutting down the ones we have intiially,
+ * resulting in the final wait to never complete.
+ */
+
+void ClientInfo::quitAll()
+{
+    BOOST_LOG_TRIVIAL(info) << "ClientInfo::quitAll";
+    for (auto info : getClients())
+    {
+        if (auto client=info->client)
+        {
+            SteamBot::Modules::Executor::execute(client, [](SteamBot::Client& client_) {
+                client_.quit();
+            });
+        }
+    }
+    SteamBot::Client::waitAll();
 }

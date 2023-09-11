@@ -152,5 +152,7 @@ namespace SteamBot
     public:
         static std::vector<ClientInfo*> getClients();
         static std::vector<ClientInfo*> getGroup(std::string_view);
+
+        static void quitAll();
     };
 }

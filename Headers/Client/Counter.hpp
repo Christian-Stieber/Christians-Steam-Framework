@@ -66,7 +66,7 @@ namespace SteamBot
                 if (--counter.counter==0)
                 {
                     counter.onEmpty();
-                    counter.condition.notify_one();
+                    counter.condition.notify_all();
                 }
             }
         };
