@@ -24,6 +24,7 @@
     <ClCompile Include="Sources\Asio\Connections.cpp" />
     <ClCompile Include="Sources\Asio\Fiber.cpp" />
     <ClCompile Include="Sources\Asio\HTTPClient.cpp" />
+    <ClCompile Include="Sources\Asio\Signals.cpp" />
     <ClCompile Include="Sources\AssetData.cpp" />
     <ClCompile Include="Sources\AssetKey.cpp" />
     <ClCompile Include="Sources\Base64.cpp" />
@@ -136,6 +137,7 @@
     <ClInclude Include="Headers\Asio\Connections.hpp" />
     <ClInclude Include="Headers\Asio\Fiber.hpp" />
     <ClInclude Include="Headers\Asio\HTTPClient.hpp" />
+    <ClInclude Include="Headers\Asio\Signals.hpp" />
     <ClInclude Include="Headers\AssetData.hpp" />
     <ClInclude Include="Headers\AssetKey.hpp" />
     <ClInclude Include="Headers\Base64.hpp" />

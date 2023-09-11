@@ -50,6 +50,7 @@ namespace
  * asio thread and everything will arrive there.
  */
 
+#ifndef _WIN32
 static void blockSignals()
 {
     sigset_t signals;
@@ -64,6 +65,7 @@ static void blockSignals()
         throw std::runtime_error("unable to configure signals");
     }
 }
+#endif
 
 /************************************************************************/
 
@@ -118,5 +120,7 @@ void SteamBot::handleSignals(boost::asio::io_context& ioContext)
 void SteamBot::initSignals()
 {
     SteamBot::Asio::getIoContext();
+#ifndef _WIN32
     blockSignals();
+#endif
 }

@@ -17,10 +17,10 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#include "Asio/Signals.hpp"
 #include "WorkingDir.hpp"
 #include "Client/Client.hpp"
 #include "Logging.hpp"
-#include "Asio/Signals.hpp"
 
 #include <locale>
 

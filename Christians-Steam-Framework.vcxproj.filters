@@ -306,6 +306,9 @@
     <ClCompile Include="Sources\Modules\TradeOffersParser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Sources\Asio\Signals.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Sources\OpenSSL\XCrypt.hpp">
@@ -822,6 +825,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Sources\Modules\TradeOffers.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\Asio\Signals.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
