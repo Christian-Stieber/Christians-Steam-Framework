@@ -19,6 +19,10 @@
 
 #pragma once
 
+#include "DataFile.hpp"
+
+#include <chrono>
+
 /************************************************************************/
 
 namespace SteamBot
@@ -27,7 +31,20 @@ namespace SteamBot
     {
         namespace LoginTracking
         {
-            void use();
+            class TrackingData
+            {
+            public:
+                std::chrono::system_clock::time_point when;
+                std::chrono::seconds duration{0};
+
+            public:
+                TrackingData();
+                ~TrackingData();
+
+            public:
+                bool get(const boost::json::value&);
+                bool get(DataFile&);
+            };
         }
     }
 }

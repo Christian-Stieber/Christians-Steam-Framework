@@ -31,9 +31,23 @@
 #include "Exceptions.hpp"
 #include "Modules/LoginTracking.hpp"
 
+#include <boost/exception/diagnostic_information.hpp>
+
 /************************************************************************/
 
 typedef SteamBot::Modules::Login::Whiteboard::LoginStatus LoginStatus;
+
+/************************************************************************/
+
+namespace
+{
+    struct Keys
+    {
+        inline static const std::string_view lastLogin="Last login";
+        inline static const std::string_view when="when";
+        inline static const std::string_view duration="duration";
+    };
+}
 
 /************************************************************************/
 
@@ -76,12 +90,12 @@ void LoginTrackingModule::update(SteamBot::Client& client) const
     if (loginTime.time_since_epoch().count()!=0)
     {
         client.dataFile.update([this](boost::json::value& json) {
-            auto& item=SteamBot::JSON::createItem(json, "Last login").emplace_object();
+            auto& item=SteamBot::JSON::createItem(json, Keys::lastLogin).emplace_object();
             {
-                item["when"]=std::chrono::system_clock::to_time_t(loginTime);
+                item[Keys::when]=std::chrono::system_clock::to_time_t(loginTime);
 
                 std::chrono::seconds duration=std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now()-loginTime);
-                item["duration"]=duration.count();
+                item[Keys::duration]=duration.count();
             }
             return true;
         });
@@ -129,6 +143,40 @@ void LoginTrackingModule::run(SteamBot::Client& client)
 
 /************************************************************************/
 
-void SteamBot::Modules::LoginTracking::use()
+bool SteamBot::Modules::LoginTracking::TrackingData::get(const boost::json::value& json)
 {
+    try
+    {
+        if (auto item=SteamBot::JSON::getItem(json, Keys::lastLogin))
+        {
+            if (auto whenItem=SteamBot::JSON::getItem(*item, Keys::when))
+            {
+                when=std::chrono::system_clock::from_time_t(SteamBot::JSON::toNumber<std::time_t>(*whenItem));
+                if (auto durationItem=SteamBot::JSON::getItem(*item, Keys::duration))
+                {
+                    duration=std::chrono::seconds(SteamBot::JSON::toNumber<decltype(duration)::rep>(*durationItem));
+                    return true;
+                }
+            }
+        }
+        }
+    catch(...)
+    {
+        BOOST_LOG_TRIVIAL(error) << "dataFile exception " << boost::current_exception_diagnostic_information();
+    }
+    return false;
 }
+
+/************************************************************************/
+
+bool SteamBot::Modules::LoginTracking::TrackingData::get(DataFile& dataFile)
+{
+    return dataFile.examine([this](const boost::json::value& json) {
+        return get(json);
+    });
+}
+
+/************************************************************************/
+
+SteamBot::Modules::LoginTracking::TrackingData::TrackingData() =default;
+SteamBot::Modules::LoginTracking::TrackingData::~TrackingData() =default;
