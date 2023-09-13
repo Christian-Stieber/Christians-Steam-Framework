@@ -56,7 +56,11 @@ namespace SteamBot
 
     protected:
         Module();
-        void waitForLogin();
+
+        void waitForLogin()
+        {
+            Client::waitForLogin();
+        }
 
     public:
         virtual ~Module();

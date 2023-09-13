@@ -60,7 +60,7 @@ void Module::run(Client&)
 
 /************************************************************************/
 
-void Module::waitForLogin()
+void SteamBot::Client::waitForLogin()
 {
     auto& client=getClient();
 

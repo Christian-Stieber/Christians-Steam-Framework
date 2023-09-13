@@ -20,10 +20,17 @@
 #include "MaintainBPE.hpp"
 #include "Client/Client.hpp"
 #include "Modules/LoginTracking.hpp"
+#include "Modules/Executor.hpp"
 #include "Helpers/Time.hpp"
 #include "Asio/Asio.hpp"
 
 #include <boost/asio/system_timer.hpp>
+
+/************************************************************************/
+/*
+ * ToDo: This module is a big mess -- error handling, waiting for
+ * completion, interacting with other activities etc. All broken.
+ */
 
 /************************************************************************/
 /*
@@ -97,6 +104,8 @@ namespace
         boost::asio::system_timer timer;
 
     private:
+        void clientReady(SteamBot::ClientInfo*);
+        void performLogin(SteamBot::ClientInfo*);
         void startTimer();
 
     public:
@@ -106,6 +115,68 @@ namespace
             startTimer();
         }
     };
+}
+
+/************************************************************************/
+
+void MaintainBPE::clientReady(SteamBot::ClientInfo* clientInfo)
+{
+    SteamBot::Modules::Executor::executeWithFiber(clientInfo->getClient(), [](SteamBot::Client& client) {
+        SteamBot::Client::waitForLogin();
+        boost::this_fiber::sleep_for(std::chrono::seconds(5));
+        client.quit();
+    });
+
+    startTimer();
+}
+
+/************************************************************************/
+
+void MaintainBPE::performLogin(SteamBot::ClientInfo* clientInfo)
+{
+    BOOST_LOG_TRIVIAL(info) << "MaintainBPE: login \"" << clientInfo->accountName << "\"";
+
+    class WaitClient : public std::enable_shared_from_this<WaitClient>
+    {
+    private:
+        MaintainBPE& maintainBPE;
+        SteamBot::ClientInfo* clientInfo;
+
+    public:
+        WaitClient(MaintainBPE& maintainBPE_, SteamBot::ClientInfo* clientInfo_)
+            : maintainBPE(maintainBPE_),
+              clientInfo(clientInfo_)
+        {
+        }
+
+    public:
+        void wait()
+        {
+            maintainBPE.timer.expires_after(std::chrono::seconds(1));
+            maintainBPE.timer.async_wait([self=shared_from_this()](const boost::system::error_code& error){
+                if (error)
+                {
+                    // ToDo?
+                    throw error;
+                }
+                else
+                {
+                    if (self->clientInfo->getClient())
+                    {
+                        self->maintainBPE.clientReady(self->clientInfo);
+                    }
+                    else
+                    {
+                        self->wait();
+                    }
+                }
+            });
+        }
+    };
+
+    SteamBot::Client::launch(*clientInfo);
+    auto wait=std::make_shared<WaitClient>(*this, clientInfo);
+    wait->wait();
 }
 
 /************************************************************************/
@@ -135,8 +206,7 @@ void MaintainBPE::startTimer()
         }
         else
         {
-            // ToDo
-            BOOST_LOG_TRIVIAL(info) << "MaintainBPE: login \"" << oldestLogin.clientInfo->accountName << "\"";
+            performLogin(oldestLogin.clientInfo);
         }
     }
     else

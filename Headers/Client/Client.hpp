@@ -58,6 +58,8 @@ namespace SteamBot
         static void launch(ClientInfo&);
         static void waitAll();
 
+        static void waitForLogin();
+
 	public:
 		static std::shared_ptr<Client> getClientShared();
 		static Client* getClientPtr();
