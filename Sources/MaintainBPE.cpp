@@ -52,7 +52,7 @@ namespace
     {
     public:
         SteamBot::ClientInfo* clientInfo=nullptr;
-        std::chrono::system_clock::time_point when;
+        std::chrono::system_clock::time_point logoff;
 
     public:
         boost::json::value toJson() const
@@ -61,7 +61,7 @@ namespace
             if (clientInfo!=nullptr)
             {
                 object["account"]=clientInfo->accountName;
-                object["when"]=SteamBot::Time::toString(when);
+                object["logoff"]=SteamBot::Time::toString(logoff);
             }
             return object;
         }
@@ -74,10 +74,11 @@ namespace
                 SteamBot::Modules::LoginTracking::TrackingData data;
                 if (data.get(SteamBot::DataFile::get(info->accountName, SteamBot::DataFile::FileType::Account)))
                 {
-                    if (clientInfo==nullptr || data.when<when)
+                    const decltype(logoff) timestamp=data.when+data.duration;
+                    if (clientInfo==nullptr || timestamp<logoff)
                     {
+                        logoff=timestamp;
                         clientInfo=info;
-                        when=data.when;
                     }
                 }
             }
@@ -94,10 +95,8 @@ namespace
     {
     private:
         boost::asio::system_timer timer;
-        OldestLogin oldestLogin;
 
     private:
-        void timerFired(const boost::system::error_code&);
         void startTimer();
 
     public:
@@ -111,30 +110,34 @@ namespace
 
 /************************************************************************/
 
-void MaintainBPE::timerFired(const boost::system::error_code& error)
-{
-    if (error)
-    {
-        BOOST_LOG_TRIVIAL(error) << "MaintainBPE-timer returned error: " << error;
-        throw error;
-    }
-    else
-    {
-        BOOST_LOG_TRIVIAL(info) << "MaintainBPE-timer fired";
-        // ToDo
-    }
-}
-
-/************************************************************************/
-
 void MaintainBPE::startTimer()
 {
     assert(SteamBot::Asio::isThread());
+    const OldestLogin oldestLogin;
     if (oldestLogin.clientInfo!=nullptr)
     {
-        timer.expires_at(oldestLogin.when+maxPause);
-        BOOST_LOG_TRIVIAL(info) << "setting MaintainBPE-timer for " << SteamBot::Time::toString(timer.expiry());
-        timer.async_wait(std::bind_front(&MaintainBPE::timerFired, this));
+        auto interval=oldestLogin.logoff+maxPause-std::chrono::system_clock::now();
+        if (interval.count()>0)
+        {
+            timer.expires_after(interval);
+            BOOST_LOG_TRIVIAL(info) << "setting MaintainBPE-timer for " << SteamBot::Time::toString(timer.expiry());
+            timer.async_wait([this](const boost::system::error_code& error){
+                if (error)
+                {
+                    BOOST_LOG_TRIVIAL(error) << "MaintainBPE-timer returned error: " << error;
+                    throw error;
+                }
+                else
+                {
+                    startTimer();
+                }
+            });
+        }
+        else
+        {
+            // ToDo
+            BOOST_LOG_TRIVIAL(info) << "MaintainBPE: login \"" << oldestLogin.clientInfo->accountName << "\"";
+        }
     }
     else
     {
