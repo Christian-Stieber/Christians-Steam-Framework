@@ -121,13 +121,16 @@ namespace
 
 void MaintainBPE::clientReady(SteamBot::ClientInfo* clientInfo)
 {
-    SteamBot::Modules::Executor::executeWithFiber(clientInfo->getClient(), [](SteamBot::Client& client) {
+    SteamBot::Modules::Executor::executeWithFiber(clientInfo->getClient(), [this](SteamBot::Client& client) {
         SteamBot::Client::waitForLogin();
         boost::this_fiber::sleep_for(std::chrono::seconds(5));
         client.quit();
-    });
 
-    startTimer();
+        boost::this_fiber::sleep_for(std::chrono::seconds(1));
+        SteamBot::Asio::post("MaintainBPE::startTimer", [this](){
+            startTimer();
+        });
+    });
 }
 
 /************************************************************************/
