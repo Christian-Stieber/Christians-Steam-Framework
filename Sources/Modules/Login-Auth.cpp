@@ -56,8 +56,11 @@ static constexpr auto platformType=EAuthTokenPlatformType::k_EAuthTokenPlatformT
 struct Keys
 {
     inline static const std::string_view SteamGuard="SteamGuard";
-    inline static const std::string_view Login="Login";
     inline static const std::string_view Data="Data";
+
+    inline static const std::string_view Login="Login";
+    inline static const std::string_view Refresh="Refresh";
+    inline static const std::string_view Access="Access";
 };
 
 /************************************************************************/
@@ -519,16 +522,23 @@ void LoginModule::queryPollAuthSessionStatus()
     if (response->has_refresh_token())
     {
         refreshToken=response->refresh_token();
-        getClient().dataFile.update([this](boost::json::value& json) {
-            auto& item=SteamBot::JSON::createItem(json, Keys::Login, Keys::Data);
-            item.emplace_string()=refreshToken;
-            return true;
-        });
     }
     if (response->has_access_token())
     {
         accessToken=response->access_token();
     }
+
+    getClient().dataFile.update([this](boost::json::value& json) {
+        {
+            auto& item=SteamBot::JSON::createItem(json, Keys::Login, Keys::Refresh);
+            item.emplace_string()=refreshToken;
+        }
+        {
+            auto& item=SteamBot::JSON::createItem(json, Keys::Login, Keys::Access);
+            item.emplace_string()=accessToken;
+        }
+        return true;
+    });
 }
 
 /************************************************************************/
@@ -667,6 +677,10 @@ void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMes
                 {
                     whiteboard.set(static_cast<SteamBot::Modules::Login::Whiteboard::CellID>(message->content.cell_id()));
                 }
+                if (!accessToken.empty())
+                {
+                    whiteboard.set(static_cast<SteamBot::Modules::Login::Whiteboard::LoginAccessToken>(accessToken));
+                }
 
                 if (message->content.has_legacy_out_of_game_heartbeat_seconds())
                 {
@@ -685,7 +699,8 @@ void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMes
             // We don't even send passwords, so it must be the refreshToken
             SteamBot::UI::Thread::outputText("login failed; removing login key");
             getClient().dataFile.update([](boost::json::value& json) {
-                SteamBot::JSON::eraseItem(json, Keys::Login, Keys::Data);
+                SteamBot::JSON::eraseItem(json, Keys::Login, Keys::Refresh);
+                SteamBot::JSON::eraseItem(json, Keys::Login, Keys::Access);
                 return true;
             });
             getClient().quit(true);
@@ -718,9 +733,14 @@ void LoginModule::run(SteamBot::Client& client)
     setStatus(LoginStatus::LoggedOut);
 
     client.dataFile.examine([this](const boost::json::value& value) mutable {
-        if (auto string=SteamBot::JSON::getItem(value, Keys::Login, Keys::Data))
+        if (auto string=SteamBot::JSON::getItem(value, Keys::Login, Keys::Refresh))
         {
             refreshToken=string->as_string();
+        }
+
+        if (auto string=SteamBot::JSON::getItem(value, Keys::Login, Keys::Access))
+        {
+            accessToken=string->as_string();
         }
     });
 
