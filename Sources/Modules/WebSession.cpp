@@ -81,7 +81,7 @@ namespace
             Ready
         };
 
-        Status status=Status::None;
+        Status status=Status::Ready;
 
         std::queue<std::shared_ptr<const Request>> requests;
         std::shared_ptr<const Request> forbidden;
@@ -97,7 +97,9 @@ namespace
         static std::string createAuthBody(std::string);
         static SteamBot::HTTPClient::Query::QueryPtr performAuthUserRequest(std::string);
         static std::string createCookies(SteamBot::HTTPClient::Query::QueryPtr);
+
         static void setTimezoneCookie(std::string&);
+        static void setLoginCookie(std::string&);
 
         void requestNonce();
         void handleRequests();
@@ -285,6 +287,27 @@ void WebSessionModule::setTimezoneCookie(std::string& cookies)
 
 /************************************************************************/
 
+void WebSessionModule::setLoginCookie(std::string& cookies)
+{
+    std::ostringstream value;
+
+    {
+        auto steamId=getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::SteamID>();
+        assert(steamId!=nullptr);
+        value << steamId->getValue();
+    }
+    value << "||";
+    {
+        auto accessToken=getClient().whiteboard.has<SteamBot::Modules::Login::Whiteboard::LoginAccessToken>();
+        assert(accessToken!=nullptr);
+        value << *accessToken;
+    }
+
+    SteamBot::Web::setCookie(cookies, "steamLoginSecure", value.str());
+}
+
+/************************************************************************/
+
 void WebSessionModule::handle(std::shared_ptr<const Steam::CMsgClientRequestWebAPIAuthenticateUserNonceResponseMessageType> message)
 {
     try
@@ -333,6 +356,7 @@ void WebSessionModule::handleRequests()
         {
             std::string myCookies=cookies;
             setTimezoneCookie(myCookies);
+            setLoginCookie(myCookies);
 
 #if 0
             // After 60 seconds, make the cookies invalid
