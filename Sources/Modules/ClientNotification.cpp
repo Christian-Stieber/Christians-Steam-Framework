@@ -150,7 +150,7 @@ void ClientNotificationModule::getNotifications()
         response=SteamBot::Modules::UnifiedMessageClient::execute<CSteamNotification_GetSteamNotifications_Response>("SteamNotification.GetSteamNotifications#1", std::move(request));
     }
 
-    using namespace pp;
+    using pp::operator ""_f;
     const auto& notifications=(*response)["notifications"_f];
     for (const auto& item : notifications)
     {
