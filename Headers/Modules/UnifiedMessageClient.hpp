@@ -68,6 +68,7 @@ namespace SteamBot
  * As an example, if protobuf defines a service "Player", it will
  * generate a
  *    class Player
+ * in the .pb.h file.
  *
  * For an RPC function "GetGameBadgeLevels" on that service, this class
  * will have a virtual function like so:
