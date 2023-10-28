@@ -113,6 +113,10 @@ namespace SteamBot
         // nullptr if not exists
         template <typename T> const T* has() const;
 
+        // assert if not exists
+        template <typename T> const T& get() const requires (!std::is_scalar_v<T>);
+        template <typename T> T get() const requires (std::is_scalar_v<T>);
+
 		// default value if not exists
         template <typename T> const T& get(const T&) const requires (!std::is_scalar_v<T>);
         template <typename T> T get(T) const requires (std::is_scalar_v<T>);
@@ -196,6 +200,18 @@ public:
     {
         resetChanged();
         return whiteboard.get<T>(def);
+    }
+
+    const T& get() requires (!std::is_scalar_v<T>)
+    {
+        resetChanged();
+        return whiteboard.get<T>();
+    }
+
+    T get() requires (std::is_scalar_v<T>)
+    {
+        resetChanged();
+        return whiteboard.get<T>();
     }
 };
 
@@ -298,4 +314,22 @@ template <typename T> T SteamBot::Whiteboard::get(T def) const requires (std::is
 {
     const T* data=has<CleanType<T>>();
     return (data==nullptr) ? def : *data;
+}
+
+/************************************************************************/
+
+template <typename T> const T& SteamBot::Whiteboard::get() const requires (!std::is_scalar_v<T>)
+{
+    const T* data=has<CleanType<T>>();
+    assert(data!=nullptr);
+    return *data;
+}
+
+/************************************************************************/
+
+template <typename T> T SteamBot::Whiteboard::get() const requires (std::is_scalar_v<T>)
+{
+    const T* data=has<CleanType<T>>();
+    assert(data!=nullptr);
+    return *data;
 }
