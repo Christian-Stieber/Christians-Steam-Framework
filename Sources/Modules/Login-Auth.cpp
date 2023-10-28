@@ -60,7 +60,7 @@ struct Keys
 
     inline static const std::string_view Login="Login";
     inline static const std::string_view Refresh="Refresh";
-    inline static const std::string_view Access="Access";
+    // inline static const std::string_view Access="Access";
 };
 
 /************************************************************************/
@@ -523,6 +523,7 @@ void LoginModule::queryPollAuthSessionStatus()
     {
         refreshToken=response->refresh_token();
     }
+    // We don't need this for anything, since WebSession requests one anyway?
     if (response->has_access_token())
     {
         accessToken=response->access_token();
@@ -533,10 +534,12 @@ void LoginModule::queryPollAuthSessionStatus()
             auto& item=SteamBot::JSON::createItem(json, Keys::Login, Keys::Refresh);
             item.emplace_string()=refreshToken;
         }
+#if 0
         {
             auto& item=SteamBot::JSON::createItem(json, Keys::Login, Keys::Access);
             item.emplace_string()=accessToken;
         }
+#endif
         return true;
     });
 }
@@ -677,9 +680,9 @@ void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMes
                 {
                     whiteboard.set(static_cast<SteamBot::Modules::Login::Whiteboard::CellID>(message->content.cell_id()));
                 }
-                if (!accessToken.empty())
+                if (!refreshToken.empty())
                 {
-                    whiteboard.set(static_cast<SteamBot::Modules::Login::Whiteboard::LoginAccessToken>(accessToken));
+                    whiteboard.set(static_cast<SteamBot::Modules::Login::Whiteboard::LoginRefreshToken>(refreshToken));
                 }
 
                 if (message->content.has_legacy_out_of_game_heartbeat_seconds())
@@ -700,7 +703,7 @@ void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMes
             SteamBot::UI::Thread::outputText("login failed; removing login key");
             getClient().dataFile.update([](boost::json::value& json) {
                 SteamBot::JSON::eraseItem(json, Keys::Login, Keys::Refresh);
-                SteamBot::JSON::eraseItem(json, Keys::Login, Keys::Access);
+                // SteamBot::JSON::eraseItem(json, Keys::Login, Keys::Access);
                 return true;
             });
             getClient().quit(true);
@@ -737,11 +740,12 @@ void LoginModule::run(SteamBot::Client& client)
         {
             refreshToken=string->as_string();
         }
-
+#if 0
         if (auto string=SteamBot::JSON::getItem(value, Keys::Login, Keys::Access))
         {
             accessToken=string->as_string();
         }
+#endif
     });
 
     while (true)

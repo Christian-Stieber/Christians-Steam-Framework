@@ -47,10 +47,10 @@ namespace SteamBot
                 enum class CellID : uint32_t { };
                 typedef SteamBot::SteamID SteamID;
 
-                class LoginAccessToken : public std::string
+                class LoginRefreshToken : public std::string
                 {
                 public:
-                    template <typename ...ARGS> LoginAccessToken(ARGS&&... args)
+                    template <typename ...ARGS> LoginRefreshToken(ARGS&&... args)
                         : std::string(std::forward<ARGS>(args)...)
                     {
                     }
