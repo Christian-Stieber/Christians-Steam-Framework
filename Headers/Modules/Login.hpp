@@ -21,6 +21,8 @@
 
 #include "SteamID.hpp"
 
+#include <boost/json.hpp>
+
 #include <optional>
 #include <utility>
 #include <chrono>
@@ -65,6 +67,33 @@ namespace SteamBot
                     }
                 };
             }
+        }
+    }
+}
+
+/************************************************************************/
+
+namespace SteamBot
+{
+    namespace Modules
+    {
+        namespace Login
+        {
+            class ParsedToken
+            {
+            private:
+                boost::json::object json;
+
+            public:
+                ParsedToken(std::string_view);
+                ~ParsedToken();
+
+            public:
+                const boost::json::object& toJson() const
+                {
+                    return json;
+                }
+            };
         }
     }
 }

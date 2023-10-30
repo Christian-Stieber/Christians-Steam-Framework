@@ -614,7 +614,11 @@ void LoginModule::doLogon()
     message->content.set_steam2_ticket_request(false);
 	message->content.set_machine_name(Steam::MachineInfo::Provider::getMachineName());
     message->content.set_supports_rate_limit_response(true);	// ???
-    if (!refreshToken.empty()) message->content.set_access_token(refreshToken);
+    if (!refreshToken.empty())
+    {
+        BOOST_LOG_TRIVIAL(debug) << "refresh token: " << SteamBot::Modules::Login::ParsedToken{refreshToken}.toJson();
+        message->content.set_access_token(refreshToken);
+    }
 
     // All this is very weird
 	{

@@ -124,6 +124,7 @@ const std::string& WebSessionModule::getAccessToken()
         if (response->has_access_token())
         {
             accessToken=std::move(*(response->mutable_access_token()));
+            BOOST_LOG_TRIVIAL(debug) << "access token: " << SteamBot::Modules::Login::ParsedToken{accessToken}.toJson();
         }
     }
 
