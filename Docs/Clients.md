@@ -24,7 +24,7 @@ With your `ClientInfo` in hand, call `SteamBot::Client::launch(clientInfo)` to l
 
 ## Invoking operations on clients
 
-While different APIs will work differently, you'll always have to start with your client: `std::shared_ptr<Client> clientInfo->getClient()".
+While different APIs will work differently, you'll always have to start with your client: `std::shared_ptr<Client> clientInfo->getClient()`.
 
 Keep in mind that clients run on their own threads; most APIs will at least expect you to be on that already. You can use the `Executor` for this:
 
@@ -58,5 +58,5 @@ if (auto client=clientInfo->getClient())
 
 ## Deleting a bot
 
-Find the data file in the filesystem and remove it :-)
+Quit your application (data files will be cached), find the data file in the filesystem, and remove it :-)
 Sorry, no framework functions for that right now.
