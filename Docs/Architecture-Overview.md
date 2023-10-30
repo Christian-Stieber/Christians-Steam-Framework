@@ -7,9 +7,9 @@ The framework runs two main threads at this stage:
 
 # Client threads
 
-Each account/client is run in a separate thread as well. These threads use internally.
+Each account/client is run in a separate thread as well.
 
-Must functional blocks of the clients are wrapped into a "module" which are collected at program launch and started as clients are created. These modules will generally launch a fiber.
+Many functional blocks of the clients are wrapped into "modules" which are collected at program launch and started as clients are created. These modules will generally launch a fiber.
 
 ## Fibers
 

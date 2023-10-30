@@ -1,0 +1,21 @@
+# Clients
+
+The "Client" is the bot instance for an account. As the framework goes, you can have as many clients as you want, but you should probably exercise caution to avoid annoying Valve.
+
+I might hardcode a limit eventually.
+
+Launching a client requires you to provide a ClientInfo instance.
+
+## Creating a new ClientInfo
+
+Call `ClientInfo* SteamBot::ClientInfo::create(accountName)` to create a new bot.
+This will return a `nullptr` if a bot for that account already exists.
+
+## Getting an existing ClientInfo
+
+Call `ClientInfo * SteamBot::ClientInfo::find(accountName)` to obtain the ClientInfo for an already existing bot.
+This will return a `nullptr` if a bot for that account doesn't exist.
+
+## Launching a client
+
+With your `ClientInfo` in hand, call `SteamBot::Client::launch(clientInfo)` to launch the bot.
