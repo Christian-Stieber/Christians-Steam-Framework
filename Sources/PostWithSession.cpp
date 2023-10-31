@@ -18,7 +18,6 @@
  */
 
 #include "Modules/WebSession.hpp"
-#include "Client/Client.hpp"
 #include "Web/URLEncode.hpp"
 
 /************************************************************************/
@@ -36,11 +35,7 @@ std::shared_ptr<const Response> PostWithSession::execute()
 
     request=std::make_shared<Request>();
     request->queryMaker=[this]() {
-        {
-            auto cookies=SteamBot::Client::getClient().whiteboard.has<SteamBot::Modules::WebSession::Whiteboard::Cookies>();
-            assert(cookies!=nullptr);
-            SteamBot::Web::formUrlencode(body, "sessionid", cookies->sessionid);
-        }
+        SteamBot::Web::formUrlencode(body, "sessionid", SteamBot::Modules::WebSession::getSessionId());
 
         auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::post, std::move(url));
         if (!referer.empty())

@@ -23,6 +23,7 @@
 #include "Modules/WebSession.hpp"
 #include "Web/Cookies.hpp"
 #include "Modules/UnifiedMessageClient.hpp"
+#include "Base64.hpp"
 
 #include "steamdatabase/protobufs/steam/steammessages_auth.steamclient.pb.h"
 
@@ -44,8 +45,6 @@
 
 typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
 typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
-
-typedef SteamBot::Modules::WebSession::Whiteboard::Cookies Cookies;
 
 /************************************************************************/
 
@@ -98,9 +97,6 @@ Request::~Request() =default;
 
 Response::Response() =default;
 Response::~Response() =default;
-
-Cookies::Cookies() =default;
-Cookies::~Cookies() =default;
 
 /************************************************************************/
 /*
@@ -221,6 +217,7 @@ void WebSessionModule::handleRequests()
             std::string myCookies;
             setTimezoneCookie(myCookies);
             setLoginCookie(myCookies);
+            SteamBot::Web::setCookie(myCookies, "sessionid", SteamBot::Modules::WebSession::getSessionId());
 
 #if 0
             // After 60 seconds, make the cookies invalid
@@ -308,4 +305,13 @@ std::shared_ptr<const Response> SteamBot::Modules::WebSession::makeQuery(std::sh
             }
         }
     }
+}
+
+/************************************************************************/
+
+std::string SteamBot::Modules::WebSession::getSessionId()
+{
+    const auto steamId=SteamBot::Client::getClient().whiteboard.get<SteamBot::Modules::Login::Whiteboard::SteamID>();
+    const std::string steamIdString=std::to_string(steamId.getValue());
+    return SteamBot::Base64::encode(std::span<const std::byte>((const std::byte*)steamIdString.data(), steamIdString.size()));
 }

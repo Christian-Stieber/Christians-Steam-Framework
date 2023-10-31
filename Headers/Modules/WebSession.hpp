@@ -73,32 +73,8 @@ namespace SteamBot
             }
 
             std::shared_ptr<const Messageboard::Response> makeQuery(std::shared_ptr<Messageboard::Request>);
-        }
-    }
-}
 
-/************************************************************************/
-
-namespace SteamBot
-{
-    namespace Modules
-    {
-        namespace WebSession
-        {
-            namespace Whiteboard
-            {
-                class Cookies
-                {
-                public:
-                    std::string steamLogin;
-                    std::string steamLoginSecure;
-                    std::string sessionid;
-
-                public:
-                    Cookies();
-                    ~Cookies();
-                };
-            }
+            std::string getSessionId();
         }
     }
 }
