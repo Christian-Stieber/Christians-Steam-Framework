@@ -94,6 +94,7 @@
     <ClCompile Include="Sources\OpenSSL\Random.cpp" />
     <ClCompile Include="Sources\OpenSSL\RSA.cpp" />
     <ClCompile Include="Sources\OpenSSL\SHA1.cpp" />
+    <ClCompile Include="Sources\ParseToken.cpp" />
     <ClCompile Include="Sources\PostWithSession.cpp" />
     <ClCompile Include="Sources\Printable.cpp" />
     <ClCompile Include="Sources\Random.cpp" />
