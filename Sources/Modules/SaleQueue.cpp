@@ -41,7 +41,9 @@ typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
 
 namespace
 {
-    class Error { };
+    enum class QueueState { Error, NoCards, HasCards };
+
+    static const int maxErrors=10;
 }
 
 /************************************************************************/
@@ -49,14 +51,14 @@ namespace
  * Again, inspired by ASF
  */
 
-static bool hasSaleCards()
+static QueueState hasSaleCards()
 {
     BOOST_LOG_TRIVIAL(debug) << "SaleQueue.cpp: hasSaleCards()";
 
     class QueuePageParser : public HTMLParser::Parser
     {
     public:
-        bool hasCards=false;
+        QueueState hasCards=QueueState::Error;
 
     public:
         QueuePageParser(std::string_view html)
@@ -76,7 +78,11 @@ static bool hasSaleCards()
                 SteamBot::UI::OutputText() << "queue status: \"" << text << "\"";
                 if (text.starts_with("You can get "))
                 {
-                    hasCards=true;
+                    hasCards=QueueState::HasCards;
+                }
+                else
+                {
+                    hasCards=QueueState::NoCards;
                 }
             }
         }
@@ -90,7 +96,7 @@ static bool hasSaleCards()
     auto response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
     if (response->query->response.result()!=boost::beast::http::status::ok)
     {
-        throw Error();
+        return QueueState::Error;
     }
 
     auto html=SteamBot::HTTPClient::parseString(*(response->query));
@@ -101,25 +107,52 @@ static bool hasSaleCards()
 }
 
 /************************************************************************/
+/*
+ * ToDo: what exactly does the bool result indicate?
+ */
 
 static bool performClear()
 {
     BOOST_LOG_TRIVIAL(debug) << "SaleQueue.cpp: performClear()";
     try
     {
-        while (hasSaleCards())
+        int errorCount=0;
+        while (true)
         {
-            if (!SteamBot::DiscoveryQueue::clear())
+            bool error=true;
+            switch(hasSaleCards())
             {
-                return false;
+            case QueueState::Error:
+                break;
+
+            case QueueState::NoCards:
+                SteamBot::UI::OutputText() << "no sale queue to be cleared";
+                return true;
+
+            case QueueState::HasCards:
+                if (SteamBot::DiscoveryQueue::clear())
+                {
+                    error=false;
+                }
+                break;
+
+            default:
+                assert(false);
             }
+
+            if (error)
+            {
+                SteamBot::UI::OutputText() << "sale queue had an error";
+                errorCount++;
+                if (errorCount>=maxErrors)
+                {
+                    SteamBot::UI::OutputText() << "sale queue got too many errors; giving up";
+                    return false;
+                }
+            }
+
             SteamBot::sleep(std::chrono::seconds(30));
         }
-        SteamBot::UI::OutputText() << "no sale queue to be cleared";
-        return true;
-    }
-    catch(const Error&)
-    {
     }
     catch(...)
     {
