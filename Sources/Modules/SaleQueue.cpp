@@ -58,7 +58,7 @@ static QueueState hasSaleCards()
     class QueuePageParser : public HTMLParser::Parser
     {
     public:
-        QueueState hasCards=QueueState::Error;
+        QueueState hasCards=QueueState::NoCards;
 
     public:
         QueuePageParser(std::string_view html)
