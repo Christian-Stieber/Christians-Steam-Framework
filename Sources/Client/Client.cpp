@@ -33,6 +33,7 @@
 #include <boost/log/trivial.hpp>
 #include <boost/exception/diagnostic_information.hpp>
 #include <boost/fiber/operations.hpp>
+#include <boost/fiber/protected_fixedsize_stack.hpp>
 
 /************************************************************************/
 
@@ -255,7 +256,8 @@ SteamBot::Client& SteamBot::Client::getClient()
 
 void SteamBot::Client::launchFiber(std::string name, std::function<void()> body)
 {
-	boost::fibers::fiber([this, name=std::move(name), body=std::move(body)](){
+	boost::fibers::fiber(std::allocator_arg, boost::fibers::protected_fixedsize_stack(),
+                         [this, name=std::move(name), body=std::move(body)](){
         std::string fiberName;
         {
             std::stringstream stream;
