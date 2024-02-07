@@ -30,7 +30,16 @@
 #include "EnumString.hpp"
 #include "Exceptions.hpp"
 
+// Note: std::regex appears to use a lot of stack on g++
+#undef ChRISTIAN_REGEX
+#ifdef __GLIBCXX__
+#include <boost/regex.hpp>
+#define CHRISTIAN_REGEX boost
+#else
 #include <regex>
+#define CHRISTIAN_REGEX std
+#endif
+
 
 #include <boost/url/url_view.hpp>
 #include <boost/exception/diagnostic_information.hpp>
@@ -198,9 +207,9 @@ bool MyClaim::getToken()
     if (response->query->response.result()==boost::beast::http::status::ok)
     {
         auto html=SteamBot::HTTPClient::parseString(*(response->query));
-        static const std::regex regex(" data-loyalty_webapi_token=\"&quot;([a-f0-9]+)&quot;\"");
-        std::smatch match;
-        if (std::regex_search(html, match, regex))
+        static const CHRISTIAN_REGEX::regex regex(" data-loyalty_webapi_token=\"&quot;([-_.0-9A-Za-z]+)&quot;\"");
+        CHRISTIAN_REGEX::smatch match;
+        if (CHRISTIAN_REGEX::regex_search(html, match, regex))
         {
             assert(match.size()==2);
             token=match[1];
