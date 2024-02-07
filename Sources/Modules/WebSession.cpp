@@ -66,17 +66,20 @@ namespace
         SteamBot::Messageboard::WaiterType<Request> requestWaiter;
 
     private:
+        boost::fibers::mutex accessTokenMutex;
         std::string accessToken;	// don't access this directly, use getAccessToken()
+
         std::chrono::steady_clock::time_point timestamp;
 
     private:
         static void setTimezoneCookie(std::string&);
         void setLoginCookie(std::string&);
 
-        const std::string& getAccessToken();
         void handleRequests();
 
     public:
+        std::string getAccessToken();
+
         void handle(std::shared_ptr<const Request>);
 
     public:
@@ -103,8 +106,9 @@ Response::~Response() =default;
  * If necessary, run GenerateAccessTokenForApp() to get our access token.
  */
 
-const std::string& WebSessionModule::getAccessToken()
+std::string WebSessionModule::getAccessToken()
 {
+    std::unique_lock<decltype(accessTokenMutex)> lock(accessTokenMutex);
     if (accessToken.empty())
     {
         GenerateAccessTokenForAppInfo::RequestType request;
@@ -314,4 +318,14 @@ std::string SteamBot::Modules::WebSession::getSessionId()
     const auto steamId=SteamBot::Client::getClient().whiteboard.get<SteamBot::Modules::Login::Whiteboard::SteamID>();
     const std::string steamIdString=std::to_string(steamId.getValue());
     return SteamBot::Base64::encode(std::span<const std::byte>((const std::byte*)steamIdString.data(), steamIdString.size()));
+}
+
+/************************************************************************/
+/*
+ * Only call this from other modules
+ */
+
+std::string SteamBot::Modules::WebSession::getAccessToken()
+{
+    return SteamBot::Client::getClient().getModule<WebSessionModule>()->getAccessToken();
 }

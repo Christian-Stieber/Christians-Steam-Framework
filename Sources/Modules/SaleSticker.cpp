@@ -40,8 +40,6 @@
 #define CHRISTIAN_REGEX std
 #endif
 
-
-#include <boost/url/url_view.hpp>
 #include <boost/exception/diagnostic_information.hpp>
 
 #include "Helpers/ProtoPuf.hpp"
@@ -129,7 +127,6 @@ namespace
 
         void claim();
         bool canClaim();
-        bool getToken();
 
     public:
         MyClaim();
@@ -149,82 +146,6 @@ Status::~Status() =default;
 
 Status::Item::Item() =default;
 Status::Item::~Item() =default;
-
-/************************************************************************/
-/*
- * Let's pretend to be a user -- I'll select one randomly :-)
- * I should probably try to get this list from the store, though...
- */
-
-static const std::array<boost::urls::url_view, 20> categoryUrls={{
-        boost::urls::url_view("https://store.steampowered.com/category/casual"),
-        boost::urls::url_view("https://store.steampowered.com/category/fighting_martial_arts"),
-        boost::urls::url_view("https://store.steampowered.com/greatondeck"),
-        boost::urls::url_view("https://store.steampowered.com/category/simulation"),
-        boost::urls::url_view("https://store.steampowered.com/category/visual_novel"),
-        boost::urls::url_view("https://store.steampowered.com/genre/Free%20to%20Play"),
-        boost::urls::url_view("https://store.steampowered.com/category/action"),
-        boost::urls::url_view("https://store.steampowered.com/vr"),
-        boost::urls::url_view("https://store.steampowered.com/category/survival"),
-        boost::urls::url_view("https://store.steampowered.com/category/exploration_open_world"),
-        boost::urls::url_view("https://store.steampowered.com/category/strategy"),
-        boost::urls::url_view("https://store.steampowered.com/category/rpg"),
-        boost::urls::url_view("https://store.steampowered.com/category/anime"),
-        boost::urls::url_view("https://store.steampowered.com/category/rogue_like_rogue_lite"),
-        boost::urls::url_view("https://store.steampowered.com/category/adventure"),
-        boost::urls::url_view("https://store.steampowered.com/category/sports"),
-        boost::urls::url_view("https://store.steampowered.com/category/story_rich"),
-        boost::urls::url_view("https://store.steampowered.com/category/science_fiction"),
-        boost::urls::url_view("https://store.steampowered.com/category/multiplayer_coop"),
-        boost::urls::url_view("https://store.steampowered.com/category/horror")
-    }};
-
-/************************************************************************/
-/*
- * Note: my HTML parser can't (currently?) parse these pages, but
- * I don't really need to -- the regex works just fine.
- *
- * Note: apparently, when we access an account with a language that's
- * english, Steam will set a "Steam-Language" cookie and redirect to
- * the same page again. This can be avoided by explicitly asking for
- * the english page.
- */
-
-bool MyClaim::getToken()
-{
-    assert(token.empty());
-    assert(result==Status::ClaimResult::Invalid);
-
-    auto request=std::make_shared<Request>();
-    request->queryMaker=[](){
-        auto index=SteamBot::Random::generateRandomNumber()%categoryUrls.size();
-        auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, categoryUrls.at(index));
-        query->url.params().set("l", "english");
-        return query;
-    };
-
-    auto response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
-    if (response->query->response.result()==boost::beast::http::status::ok)
-    {
-        auto html=SteamBot::HTTPClient::parseString(*(response->query));
-        static const CHRISTIAN_REGEX::regex regex(" data-loyalty_webapi_token=\"&quot;([-_.0-9A-Za-z]+)&quot;\"");
-        CHRISTIAN_REGEX::smatch match;
-        if (CHRISTIAN_REGEX::regex_search(html, match, regex))
-        {
-            assert(match.size()==2);
-            token=match[1];
-            BOOST_LOG_TRIVIAL(debug) << "SaleSticker: loyalty_webapi_token is \"" << token << "\"";
-            return true;
-        }
-        BOOST_LOG_TRIVIAL(debug) << "SaleSticker: cannot find a token";
-        result=Status::ClaimResult::NoSale;
-    }
-    else
-    {
-        result=Status::ClaimResult::Error;
-    }
-    return false;
-}
 
 /************************************************************************/
 
@@ -355,7 +276,8 @@ MyClaim::MyClaim()
 {
     try
     {
-        if (getToken() && canClaim())
+        token=SteamBot::Modules::WebSession::getAccessToken();
+        if (canClaim())
         {
             claim();
         }

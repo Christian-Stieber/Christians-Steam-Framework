@@ -102,10 +102,28 @@ namespace SteamBot
                 boost::urls::url url;
 
             public:
-                // Note: this will trash the PostWithSession
+                // Note: this will trash the PostWithSession instance
                 std::shared_ptr<const Messageboard::Response> execute();
             };
 
+        }
+    }
+}
+
+/************************************************************************/
+/*
+ * Obtain the current access token
+ *
+ * ToDo: should this be a separate module?
+ */
+
+namespace SteamBot
+{
+    namespace Modules
+    {
+        namespace WebSession
+        {
+            std::string getAccessToken();
         }
     }
 }
