@@ -29,25 +29,8 @@ namespace SteamBot
     {
         namespace AddFreeLicense
         {
-            namespace Messageboard
-            {
-                class AddLicense
-                {
-                public:
-                    const AppID appId;
-
-                public:
-                    AddLicense(AppID appId_)
-                        : appId(appId_)
-                    {
-                    }
-
-                    ~AddLicense() =default;
-
-                public:
-                    static void add(AppID);
-                };
-            }
+            extern void add(AppID);
+            extern void add(PackageID);
         }
     }
 }

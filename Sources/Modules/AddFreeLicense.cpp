@@ -27,8 +27,40 @@
 
 /************************************************************************/
 
-typedef SteamBot::Modules::AddFreeLicense::Messageboard::AddLicense AddLicense;
 typedef SteamBot::Modules::Connection::Messageboard::SendSteamMessage SendSteamMessage;
+
+/************************************************************************/
+
+namespace
+{
+    class AddLicenseMessageBase
+    {
+    protected:
+        AddLicenseMessageBase() =default;
+
+    public:
+        virtual ~AddLicenseMessageBase() =default;
+
+        virtual void execute() const =0;
+    };
+
+    template <typename T> class AddLicenseMessage : public AddLicenseMessageBase
+    {
+    public:
+        const T licenseId;
+
+    public:
+        AddLicenseMessage(T licenseId_)
+            : licenseId(licenseId_)
+        {
+        }
+
+        virtual ~AddLicenseMessage() =default;
+
+    public:
+        virtual void execute() const override;
+    };
+}
 
 /************************************************************************/
 
@@ -38,11 +70,11 @@ namespace
     {
     private:
         SteamBot::Messageboard::WaiterType<Steam::CMsgClientRequestFreeLicenseResponseMessageType> cmsgClientRequestFreeLicenseResponse;
-        SteamBot::Messageboard::WaiterType<AddLicense> addLicense;
+        SteamBot::Messageboard::WaiterType<AddLicenseMessageBase> addLicense;
 
     public:
         void handle(std::shared_ptr<const Steam::CMsgClientRequestFreeLicenseResponseMessageType>);
-        void handle(std::shared_ptr<const AddLicense>);
+        void handle(std::shared_ptr<const AddLicenseMessageBase>);
 
     public:
         AddFreeLicenseModule() =default;
@@ -107,11 +139,18 @@ void AddFreeLicenseModule::handle(std::shared_ptr<const Steam::CMsgClientRequest
 
 /************************************************************************/
 
-void AddFreeLicenseModule::handle(std::shared_ptr<const AddLicense> message)
+void AddFreeLicenseModule::handle(std::shared_ptr<const AddLicenseMessageBase> message)
+{
+    message->execute();
+}
+
+/************************************************************************/
+
+template <> void AddLicenseMessage<SteamBot::AppID>::execute() const
 {
     auto request=std::make_unique<Steam::CMsgClientRequestFreeLicenseMessageType>();
 
-    const auto appId=toUnsignedInteger(message->appId);
+    const auto appId=SteamBot::toUnsignedInteger(licenseId);
     request->content.add_appids(appId);
     SteamBot::UI::OutputText() << "requesting a free license for app id " << appId;
 
@@ -120,10 +159,18 @@ void AddFreeLicenseModule::handle(std::shared_ptr<const AddLicense> message)
 
 /************************************************************************/
 
+template <> void AddLicenseMessage<SteamBot::PackageID>::execute() const
+{
+    const auto packageId=SteamBot::toInteger(licenseId);
+    SteamBot::UI::OutputText() << "requesting a free license for package id " << packageId;
+}
+
+/************************************************************************/
+
 void AddFreeLicenseModule::init(SteamBot::Client& client)
 {
     cmsgClientRequestFreeLicenseResponse=client.messageboard.createWaiter<Steam::CMsgClientRequestFreeLicenseResponseMessageType>(*waiter);
-    addLicense=client.messageboard.createWaiter<AddLicense>(*waiter);
+    addLicense=client.messageboard.createWaiter<AddLicenseMessageBase>(*waiter);
 }
 
 /************************************************************************/
@@ -142,7 +189,16 @@ void AddFreeLicenseModule::run(SteamBot::Client&)
 
 /************************************************************************/
 
-void AddLicense::add(AppID appId)
+void SteamBot::Modules::AddFreeLicense::add(AppID appId)
 {
-    SteamBot::Client::getClient().messageboard.send(std::make_shared<AddLicense>(appId));
+    std::shared_ptr<AddLicenseMessageBase> message=std::make_shared<AddLicenseMessage<AppID>>(appId);
+    SteamBot::Client::getClient().messageboard.send(std::move(message));
+}
+
+/************************************************************************/
+
+void SteamBot::Modules::AddFreeLicense::add(PackageID packageId)
+{
+    std::shared_ptr<AddLicenseMessageBase> message=std::make_shared<AddLicenseMessage<PackageID>>(packageId);
+    SteamBot::Client::getClient().messageboard.send(std::move(message));
 }
