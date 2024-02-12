@@ -17,11 +17,14 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#include "Modules/WebSession.hpp"
 #include "Modules/Connection.hpp"
 #include "Client/Module.hpp"
 #include "Modules/AddFreeLicense.hpp"
 #include "UI/UI.hpp"
 #include "ResultCode.hpp"
+
+#include <boost/url/url_view.hpp>
 
 #include "Steam/ProtoBuf/steammessages_clientserver_2.hpp"
 
@@ -159,10 +162,41 @@ template <> void AddLicenseMessage<SteamBot::AppID>::execute() const
 
 /************************************************************************/
 
+namespace
+{
+    class FreeLicense : public SteamBot::Modules::WebSession::PostWithSession
+    {
+    public:
+        FreeLicense(SteamBot::PackageID packageId)
+        {
+            static const boost::urls::url_view baseUrl("https://store.steampowered.com/freelicense/addfreelicense?l=english");
+            url=baseUrl;
+
+            const auto value=toInteger(packageId);
+            url.segments().push_back(std::to_string(value));
+            SteamBot::UI::OutputText() << "requesting a free license for package id " << value;
+        }
+    };
+}
+
+/************************************************************************/
+
 template <> void AddLicenseMessage<SteamBot::PackageID>::execute() const
 {
-    const auto packageId=SteamBot::toInteger(licenseId);
-    SteamBot::UI::OutputText() << "requesting a free license for package id " << packageId;
+    auto response=FreeLicense(licenseId).execute();
+    if (response->query->response.result()==boost::beast::http::status::ok)
+    {
+        SteamBot::UI::OutputText() << "free license ok ???";
+        // ToDo: is there useful information in the response?
+#if 0
+        auto data=SteamBot::HTTPClient::parseString(*(response->query));
+        BOOST_LOG_TRIVIAL(debug) << data;
+#endif
+    }
+    else
+    {
+        SteamBot::UI::OutputText() << "free license error";
+    }
 }
 
 /************************************************************************/
