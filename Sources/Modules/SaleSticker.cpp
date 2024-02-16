@@ -30,16 +30,6 @@
 #include "EnumString.hpp"
 #include "Exceptions.hpp"
 
-// Note: std::regex appears to use a lot of stack on g++
-#undef ChRISTIAN_REGEX
-#ifdef __GLIBCXX__
-#include <boost/regex.hpp>
-#define CHRISTIAN_REGEX boost
-#else
-#include <regex>
-#define CHRISTIAN_REGEX std
-#endif
-
 #include <boost/exception/diagnostic_information.hpp>
 
 #include "Helpers/ProtoPuf.hpp"
