@@ -23,6 +23,7 @@
 #include "Modules/LicenseList.hpp"
 #include "UI/UI.hpp"
 #include "Helpers/Time.hpp"
+#include "SafeCast.hpp"
 
 #include "steamdatabase/protobufs/steam/steammessages_player.steamclient.pb.h"
 
@@ -135,7 +136,7 @@ void OwnedGamesModule::getOwnedGames()
             }
             if (gameData.has_rtime_last_played())
             {
-                game->lastPlayed=std::chrono::system_clock::from_time_t(gameData.rtime_last_played());
+                game->lastPlayed=std::chrono::system_clock::from_time_t(SteamBot::safeCast<time_t>(gameData.rtime_last_played()));
             }
             if (gameData.has_playtime_forever())
             {

@@ -32,6 +32,7 @@
 #include "Helpers/ProtoPuf.hpp"
 #include "Helpers/Time.hpp"
 #include "EnumString.hpp"
+#include "SafeCast.hpp"
 
 /************************************************************************/
 
@@ -157,8 +158,8 @@ void ClientNotificationModule::getNotifications()
         auto notification=std::make_shared<ClientNotification>();
         notification->notificationId=static_cast<SteamBot::NotificationID>(item["notification_id"_f].value());
         notification->type=static_cast<ClientNotification::Type>(item["notification_type"_f].value());
-        notification->timestamp=std::chrono::system_clock::from_time_t(item["timestamp"_f].value());
-        notification->expiry=std::chrono::system_clock::from_time_t(item["expiry"_f].value());
+        notification->timestamp=std::chrono::system_clock::from_time_t(SteamBot::safeCast<time_t>(item["timestamp"_f].value()));
+        notification->expiry=std::chrono::system_clock::from_time_t(SteamBot::safeCast<time_t>(item["expiry"_f].value()));
         notification->read=item["read"_f].value();
         notification->body=boost::json::parse(item["body_data"_f].value());
 

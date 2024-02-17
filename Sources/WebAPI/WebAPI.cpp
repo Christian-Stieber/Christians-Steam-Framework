@@ -21,6 +21,7 @@
 #include "WebAPI/WebAPI.hpp"
 #include "Asio/HTTPClient.hpp"
 #include "Client/CallbackWaiter.hpp"
+#include "SafeCast.hpp"
 
 #include <charconv>
 #include <boost/log/trivial.hpp>
@@ -85,7 +86,7 @@ void Query::set(std::string_view key, const std::vector<std::string>& values)
     {
         std::string itemKey{key};
         itemKey+='[';
-        itemKey+=makeString(i);
+        itemKey+=makeString(SteamBot::safeCast<int>(i));
         itemKey+=']';
         set(itemKey, values[i]);
     }

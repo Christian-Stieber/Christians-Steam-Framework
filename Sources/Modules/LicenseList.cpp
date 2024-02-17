@@ -24,6 +24,7 @@
 #include "EnumString.hpp"
 #include "UI/UI.hpp"
 #include "Helpers/Time.hpp"
+#include "SafeCast.hpp"
 
 /************************************************************************/
 
@@ -122,10 +123,10 @@ Licenses::LicenseInfo::LicenseInfo(const CMsgClientLicenseList_License& data)
         accessToken=data.access_token();
 
     if (data.has_time_created())
-        timeCreated=Licenses::LicenseInfo::Clock::from_time_t(data.time_created());
+        timeCreated=Licenses::LicenseInfo::Clock::from_time_t(SteamBot::safeCast<time_t>(data.time_created()));
 
     if (data.has_time_next_process())
-        timeNextProcess=Licenses::LicenseInfo::Clock::from_time_t(data.time_next_process());
+        timeNextProcess=Licenses::LicenseInfo::Clock::from_time_t(SteamBot::safeCast<time_t>(data.time_next_process()));
 }
 
 /************************************************************************/
