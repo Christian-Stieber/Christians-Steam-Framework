@@ -65,7 +65,7 @@ list(APPEND SRCS Boost)
 
 ######################################################################
 
-list(APPEND SRCS Main Logging WorkingDir Universe Random Base64 DestructMonitor JobID DataFile Settings AssetKey RateLimit)
+list(APPEND SRCS Main Logging WorkingDir Universe Random Base64 DestructMonitor JobID DataFile Settings AssetKey RateLimit Exception)
 list(APPEND SRCS AssetData SendTrade SendInventory PostWithSession AcceptTrade DeclineTrade CancelTrade ExecuteFibers MaintainBPE)
 list(APPEND SRCS Asio/Asio Asio/Signals Asio/HTTPClient Asio/Fiber Asio/Connections)
 list(APPEND SRCS Client/Client Client/Waiter Client/Whiteboard Client/Messageboard Client/Execute Client/Module Client/Sleep Client/ClientInfo)

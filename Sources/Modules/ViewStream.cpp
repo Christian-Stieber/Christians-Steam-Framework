@@ -23,19 +23,15 @@
 #include "Modules/WebSession.hpp"
 #include "Modules/ViewStream.hpp"
 #include "HTMLParser/Parser.hpp"
+#include "Helpers/JSON.hpp"
+#include "UI/UI.hpp"
+#include "ResultCode.hpp"
+#include "Exception.hpp"
 
 /************************************************************************/
 
 typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
 typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
-
-/************************************************************************/
-
-namespace
-{
-    enum class BroadcastSteamID : uint64_t { None=0 };
-    enum class BroadcastID : uint64_t { None=0 };
-}
 
 /************************************************************************/
 
@@ -53,20 +49,25 @@ namespace
     private:
         const boost::urls::url url;
 
-        BroadcastSteamID steamId=BroadcastSteamID::None;
-        BroadcastID boradcastId=BroadcastID::None;
+        std::string title;
+        std::string broadcastSteamId;	// also seen as just "steamid"
+        std::string broadcastId;
+        std::string viewerToken;
+        std::chrono::seconds heartbeatInterval;
 
     public:
         ViewStream(const boost::urls::url_view& url_)
             : url(url_)
         {
-            processWebpage();
+            getBroadcastSteamID();
+            getTmpdData();
         }
 
         ~ViewStream() =default;
 
     private:
-        void processWebpage() const;
+        void getTmpdData();
+        void getBroadcastSteamID();
 
     public:
         void run();
@@ -106,28 +107,98 @@ namespace
 }
 
 /************************************************************************/
+/*
+ * Read the webpage, find the data-broadcast_available_for_page
+ * atribute, and get the broadcastStreamID for the first stream.
+ */
 
-void ViewStream::processWebpage() const
+void ViewStream::getBroadcastSteamID()
 {
-    auto request=std::make_shared<Request>();
-    request->queryMaker=[this](){
-        return std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, this->url);
-    };
-    auto response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
-    if (response->query->response.result()!=boost::beast::http::status::ok)
+    boost::json::object json;
+    {
+        auto request=std::make_shared<Request>();
+        request->queryMaker=[this](){
+            return std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, this->url);
+        };
+        auto response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
+        if (response->query->response.result()!=boost::beast::http::status::ok)
+        {
+            throw ErrorException();
+        }
+
+        auto html=SteamBot::HTTPClient::parseString(*(response->query));
+        StreamPageParser parser(html);
+        parser.parse();
+        if (parser.data.empty())
+        {
+            throw ErrorException();
+        }
+
+        json=boost::json::parse(parser.data).as_object();
+    }
+    BOOST_LOG_TRIVIAL(info) << "data-broadcast_available_for_page: " << json;
+
+    auto filtered=json.at("filtered").as_array();
+    auto first=filtered.at(0);
+
+    if (!SteamBot::JSON::optString(first, "broadcaststeamid", broadcastSteamId))
     {
         throw ErrorException();
     }
+}
 
-    auto html=SteamBot::HTTPClient::parseString(*(response->query));
-    StreamPageParser parser(html);
-    parser.parse();
-    if (parser.data.empty())
+/************************************************************************/
+/*
+ * Issue the getbroadcastmpd query to get more stuff
+ */
+
+void ViewStream::getTmpdData()
+{
+    boost::json::value json;
     {
-        throw ErrorException();
+        auto request=std::make_shared<Request>();
+        request->queryMaker=[this]() {
+            static const boost::urls::url_view myUrl("https://steamcommunity.com/broadcast/getbroadcastmpd/?l=english");
+            auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, myUrl);
+            query->request.set(boost::beast::http::field::referer, "https://store.steampowered.com/");
+            {
+                auto params=query->url.params();
+                params.set("steamid", broadcastSteamId);
+                params.set("broadcastid", "0");
+                params.set("viewertoken", "0");
+                params.set("watchlocation", "6");
+                params.set("sessionid", SteamBot::Modules::WebSession::getSessionId());
+            }
+            return query;
+        };
+
+        auto response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
+        if (response->query->response.result()!=boost::beast::http::status::ok)
+        {
+            throw ErrorException();
+        }
+
+        json=SteamBot::HTTPClient::parseJson(*(response->query)).as_object();
     }
 
-    std::cout << "data-broadcast_available_for_page: " << parser.data << std::endl;
+    {
+        SteamBot::ResultCode result=SteamBot::ResultCode::Invalid;
+        if (!SteamBot::JSON::optNumber(json, "eresult", result) || result!=SteamBot::ResultCode::OK) throw ErrorException();
+    }
+
+    if (!SteamBot::JSON::optString(json, "broadcastid", broadcastId)) throw ErrorException();
+    if (!SteamBot::JSON::optString(json, "viewertoken", viewerToken)) throw ErrorException();
+
+    {
+        uint32_t seconds;
+        if (!SteamBot::JSON::optNumber(json, "heartbeat_interval", seconds)) throw ErrorException();
+        heartbeatInterval=std::chrono::seconds(seconds);
+    }
+
+    if (SteamBot::JSON::optString(json, "title", title))
+    {
+        SteamBot::UI::OutputText() << "stream title: " << title;
+    }
 }
 
 /************************************************************************/
@@ -206,8 +277,9 @@ void ViewStreamsModule::startStream(SteamBot::Execute::FunctionBase::Ptr start_)
         streams.push_back(std::make_unique<ViewStream>(start->url));
         start->result=true;
     }
-    catch(const ErrorException&)
+    catch(...)
     {
+        SteamBot::Exception::log();
     }
     start->complete();
 }
