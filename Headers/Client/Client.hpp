@@ -68,6 +68,11 @@ namespace SteamBot
 		void launchFiber(std::string, std::function<void()>);
         void quit(bool restart=false);
 
+        bool isQuitting() const
+        {
+            return quitMode!=QuitMode::None;
+        }
+
     private:
         mutable boost::fibers::mutex statusMutex;
         mutable boost::fibers::condition_variable statusCondition;
