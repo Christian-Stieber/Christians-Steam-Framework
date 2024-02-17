@@ -102,6 +102,7 @@ namespace SteamBot
         }
 
     public:
+        // ToDo: handle the case when we register an object AFTER the quit has been requested...
         template <Cancelable T> auto registerObject(T& object)
         {
             auto result=std::make_shared<Object<T>>(object);
