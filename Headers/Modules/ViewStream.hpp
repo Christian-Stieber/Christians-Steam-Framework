@@ -32,6 +32,8 @@ namespace SteamBot
         namespace ViewStream
         {
             bool start(const boost::urls::url_view&);
+            bool stop(const boost::urls::url_view&);
+            bool stop();
         }
     }
 }

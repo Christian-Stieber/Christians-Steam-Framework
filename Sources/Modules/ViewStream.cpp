@@ -67,9 +67,10 @@ namespace
 {
     class ViewStream
     {
-    private:
+    public:
         const boost::urls::url url;
 
+    private:
         std::string title;
         std::string broadcastSteamId;	// also seen as just "steamid"
         std::string broadcastId;
@@ -84,11 +85,15 @@ namespace
         ViewStream(const boost::urls::url_view& url_)
             : url(url_)
         {
+            SteamBot::UI::OutputText() << "starting stream " << url;
             getBroadcastSteamID();
             getTmpdData();
         }
 
-        ~ViewStream() =default;
+        ~ViewStream()
+        {
+            SteamBot::UI::OutputText() << "stopping stream " << url;
+        }
 
     private:
         void getTmpdData();
@@ -342,7 +347,8 @@ namespace
         }
 
     public:
-        void startStream(SteamBot::Execute::FunctionBase::Ptr);
+        void startStream(const boost::urls::url_view*);
+        void stopStream(const boost::urls::url_view*);
     };
 
     ViewStreamsModule::Init<ViewStreamsModule> init;
@@ -368,53 +374,106 @@ Clock::time_point ViewStreamsModule::findNextHeartbeat() const
 
 namespace
 {
-    class StartFunction : public SteamBot::Execute::FunctionBase
+    class ViewFunction : public SteamBot::Execute::FunctionBase
     {
     public:
         std::shared_ptr<ViewStreamsModule> module;
-        const boost::urls::url_view& url;
+        enum class Action { Start, Stop } action;
+        const boost::urls::url_view* const url;
         bool result=false;
 
     public:
-        StartFunction(std::shared_ptr<ViewStreamsModule> module_, const boost::urls::url_view& url_)
-            : module(std::move(module_)), url(url_)
+        ViewFunction(std::shared_ptr<ViewStreamsModule> module_, Action action_, const boost::urls::url_view* url_=nullptr)
+            : module(std::move(module_)), action(action_), url(url_)
         {
         }
 
-        virtual ~StartFunction() =default;
+        virtual ~ViewFunction() =default;
 
     public:
         virtual void execute(Ptr self) override
         {
-            module->startStream(std::move(self));
+            auto function=std::dynamic_pointer_cast<ViewFunction>(self);
+            try
+            {
+                switch(function->action)
+                {
+                case Action::Start:
+                    module->startStream(function->url);
+                    function->result=true;
+                    break;
+
+                case Action::Stop:
+                    module->stopStream(function->url);
+                    function->result=true;
+                    break;
+
+                default:
+                    assert(false);
+                    break;
+                }
+            }
+            catch(...)
+            {
+                SteamBot::Exception::log();
+            }
+            function->complete();
         }
     };
 }
 
 /************************************************************************/
 
-void ViewStreamsModule::startStream(SteamBot::Execute::FunctionBase::Ptr start_)
+void ViewStreamsModule::startStream(const boost::urls::url_view *url)
 {
-    auto start=std::dynamic_pointer_cast<StartFunction>(start_);
-    try
-    {
-        streams.push_back(std::make_unique<ViewStream>(start->url));
-        start->result=true;
-    }
-    catch(...)
-    {
-        SteamBot::Exception::log();
-    }
-    start->complete();
+    assert(url!=nullptr);
+    streams.push_back(std::make_unique<ViewStream>(*url));
+}
+
+/************************************************************************/
+
+void ViewStreamsModule::stopStream(const boost::urls::url_view *url)
+{
+    SteamBot::erase(streams, [url](const std::unique_ptr<ViewStream>& stream) {
+        if (url!=nullptr)
+        {
+            return url->compare(stream->url)==0;
+        }
+        else
+        {
+            return true;
+        }
+    });
+}
+
+/************************************************************************/
+
+static bool viewAction(ViewFunction::Action action, const boost::urls::url_view* url=nullptr)
+{
+    auto module=SteamBot::Client::getClient().getModule<ViewStreamsModule>();
+    auto function=std::make_shared<ViewFunction>(module, action, url);
+    module->execute->enqueue(function);
+    function->wait();
+    return function->result;
 }
 
 /************************************************************************/
 
 bool SteamBot::Modules::ViewStream::start(const boost::urls::url_view& url)
 {
-    auto module=SteamBot::Client::getClient().getModule<ViewStreamsModule>();
-    auto start=std::make_shared<StartFunction>(module, url);
-    module->execute->enqueue(start);
-    start->wait();
-    return start->result;
+    return viewAction(ViewFunction::Action::Start, &url);
+}
+
+/************************************************************************/
+
+bool SteamBot::Modules::ViewStream::stop(const boost::urls::url_view& url)
+{
+    return viewAction(ViewFunction::Action::Stop, &url);
+}
+
+/************************************************************************/
+
+bool SteamBot::Modules::ViewStream::stop()
+{
+    return viewAction(ViewFunction::Action::Stop);
 }
