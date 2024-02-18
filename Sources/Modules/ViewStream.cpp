@@ -215,7 +215,9 @@ void ViewStream::getBroadcastSteamID()
     {
         auto request=std::make_shared<Request>();
         request->queryMaker=[this](){
-            return std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, this->url);
+            auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, this->url);
+            query->url.params().set("l", "english");
+            return query;
         };
         auto response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
         if (response->query->response.result()!=boost::beast::http::status::ok)
