@@ -33,6 +33,7 @@
 #include "Helpers/Time.hpp"
 #include "EnumString.hpp"
 #include "SafeCast.hpp"
+#include "UI/UI.hpp"
 
 /************************************************************************/
 
@@ -151,6 +152,45 @@ void ClientNotificationModule::getNotifications()
         response=SteamBot::Modules::UnifiedMessageClient::execute<CSteamNotification_GetSteamNotifications_Response>("SteamNotification.GetSteamNotifications#1", std::move(request));
     }
 
+    // we count the unread ones only
+    class
+    {
+    private:
+        unsigned int tradeOffers=0;
+        unsigned int inventoryItems=0;
+        unsigned int others=0;
+
+    public:
+        void add(const ClientNotification* notification)
+        {
+            if (!notification->read)
+            {
+                switch(notification->type)
+                {
+                case ClientNotification::Type::InventoryItem:
+                    inventoryItems++;
+                    break;
+
+                case ClientNotification::Type::TradeOffer:
+                    tradeOffers++;
+                    break;
+
+                default:
+                    others++;
+                    break;
+                }
+            }
+        }
+
+        void report() const
+        {
+            SteamBot::UI::OutputText() << "unread notifications: "
+                                       << tradeOffers << " trade offers; "
+                                       << inventoryItems << " inventory items; "
+                                       << others << " other";
+        }
+    } counts;
+
     using pp::operator ""_f;
     const auto& notifications=(*response)["notifications"_f];
     for (const auto& item : notifications)
@@ -168,8 +208,12 @@ void ClientNotificationModule::getNotifications()
         notification->hidden=item["hidden"_f].value();
         assert(!notification->hidden);		// Let's see if get any hidden ones...
 
+        counts.add(notification.get());
+
         getClient().messageboard.send(std::move(notification));
     }
+
+    counts.report();
 }
 
 /************************************************************************/
