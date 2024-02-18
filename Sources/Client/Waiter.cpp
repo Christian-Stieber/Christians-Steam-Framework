@@ -132,7 +132,7 @@ template <typename CLOCK> bool Waiter::wait(CLOCK::time_point when)
     return result;
 }
 
-// template bool Waiter::wait<std::chrono::steady_clock>(std::chrono::steady_clock::time_point);
+template bool Waiter::wait<std::chrono::steady_clock>(std::chrono::steady_clock::time_point);
 
 /************************************************************************/
 

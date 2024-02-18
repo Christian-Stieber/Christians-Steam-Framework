@@ -27,11 +27,14 @@
 #include "UI/UI.hpp"
 #include "ResultCode.hpp"
 #include "Exception.hpp"
+#include "Web/URLEncode.hpp"
 
 /************************************************************************/
 
 typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
 typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
+
+typedef std::chrono::steady_clock Clock;
 
 /************************************************************************/
 
@@ -55,6 +58,8 @@ namespace
         std::string viewerToken;
         std::chrono::seconds heartbeatInterval;
 
+        Clock::time_point lastHeartbeat;
+
     public:
         ViewStream(const boost::urls::url_view& url_)
             : url(url_)
@@ -69,8 +74,17 @@ namespace
         void getTmpdData();
         void getBroadcastSteamID();
 
+        bool sendHeartbeat();
+
     public:
         void run();
+
+        decltype(lastHeartbeat) getNextHeartbeat() const
+        {
+            return lastHeartbeat+heartbeatInterval;
+        }
+
+        void doHeartbeat();
     };
 }
 
@@ -104,6 +118,53 @@ namespace
             }
         }
     };
+}
+
+/************************************************************************/
+/*
+ * Check whether we need to send a heartbeat, and do it
+ */
+
+void ViewStream::doHeartbeat()
+{
+    auto now=Clock::now();
+    if (getNextHeartbeat()<=now)
+    {
+        if (!sendHeartbeat())
+        {
+            now=now-heartbeatInterval+std::chrono::seconds(10);
+        }
+        lastHeartbeat=now;
+    }
+}
+
+/************************************************************************/
+
+bool ViewStream::sendHeartbeat()
+{
+    auto request=std::make_shared<Request>();
+    request->queryMaker=[this](){
+        static const boost::urls::url_view myUrl("https://steamcommunity.com/broadcast/heartbeat");
+        auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::post, myUrl);
+
+        std::string body;
+        SteamBot::Web::formUrlencode(body, "steamid", this->broadcastSteamId);
+        SteamBot::Web::formUrlencode(body, "broadcastid", this->broadcastId);
+        SteamBot::Web::formUrlencode(body, "viewertoken", this->viewerToken);
+        query->request.body()=std::move(body);
+        query->request.content_length(query->request.body().size());
+        query->request.base().set("Content-Type", "application/x-www-form-urlencoded");
+
+        return query;
+    };
+
+    auto response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
+    if (response->query->response.result()!=boost::beast::http::status::ok)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 /************************************************************************/
@@ -217,6 +278,9 @@ namespace
         ViewStreamsModule() =default;
         virtual ~ViewStreamsModule() =default;
 
+    private:
+        Clock::time_point findNextHeartbeat() const;
+
     public:
         virtual void init(SteamBot::Client&) override
         {
@@ -228,7 +292,13 @@ namespace
             waitForLogin();
             while (true)
             {
-                waiter->wait();
+                waiter->wait<Clock>(findNextHeartbeat());
+
+                for (const auto& stream : streams)
+                {
+                    stream->doHeartbeat();
+                }
+
                 execute->run();
             }
         }
@@ -238,6 +308,22 @@ namespace
     };
 
     ViewStreamsModule::Init<ViewStreamsModule> init;
+}
+
+/************************************************************************/
+
+Clock::time_point ViewStreamsModule::findNextHeartbeat() const
+{
+    auto when=Clock::time_point::max();
+    for (const auto& stream : streams)
+    {
+        auto candidate=stream->getNextHeartbeat();
+        if (candidate<when)
+        {
+            when=candidate;
+        }
+    }
+    return when;
 }
 
 /************************************************************************/
