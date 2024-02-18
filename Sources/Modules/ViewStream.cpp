@@ -24,10 +24,28 @@
 #include "Modules/ViewStream.hpp"
 #include "HTMLParser/Parser.hpp"
 #include "Helpers/JSON.hpp"
+#include "Helpers/Time.hpp"
 #include "UI/UI.hpp"
 #include "ResultCode.hpp"
 #include "Exception.hpp"
 #include "Web/URLEncode.hpp"
+
+/************************************************************************/
+/*
+ * This module lets you "view" a stream on a steam webpage; this
+ * is used to get the item rewards for viewing a stream.
+ *
+ * From the looks of it, we need to get the webpage containing the
+ * stream first, so we can obtain the "steamId" for the stream.
+ * Using that, we can query Steam for more information on the
+ * stream, which gives us a "broadcastId" and a "viewerToken",
+ * as well as a hearrtbeat interval.
+ * With all three tokens in hand, we can send "heartbeats" to
+ * Steam -- which, to my surprise, seems to be all we need for
+ * the items to drop.
+ *
+ * So, we really don't need to do much "streaming" at all.
+ */
 
 /************************************************************************/
 
@@ -58,7 +76,9 @@ namespace
         std::string viewerToken;
         std::chrono::seconds heartbeatInterval;
 
-        Clock::time_point lastHeartbeat;
+        Clock::time_point startTime;
+        Clock::time_point nextReport;
+        Clock::time_point nextHeartbeat;
 
     public:
         ViewStream(const boost::urls::url_view& url_)
@@ -79,9 +99,9 @@ namespace
     public:
         void run();
 
-        decltype(lastHeartbeat) getNextHeartbeat() const
+        decltype(nextHeartbeat) getNextHeartbeat() const
         {
-            return lastHeartbeat+heartbeatInterval;
+            return nextHeartbeat;
         }
 
         void doHeartbeat();
@@ -128,13 +148,29 @@ namespace
 void ViewStream::doHeartbeat()
 {
     auto now=Clock::now();
-    if (getNextHeartbeat()<=now)
+
+    if (startTime.time_since_epoch().count()==0)
     {
-        if (!sendHeartbeat())
+        startTime=now;
+    }
+
+    if (nextHeartbeat<=now)
+    {
+        if (sendHeartbeat())
         {
-            now=now-heartbeatInterval+std::chrono::seconds(10);
+            nextHeartbeat=now+heartbeatInterval;
         }
-        lastHeartbeat=now;
+        else
+        {
+            nextHeartbeat=now+std::chrono::seconds(10);
+        }
+    }
+
+    if (nextReport<=now)
+    {
+        SteamBot::UI::OutputText() << "stream \"" << title << "\" (" << broadcastSteamId << ") active for "
+                                   << SteamBot::Time::toString(std::chrono::duration_cast<std::chrono::minutes>(now-startTime));
+        nextReport=now+std::chrono::minutes(1);
     }
 }
 
