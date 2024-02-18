@@ -98,6 +98,21 @@ namespace
     class ClientNotificationModule : public SteamBot::Client::Module
     {
     private:
+        class Counters
+        {
+        private:
+            unsigned int tradeOffers=0;
+            unsigned int inventoryItems=0;
+            unsigned int others=0;
+
+        public:
+            void add(const ClientNotification*);
+            void report(Counters&) const;
+        };
+
+        Counters previous;
+
+    private:
         SteamBot::Messageboard::WaiterType<CSteamNotificationNotificationsReceivedNotificationMessageType> notificationReceived;
 
     private:
@@ -144,6 +159,57 @@ boost::json::value ClientNotification::toJson() const
 
 /************************************************************************/
 
+void ClientNotificationModule::Counters::add(const ClientNotification* notification)
+{
+    if (!notification->read)
+    {
+        switch(notification->type)
+        {
+        case ClientNotification::Type::InventoryItem:
+            inventoryItems++;
+            break;
+
+        case ClientNotification::Type::TradeOffer:
+            tradeOffers++;
+            break;
+
+        default:
+            others++;
+            break;
+        }
+    }
+}
+
+/************************************************************************/
+
+void ClientNotificationModule::Counters::report(ClientNotificationModule::Counters& previous) const
+{
+    struct Format
+    {
+        static void print(SteamBot::UI::OutputText& output, const char* label, uint32_t newValue, uint32_t oldValue)
+        {
+            output << " " << newValue << " " << label;
+            if (newValue>oldValue)
+            {
+                output << " (+" << newValue-oldValue << ")";
+            }
+            if (newValue<oldValue)
+            {
+                output << " (-" << oldValue-newValue << ")";
+            }
+            output << ";";
+        }
+    };
+
+    SteamBot::UI::OutputText output;
+    output << "unread notifications:";
+    Format::print(output, "trade offers", tradeOffers, previous.tradeOffers);
+    Format::print(output, "inventory items", inventoryItems, previous.inventoryItems);
+    Format::print(output, "other", others, previous.others);
+}
+
+/************************************************************************/
+
 void ClientNotificationModule::getNotifications()
 {
     std::shared_ptr<CSteamNotification_GetSteamNotifications_Response> response;
@@ -152,44 +218,7 @@ void ClientNotificationModule::getNotifications()
         response=SteamBot::Modules::UnifiedMessageClient::execute<CSteamNotification_GetSteamNotifications_Response>("SteamNotification.GetSteamNotifications#1", std::move(request));
     }
 
-    // we count the unread ones only
-    class
-    {
-    private:
-        unsigned int tradeOffers=0;
-        unsigned int inventoryItems=0;
-        unsigned int others=0;
-
-    public:
-        void add(const ClientNotification* notification)
-        {
-            if (!notification->read)
-            {
-                switch(notification->type)
-                {
-                case ClientNotification::Type::InventoryItem:
-                    inventoryItems++;
-                    break;
-
-                case ClientNotification::Type::TradeOffer:
-                    tradeOffers++;
-                    break;
-
-                default:
-                    others++;
-                    break;
-                }
-            }
-        }
-
-        void report() const
-        {
-            SteamBot::UI::OutputText() << "unread notifications: "
-                                       << tradeOffers << " trade offers; "
-                                       << inventoryItems << " inventory items; "
-                                       << others << " other";
-        }
-    } counts;
+    Counters counts;
 
     using pp::operator ""_f;
     const auto& notifications=(*response)["notifications"_f];
@@ -213,7 +242,8 @@ void ClientNotificationModule::getNotifications()
         getClient().messageboard.send(std::move(notification));
     }
 
-    counts.report();
+    counts.report(previous);
+    previous=counts;
 }
 
 /************************************************************************/
