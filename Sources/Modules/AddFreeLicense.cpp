@@ -17,8 +17,8 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "Modules/WebSession.hpp"
 #include "Modules/Connection.hpp"
+#include "Modules/WebSession.hpp"
 #include "Client/Module.hpp"
 #include "Modules/AddFreeLicense.hpp"
 #include "UI/UI.hpp"

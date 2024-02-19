@@ -32,6 +32,7 @@
     <ClCompile Include="Sources\CancelTrade.cpp" />
     <ClCompile Include="Sources\Client\Client.cpp" />
     <ClCompile Include="Sources\Client\ClientInfo.cpp" />
+    <ClCompile Include="Sources\Client\Execute.cpp" />
     <ClCompile Include="Sources\Client\Messageboard.cpp" />
     <ClCompile Include="Sources\Client\Module.cpp" />
     <ClCompile Include="Sources\Client\Sleep.cpp" />
@@ -74,6 +75,7 @@
     <ClCompile Include="Sources\Modules\Inventory.cpp" />
     <ClCompile Include="Sources\Modules\LicenseList.cpp" />
     <ClCompile Include="Sources\Modules\Login-Auth.cpp" />
+    <ClCompile Include="Sources\Modules\LoginTracking.cpp" />
     <ClCompile Include="Sources\Modules\MultiPacket.cpp" />
     <ClCompile Include="Sources\Modules\OwnedGames.cpp" />
     <ClCompile Include="Sources\Modules\PackageData.cpp" />
@@ -86,6 +88,7 @@
     <ClCompile Include="Sources\Modules\TradeToken.cpp" />
     <ClCompile Include="Sources\Modules\UnifiedMessageClient.cpp" />
     <ClCompile Include="Sources\Modules\UnifiedMessageServer.cpp" />
+    <ClCompile Include="Sources\Modules\ViewStream.cpp" />
     <ClCompile Include="Sources\Modules\WebSession.cpp" />
     <ClCompile Include="Sources\OpenSSL\AES.cpp" />
     <ClCompile Include="Sources\OpenSSL\AESBase.cpp" />
@@ -150,9 +153,11 @@
     <ClInclude Include="Headers\Client\CallbackWaiter.hpp" />
     <ClInclude Include="Headers\Client\Cancel.hpp" />
     <ClInclude Include="Headers\Client\Client.hpp" />
+    <ClInclude Include="Headers\Client\Condition.hpp" />
     <ClInclude Include="Headers\Client\Counter.hpp" />
     <ClInclude Include="Headers\Client\DataFile.hpp" />
     <ClInclude Include="Headers\Client\Dispatcher.hpp" />
+    <ClInclude Include="Headers\Client\Execute.hpp" />
     <ClInclude Include="Headers\Client\Fiber.hpp" />
     <ClInclude Include="Headers\Client\Messageboard.hpp" />
     <ClInclude Include="Headers\Client\Module.hpp" />
@@ -226,6 +231,7 @@
     <ClInclude Include="Headers\Modules\Inventory.hpp" />
     <ClInclude Include="Headers\Modules\LicenseList.hpp" />
     <ClInclude Include="Headers\Modules\Login.hpp" />
+    <ClInclude Include="Headers\Modules\LoginTracking.hpp" />
     <ClInclude Include="Headers\Modules\MultiPacket.hpp" />
     <ClInclude Include="Headers\Modules\OwnedGames.hpp" />
     <ClInclude Include="Headers\Modules\PackageData.hpp" />
@@ -238,6 +244,7 @@
     <ClInclude Include="Headers\Modules\TradeToken.hpp" />
     <ClInclude Include="Headers\Modules\UnifiedMessageClient.hpp" />
     <ClInclude Include="Headers\Modules\UnifiedMessageServer.hpp" />
+    <ClInclude Include="Headers\Modules\ViewStream.hpp" />
     <ClInclude Include="Headers\Modules\WebSession.hpp" />
     <ClInclude Include="Headers\MultiChar.hpp" />
     <ClInclude Include="Headers\OpenSSL\AES.hpp" />
@@ -251,7 +258,9 @@
     <ClInclude Include="Headers\ProtoBuf.hpp" />
     <ClInclude Include="Headers\Random.hpp" />
     <ClInclude Include="Headers\RateLimit.hpp" />
+    <ClInclude Include="Headers\Regex.hpp" />
     <ClInclude Include="Headers\ResultCode.hpp" />
+    <ClInclude Include="Headers\SafeCast.hpp" />
     <ClInclude Include="Headers\SendInventory.hpp" />
     <ClInclude Include="Headers\SendTrade.hpp" />
     <ClInclude Include="Headers\Settings.hpp" />
