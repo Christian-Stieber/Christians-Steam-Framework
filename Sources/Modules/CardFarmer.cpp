@@ -23,9 +23,19 @@
 #include "Modules/CardFarmer.hpp"
 #include "UI/UI.hpp"
 
+#include <set>
+
+/************************************************************************/
+/*
+ * Max number of games to run in parallel
+ */
+
+static constexpr unsigned int maxGames=10;
+
 /************************************************************************/
 
 typedef SteamBot::Modules::GetPageData::Whiteboard::BadgeData BadgeData;
+typedef SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames OwnedGames;
 
 /************************************************************************/
 
@@ -33,6 +43,47 @@ namespace
 {
     class CardFarmerModule : public SteamBot::Client::Module
     {
+    private:
+        class GameInfo
+        {
+        private:
+            SteamBot::AppID game=SteamBot::AppID::None;
+            unsigned int cardsRemaining;
+            std::chrono::minutes playTime;
+
+        public:
+            GameInfo(SteamBot::AppID game_, unsigned int cardsRemaining_, std::chrono::minutes playTime_)
+                : game(game_), cardsRemaining(cardsRemaining_), playTime(playTime_)
+            {
+            }
+
+            std::strong_ordering constexpr operator<=>(const GameInfo& other) const
+            {
+                if (cardsRemaining<other.cardsRemaining) return std::strong_ordering::less;
+                if (cardsRemaining>other.cardsRemaining) return std::strong_ordering::greater;
+
+                if (playTime>other.playTime) return std::strong_ordering::less;
+                if (playTime<other.playTime) return std::strong_ordering::greater;
+
+                return game<=>other.game;
+            }
+
+            bool constexpr operator==(const GameInfo& other) const { return operator<=>(other)==std::strong_ordering::equal; }
+            bool constexpr operator<(const GameInfo& other) const { return operator<=>(other)==std::strong_ordering::less; }
+
+        public:
+            void output(const OwnedGames& ownedGames) const
+            {
+                auto gameInfo=ownedGames.getInfo(game);
+                assert(gameInfo!=nullptr);
+
+                SteamBot::UI::OutputText() << "\"" << gameInfo->name << "\" (" << SteamBot::toInteger(game) << ") has " << cardsRemaining << " cards left to get";
+            }
+        };
+
+    private:
+        std::vector<GameInfo> games;
+
     private:
         void processBadgeData(const BadgeData&);
 
@@ -50,39 +101,31 @@ namespace
 
 void CardFarmerModule::processBadgeData(const BadgeData& badgeData)
 {
-    typedef SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames OwnedGames;
-    auto ownedGames=getClient().whiteboard.get<OwnedGames::Ptr>(nullptr);
+    std::set<GameInfo> allGames;
 
-    unsigned int total=0;
-    for (const auto& item : badgeData.badges)
+    if (auto ownedGames=getClient().whiteboard.has<OwnedGames::Ptr>())
     {
-        auto remaining=item.second.cardsRemaining.value_or(0);
-        if (remaining>0)
+        unsigned int total=0;
+        for (const auto& item : badgeData.badges)
         {
-            SteamBot::UI::OutputText output;
-
-            output << static_cast<std::underlying_type_t<decltype(item.first)>>(item.first);
-
-            if (ownedGames)
+            if (auto cardsRemaining=item.second.cardsRemaining.value_or(0))
             {
-                if (auto info=ownedGames->getInfo(item.first))
+                if (auto ownedGame=(*ownedGames)->getInfo(item.first))
                 {
-                    output << " (" << info->name << ")";
+                    auto result=allGames.emplace(item.first, cardsRemaining, ownedGame->playtimeForever).second;
+                    assert(result);
+
+                    total+=cardsRemaining;
                 }
             }
-
-            output << " has " << remaining << " cards left";
-            total+=remaining;
         }
-    }
 
-    if (total>0)
-    {
-        SteamBot::UI::OutputText() << "you have a total of " << total << " cards to farm";
-    }
-    else
-    {
-        SteamBot::UI::OutputText() << "you have no cards to farm";
+        SteamBot::UI::OutputText() << "you have " << total << " cards to farm across " << allGames.size() << " games";
+
+        for (const auto& item : allGames)
+        {
+            item.output(**ownedGames);
+        }
     }
 }
 
