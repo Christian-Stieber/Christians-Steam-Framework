@@ -86,13 +86,22 @@ Inventory::Inventory()
  *    "assetid": "25267868949",
  *    ...
  * }
+ *
+ * Also accepts app_id, context_id and asset_id names.
  */
 
 ItemKey::ItemKey(const boost::json::value& json)
 {
-    appId=SteamBot::JSON::toNumber<SteamBot::AppID>(json.at("appid"));
-    contextId=SteamBot::JSON::toNumber<SteamBot::ContextID>(json.at("contextid"));
-    assetId=SteamBot::JSON::toNumber<SteamBot::AssetID>(json.at("assetid"));
+    bool success;
+
+    success=SteamBot::JSON::optNumber(json, "appid", appId) || SteamBot::JSON::optNumber(json, "app_id", appId);
+    assert(success);
+
+    success=SteamBot::JSON::optNumber(json, "contextid", contextId) || SteamBot::JSON::optNumber(json, "context_id", contextId);
+    assert(success);
+
+    success=SteamBot::JSON::optNumber(json, "assetid", assetId) || SteamBot::JSON::optNumber(json, "asset_id", assetId);
+    assert(success);
 }
 
 /************************************************************************/
