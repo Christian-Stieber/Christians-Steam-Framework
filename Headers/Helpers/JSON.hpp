@@ -23,7 +23,6 @@
 
 #include <boost/json.hpp>
 
-
 /************************************************************************/
 /*
  * toNumber(): similar to the value::to_number, but will accept strings.

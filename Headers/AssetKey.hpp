@@ -49,7 +49,7 @@ namespace SteamBot
 
     public:
         AssetKey();
-        AssetKey(const  boost::json::value&);
+        AssetKey(const boost::json::value&);
         virtual ~AssetKey();
 
         virtual boost::json::value toJson() const;
