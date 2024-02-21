@@ -105,6 +105,17 @@ ItemKey::ItemKey(const boost::json::value& json)
 }
 
 /************************************************************************/
+
+boost::json::value ItemKey::toJson() const
+{
+    boost::json::object json;
+    if (appId!=SteamBot::AppID::None) json["appId"]=toInteger(appId);
+    if (contextId!=SteamBot::ContextID::None) json["contextId"]=toInteger(contextId);
+    if (assetId!=SteamBot::AssetID::None) json["assetId"]=toInteger(assetId);
+    return json;
+}
+
+/************************************************************************/
 /*
  * This takes a json from the inventory:
  * {

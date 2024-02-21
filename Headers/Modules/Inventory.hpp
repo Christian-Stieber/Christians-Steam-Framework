@@ -41,6 +41,9 @@ namespace SteamBot
             ItemKey();
             ItemKey(const boost::json::value&);
             virtual ~ItemKey();
+
+        public:
+            virtual boost::json::value toJson() const;
         };
     }
 }
