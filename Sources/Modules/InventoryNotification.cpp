@@ -131,7 +131,11 @@ void InventoryNotificationModule::handle(std::shared_ptr<const ClientNotificatio
         if (info)
         {
             auto inventoryNotification=std::make_shared<InventoryNotification>(std::move(notification), std::move(itemKey), std::move(info));
-            SteamBot::UI::OutputText() << "inventory notification: " << inventoryNotification->toJson();
+            BOOST_LOG_TRIVIAL(debug) << "InventoryNotification: " << inventoryNotification->toJson();
+            SteamBot::UI::OutputText() << "inventory notification: "
+                                       << SteamBot::enumToStringAlways(inventoryNotification->assetInfo->itemType) << "; "
+                                       << inventoryNotification->assetInfo->type << "; "
+                                       << inventoryNotification->assetInfo->name;
             client.messageboard.send(std::move(inventoryNotification));
         }
     }
