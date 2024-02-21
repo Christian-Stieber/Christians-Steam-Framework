@@ -98,19 +98,7 @@ namespace
     class ClientNotificationModule : public SteamBot::Client::Module
     {
     private:
-        class Counters
-        {
-        private:
-            unsigned int tradeOffers=0;
-            unsigned int inventoryItems=0;
-            unsigned int others=0;
-
-        public:
-            void add(const ClientNotification*);
-            void report(Counters&) const;
-        };
-
-        Counters previous;
+        std::set<SteamBot::NotificationID> seen;
 
     private:
         SteamBot::Messageboard::WaiterType<CSteamNotificationNotificationsReceivedNotificationMessageType> notificationReceived;
@@ -159,57 +147,6 @@ boost::json::value ClientNotification::toJson() const
 
 /************************************************************************/
 
-void ClientNotificationModule::Counters::add(const ClientNotification* notification)
-{
-    if (!notification->read)
-    {
-        switch(notification->type)
-        {
-        case ClientNotification::Type::InventoryItem:
-            inventoryItems++;
-            break;
-
-        case ClientNotification::Type::TradeOffer:
-            tradeOffers++;
-            break;
-
-        default:
-            others++;
-            break;
-        }
-    }
-}
-
-/************************************************************************/
-
-void ClientNotificationModule::Counters::report(ClientNotificationModule::Counters& previous) const
-{
-    struct Format
-    {
-        static void print(SteamBot::UI::OutputText& output, const char* label, uint32_t newValue, uint32_t oldValue)
-        {
-            output << " " << newValue << " " << label;
-            if (newValue>oldValue)
-            {
-                output << " (+" << newValue-oldValue << ")";
-            }
-            if (newValue<oldValue)
-            {
-                output << " (-" << oldValue-newValue << ")";
-            }
-            output << ";";
-        }
-    };
-
-    SteamBot::UI::OutputText output;
-    output << "unread notifications:";
-    Format::print(output, "trade offers", tradeOffers, previous.tradeOffers);
-    Format::print(output, "inventory items", inventoryItems, previous.inventoryItems);
-    Format::print(output, "other", others, previous.others);
-}
-
-/************************************************************************/
-
 void ClientNotificationModule::getNotifications()
 {
     std::shared_ptr<CSteamNotification_GetSteamNotifications_Response> response;
@@ -218,32 +155,37 @@ void ClientNotificationModule::getNotifications()
         response=SteamBot::Modules::UnifiedMessageClient::execute<CSteamNotification_GetSteamNotifications_Response>("SteamNotification.GetSteamNotifications#1", std::move(request));
     }
 
-    Counters counts;
+    std::set<SteamBot::NotificationID> newSeen;
 
     using pp::operator ""_f;
     const auto& notifications=(*response)["notifications"_f];
     for (const auto& item : notifications)
     {
-        auto notification=std::make_shared<ClientNotification>();
-        notification->notificationId=static_cast<SteamBot::NotificationID>(item["notification_id"_f].value());
-        notification->type=static_cast<ClientNotification::Type>(item["notification_type"_f].value());
-        notification->timestamp=std::chrono::system_clock::from_time_t(SteamBot::safeCast<time_t>(item["timestamp"_f].value()));
-        notification->expiry=std::chrono::system_clock::from_time_t(SteamBot::safeCast<time_t>(item["expiry"_f].value()));
-        notification->read=item["read"_f].value();
-        notification->body=boost::json::parse(item["body_data"_f].value());
+        auto notificationId=static_cast<SteamBot::NotificationID>(item["notification_id"_f].value());
 
-        // No real idea what these fields might be
-        notification->targets=item["notification_targets"_f].value();
-        notification->hidden=item["hidden"_f].value();
-        assert(!notification->hidden);		// Let's see if get any hidden ones...
+        bool success=newSeen.insert(notificationId).second;
+        assert(success);
 
-        counts.add(notification.get());
+        if (seen.erase(notificationId)==0)
+        {
+            auto notification=std::make_shared<ClientNotification>();
+            notification->notificationId=notificationId;
+            notification->type=static_cast<ClientNotification::Type>(item["notification_type"_f].value());
+            notification->timestamp=std::chrono::system_clock::from_time_t(SteamBot::safeCast<time_t>(item["timestamp"_f].value()));
+            notification->expiry=std::chrono::system_clock::from_time_t(SteamBot::safeCast<time_t>(item["expiry"_f].value()));
+            notification->read=item["read"_f].value();
+            notification->body=boost::json::parse(item["body_data"_f].value());
 
-        getClient().messageboard.send(std::move(notification));
+            // No real idea what these fields might be
+            notification->targets=item["notification_targets"_f].value();
+            notification->hidden=item["hidden"_f].value();
+            assert(!notification->hidden);		// Let's see if get any hidden ones...
+
+            getClient().messageboard.send(std::move(notification));
+        }
     }
 
-    counts.report(previous);
-    previous=counts;
+    seen=std::move(newSeen);
 }
 
 /************************************************************************/
