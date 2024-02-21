@@ -73,13 +73,11 @@ namespace
         }
 
     public:
-        bool store(const boost::json::value&);
+        AssetInfoPtr store(const boost::json::value&);
         void fetch(const KeySet&);
         AssetInfoPtr query(const KeyPtr&) const;
     };
 };
-
-/************************************************************************/
 
 /************************************************************************/
 
@@ -228,19 +226,19 @@ AssetInfo::AssetInfo(const boost::json::value& json)
 
 /************************************************************************/
 
-bool AssetData::store(const boost::json::value& json)
+AssetInfoPtr AssetData::store(const boost::json::value& json)
 {
     try
     {
         auto info=std::make_shared<AssetInfo>(json);
         BOOST_LOG_TRIVIAL(debug) << info->toJson();
 
-        return data.insert(std::move(info)).second;
+        return data.insert(std::move(info)).second ? info : nullptr;
     }
     catch(...)
     {
         BOOST_LOG_TRIVIAL(error) << "unable to process " << json;
-        return false;
+        return nullptr;
     }
 }
 
@@ -261,8 +259,8 @@ void AssetData::storeReceivedData(std::shared_ptr<GetAssetClassInfoInfo::ResultT
     for (int i=0; i<response->descriptions_size(); i++)
     {
         auto json=SteamBot::toJson(dynamic_cast<const google::protobuf::Message&>(response->descriptions(i)));
-        bool success=store(json);
-        assert(success);
+        auto info=store(json);
+        assert(info);
     }
 }
 
@@ -345,7 +343,7 @@ AssetInfoPtr SteamBot::AssetData::query(KeyPtr key)
 
 /************************************************************************/
 
-void SteamBot::AssetData::store(const boost::json::value& json)
+AssetInfoPtr SteamBot::AssetData::store(const boost::json::value& json)
 {
-    ::AssetData::get().store(json);
+    return ::AssetData::get().store(json);
 }

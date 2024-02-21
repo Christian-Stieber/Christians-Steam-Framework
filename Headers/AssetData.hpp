@@ -59,7 +59,8 @@ namespace SteamBot
         typedef std::shared_ptr<const SteamBot::AssetKey> KeyPtr;
 
         // Store an existing asset-data chunk (like from the Inventory code) into the data
-        void store(const boost::json::value&);
+        // Note: returns nullptr if the item already exists, NOT the existing one!
+        std::shared_ptr<const AssetInfo> store(const boost::json::value&);
 
         // Fetche any missing items
         typedef std::unordered_set<KeyPtr, SteamBot::SmartDerefStuff<KeyPtr>::Hash, SteamBot::SmartDerefStuff<KeyPtr>::Equals> KeySet;
