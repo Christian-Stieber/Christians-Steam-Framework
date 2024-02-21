@@ -110,6 +110,7 @@ list(APPEND SRCS Modules/Inventory)
 list(APPEND SRCS Modules/TradeToken)
 list(APPEND SRCS Modules/LoginTracking)
 list(APPEND SRCS Modules/ViewStream)
+list(APPEND SRCS Modules/InventoryNotification)
 list(APPEND SRCS Modules/GetBadgeData/ParseBadgePage Modules/GetBadgeData/GetBadgeData Modules/GetBadgeData/Printable)
 list(APPEND SRCS WebAPI/WebAPI WebAPI/ISteamDirectory/GetCMList)
 
