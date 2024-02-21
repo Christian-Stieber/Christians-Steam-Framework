@@ -41,13 +41,13 @@ namespace SteamBot
             {
                 // The whiteboard gets an BadgeData::Ptr
 
-                class BadgeData : public Printable
+                class BadgeData
                 {
                 public:
                     typedef std::shared_ptr<const BadgeData> Ptr;
 
                 public:
-                    class BadgeInfo : public Printable
+                    class BadgeInfo
                     {
                     public:
                         std::optional<unsigned int> level;
@@ -57,7 +57,7 @@ namespace SteamBot
                     public:
                         virtual ~BadgeInfo();
 
-                        virtual boost::json::value toJson() const override;
+                        boost::json::value toJson() const;
                     };
 
                 public:
@@ -65,9 +65,9 @@ namespace SteamBot
 
                 public:
                     BadgeData();
-                    virtual ~BadgeData();
+                    ~BadgeData();
 
-                    virtual boost::json::value toJson() const override;
+                    boost::json::value toJson() const;
                 };
             }
         }

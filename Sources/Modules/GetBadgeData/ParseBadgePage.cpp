@@ -42,7 +42,7 @@ namespace
     {
     private:
         BadgeData& data;
-        std::string& pageQuery;
+        bool& hasNextPage;
 
         // The root elements for the badge-boxes on the page
         // Basically, we just walk up from lower elements until we find a match
@@ -52,8 +52,8 @@ namespace
         bool stripCardPrefix(std::string_view&);
 
     public:
-        BadgePageParser(std::string_view html, BadgeData& data_, std::string& pageQuery_)
-            : Parser(html), data(data_), pageQuery(pageQuery_)
+        BadgePageParser(std::string_view html, BadgeData& data_, bool& hasNextPage_)
+            : Parser(html), data(data_), hasNextPage(hasNextPage_)
         {
         }
 
@@ -229,7 +229,8 @@ bool BadgePageParser::handleEnd_pagebtn(const HTMLParser::Tree::Element& element
         {
             if (auto href=element.getAttribute("href"))
             {
-                pageQuery=*href;
+                assert(href->find("?p=")!=std::string::npos || href->find("&p=")!=std::string::npos);
+                hasNextPage=true;
             }
         }
         return true;
@@ -260,12 +261,12 @@ bool BadgePageParser::handleEnd_progress_info_bold(const HTMLParser::Tree::Eleme
 
 /************************************************************************/
 /*
- * Returns the "query" part for the next page, or an empty string
+ * Returns "true" if there was a next-page button on the page
  */
 
-std::string SteamBot::GetPageData::parseBadgePage(std::string_view html, SteamBot::Modules::GetPageData::Whiteboard::BadgeData& data)
+bool SteamBot::GetPageData::parseBadgePage(std::string_view html, SteamBot::Modules::GetPageData::Whiteboard::BadgeData& data)
 {
-    std::string pageQuery;
-    BadgePageParser(html, data, pageQuery).parse();
-    return pageQuery;
+    bool hasNextPage;
+    BadgePageParser(html, data, hasNextPage).parse();
+    return hasNextPage;
 }

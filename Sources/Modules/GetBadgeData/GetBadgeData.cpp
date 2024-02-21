@@ -19,18 +19,22 @@
 
 #include "Client/Module.hpp"
 #include "Modules/WebSession.hpp"
+#include "Modules/OwnedGames.hpp"
 #include "Modules/GetBadgeData.hpp"
 #include "Helpers/URLs.hpp"
 #include "UI/UI.hpp"
 
 #include "./Header.hpp"
 
+#include <charconv>
+
 /************************************************************************/
+
+typedef SteamBot::Modules::GetPageData::Whiteboard::BadgeData BadgeData;
+typedef SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames OwnedGames;
 
 typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
 typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
-
-typedef SteamBot::Modules::GetPageData::Whiteboard::BadgeData BadgeData;
 
 /************************************************************************/
 
@@ -43,20 +47,18 @@ namespace
 {
     class GetBadgeDataModule : public SteamBot::Client::Module
     {
-    public:
-        class ChainLoader;
-        std::unique_ptr<ChainLoader> loader;
-
-    public:
-        void handle(std::shared_ptr<const Response>);
+    private:
+        SteamBot::Whiteboard::WaiterType<OwnedGames::Ptr> ownedGamesWaiter;
 
     private:
-        void requestNextPage();
+        bool getAll();
+        void updateBadges();
 
     public:
         GetBadgeDataModule() =default;
         virtual ~GetBadgeDataModule() =default;
 
+        virtual void init(SteamBot::Client&) override;
         virtual void run(SteamBot::Client&) override;
     };
 
@@ -65,91 +67,80 @@ namespace
 
 /************************************************************************/
 
-class GetBadgeDataModule::ChainLoader
+void GetBadgeDataModule::init(SteamBot::Client& client)
 {
-public:
-    boost::urls::url currentUrl;
-    std::shared_ptr<BadgeData> collectedData;
-    std::shared_ptr<Request> currentQuery;
-
-public:
-    ChainLoader()
-        : currentUrl(SteamBot::URLs::getClientCommunityURL()),
-          collectedData(std::make_shared<BadgeData>())
-    {
-        currentUrl.segments().push_back("badges");
-    }
-
-public:
-    void loadPage()
-    {
-        currentQuery=std::make_shared<Request>();
-        currentQuery->queryMaker=[&url=currentUrl](){
-            return std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, url);
-        };
-        getClient().messageboard.send(currentQuery);
-    }
-};
-
-/************************************************************************/
-
-void GetBadgeDataModule::handle(std::shared_ptr<const Response> message)
-{
-    if (!loader || message->initiator!=loader->currentQuery)
-    {
-        return;
-    }
-
-    loader->currentUrl=message->query->url;
-
-    auto html=SteamBot::HTTPClient::parseString(*(message->query));
-#if 0
-    BOOST_LOG_TRIVIAL(debug) << html;
-#endif
-
-    auto nextPage=SteamBot::GetPageData::parseBadgePage(html, *(loader->collectedData));
-
-    if (nextPage.empty())
-    {
-        BOOST_LOG_TRIVIAL(debug) << "badge data: " << *(loader->collectedData);
-        SteamBot::UI::OutputText() << "got " << loader->collectedData->badges.size() << " records of badge data";
-        getClient().whiteboard.set<BadgeData::Ptr>(std::move(loader->collectedData));
-        loader.reset();
-    }
-    else
-    {
-        assert(nextPage[0]=='?');
-        loader->currentUrl.set_encoded_query(std::string_view(nextPage.data()+1, nextPage.size()-1));
-        requestNextPage();
-    }
+    ownedGamesWaiter=client.whiteboard.createWaiter<OwnedGames::Ptr>(*waiter);
 }
 
 /************************************************************************/
+/*
+ * Load all pages at https://steamcommunity.com/.../badges/
+ */
 
-void GetBadgeDataModule::requestNextPage()
+bool GetBadgeDataModule::getAll()
 {
-    if (!loader)
-    {
-        loader=std::make_unique<ChainLoader>();
-    }
-    loader->loadPage();
-}
-
-/************************************************************************/
-
-void GetBadgeDataModule::run(SteamBot::Client& client)
-{
-    waitForLogin();
-
-    std::shared_ptr<SteamBot::Messageboard::Waiter<Response>> response;
-    response=waiter->createWaiter<decltype(response)::element_type>(client.messageboard);
-
-    requestNextPage();
+    auto badgeData=std::make_shared<BadgeData>();
+    unsigned int page=1;
 
     while (true)
     {
+        SteamBot::UI::OutputText() << "loading badge page " << page;
+        auto request=std::make_shared<Request>();
+        request->queryMaker=[page](){
+            auto url=SteamBot::URLs::getClientCommunityURL();
+            url.segments().push_back("badges");
+            if (page>1)
+            {
+                char string[16];
+                auto result=std::to_chars(string, string+sizeof(string), page);
+                assert(result.ec==std::errc());
+                url.params().set("p", std::string_view(string, result.ptr));
+            }
+            return std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, url);
+        };
+
+        auto response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
+        if (response->query->response.result()!=boost::beast::http::status::ok)
+        {
+            return false;
+        }
+
+        auto html=SteamBot::HTTPClient::parseString(*(response->query));
+
+        if (!SteamBot::GetPageData::parseBadgePage(html, *badgeData))
+        {
+            SteamBot::UI::OutputText() << "got badge data for " << badgeData->badges.size() << " games";
+            getClient().whiteboard.set<BadgeData::Ptr>(std::move(badgeData));
+            return true;
+        }
+
+        page++;
+    }
+}
+
+/************************************************************************/
+
+void GetBadgeDataModule::updateBadges()
+{
+    ownedGamesWaiter->has();
+
+    if (!getClient().whiteboard.has<BadgeData::Ptr>())
+    {
+        getAll();
+    }
+}
+
+/************************************************************************/
+
+void GetBadgeDataModule::run(SteamBot::Client&)
+{
+    while (true)
+    {
         waiter->wait();
-        response->handle(this);
+        if (ownedGamesWaiter->isWoken())
+        {
+            updateBadges();
+        }
     }
 }
 

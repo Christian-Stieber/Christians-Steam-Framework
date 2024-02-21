@@ -34,6 +34,7 @@ boost::urls::url SteamBot::URLs::getClientCommunityURL()
     {
         boost::urls::url url("https://steamcommunity.com/profiles");
         url.segments().push_back(std::to_string(steamId->getValue()));
+        url.params().set("l", "english");
         return url;
     }
     throw NoURLException();
