@@ -35,8 +35,6 @@ namespace SteamBot
     {
         namespace InventoryNotification
         {
-            void use();
-
             namespace Messageboard
             {
                 class InventoryNotification
@@ -45,6 +43,9 @@ namespace SteamBot
                     std::shared_ptr<const SteamBot::Modules::ClientNotification::Messageboard::ClientNotification> clientNotification;
                     std::shared_ptr<const SteamBot::Inventory::ItemKey> itemKey;
                     std::shared_ptr<const SteamBot::AssetData::AssetInfo> assetInfo;
+
+                public:
+                    static void createdWaiter();
 
                 public:
                     InventoryNotification(decltype(clientNotification), decltype(itemKey), decltype(assetInfo));

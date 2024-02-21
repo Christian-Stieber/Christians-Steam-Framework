@@ -156,7 +156,11 @@ void InventoryNotificationModule::run(SteamBot::Client&)
 }
 
 /************************************************************************/
+/*
+ * Just using this to pull in the module whenever we register it
+ * with the messageboard
+ */
 
-void SteamBot::Modules::InventoryNotification::use()
+void InventoryNotification::createdWaiter()
 {
 }
