@@ -75,6 +75,10 @@ Again, this list might not be complete/current. But, some things that are there 
      * client-initiated\
        Only a "blocking" API right now -- but note that this only blocks the fiber making the call, nothing else.
      * server-initiated (notifications in particular) are high up on my ToDo-list
+* can deal with some sale/event-related stuff:
+  * clear discoverey queues as required by a major sale (auto-detected)
+  * obtain an event-sticker (auto-detected)
+  * "view" a video stream (no autodetection of either the page or whether items have been received)
 
 # DATA FILES
 
