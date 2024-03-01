@@ -21,8 +21,12 @@
 #include "Modules/WebSession.hpp"
 #include "Client/Module.hpp"
 #include "Modules/AddFreeLicense.hpp"
+#include "Modules/LicenseList.hpp"
 #include "UI/UI.hpp"
 #include "ResultCode.hpp"
+#include "Vector.hpp"
+#include "EnumString.hpp"
+#include "Helpers/Time.hpp"
 
 #include <boost/url/url_view.hpp>
 
@@ -31,6 +35,7 @@
 /************************************************************************/
 
 typedef SteamBot::Modules::Connection::Messageboard::SendSteamMessage SendSteamMessage;
+typedef SteamBot::Modules::LicenseList::Whiteboard::Licenses Licenses;
 
 /************************************************************************/
 
@@ -72,8 +77,28 @@ namespace
     class AddFreeLicenseModule : public SteamBot::Client::Module
     {
     private:
+        SteamBot::Whiteboard::WaiterType<Licenses::Ptr> licensesWaiter;
         SteamBot::Messageboard::WaiterType<Steam::CMsgClientRequestFreeLicenseResponseMessageType> cmsgClientRequestFreeLicenseResponse;
         SteamBot::Messageboard::WaiterType<AddLicenseMessageBase> addLicense;
+
+        // Note: we should be able to do something similar for AppID
+        // requests, but I'm not all that interested in those right now
+        class RequestedPackage
+        {
+        public:
+            std::chrono::system_clock::time_point when{std::chrono::system_clock::now()};
+            SteamBot::PackageID packageId;
+
+        public:
+            RequestedPackage(SteamBot::PackageID packageId_)
+                : packageId(packageId_)
+            {
+            }
+        };
+        std::vector<RequestedPackage> requestedPackages;
+
+    private:
+        void checkLicenses();
 
     public:
         void handle(std::shared_ptr<const Steam::CMsgClientRequestFreeLicenseResponseMessageType>);
@@ -144,6 +169,16 @@ void AddFreeLicenseModule::handle(std::shared_ptr<const Steam::CMsgClientRequest
 
 void AddFreeLicenseModule::handle(std::shared_ptr<const AddLicenseMessageBase> message)
 {
+    // ToDo: this is a bit hackish, but it should do the trick for now
+    if (auto packageMessage=dynamic_cast<const AddLicenseMessage<SteamBot::PackageID>*>(message.get()))
+    {
+        // Note: yes, I don't care about duplicates here. Basically,
+        // if we request the same package twice, getting the success
+        // message twice doesn't exactly feel wrong...
+
+        requestedPackages.emplace_back(packageMessage->licenseId);
+    }
+
     message->execute();
 }
 
@@ -186,7 +221,6 @@ template <> void AddLicenseMessage<SteamBot::PackageID>::execute() const
     auto response=FreeLicense(licenseId).execute();
     if (response->query->response.result()==boost::beast::http::status::ok)
     {
-        SteamBot::UI::OutputText() << "free license ok ???";
         // ToDo: is there useful information in the response?
 #if 0
         auto data=SteamBot::HTTPClient::parseString(*(response->query));
@@ -205,6 +239,32 @@ void AddFreeLicenseModule::init(SteamBot::Client& client)
 {
     cmsgClientRequestFreeLicenseResponse=client.messageboard.createWaiter<Steam::CMsgClientRequestFreeLicenseResponseMessageType>(*waiter);
     addLicense=client.messageboard.createWaiter<AddLicenseMessageBase>(*waiter);
+    licensesWaiter=client.whiteboard.createWaiter<Licenses::Ptr>(*waiter);
+}
+
+/************************************************************************/
+/*
+ * Check whether we have any licenses recorded in our
+ * requestedPackages list. If so, output some information and remove
+ * from the requestedPackages.
+ */
+
+void AddFreeLicenseModule::checkLicenses()
+{
+    if (auto licenses=licensesWaiter->has())
+    {
+        SteamBot::erase(requestedPackages, [&licenses](const RequestedPackage& requested) {
+            if (auto license=licenses->get()->getInfo(requested.packageId))
+            {
+                SteamBot::UI::OutputText() << "package " << SteamBot::toInteger(requested.packageId)
+                                           << " created " << SteamBot::Time::toString(license->timeCreated)
+                                           << "; type " << SteamBot::enumToStringAlways(license->licenseType)
+                                           << "; payment " << SteamBot::enumToStringAlways(license->paymentMethod);
+                return true;
+            }
+            return false;
+        });
+    }
 }
 
 /************************************************************************/
@@ -218,6 +278,7 @@ void AddFreeLicenseModule::run(SteamBot::Client&)
         waiter->wait();
         cmsgClientRequestFreeLicenseResponse->handle(this);
         addLicense->handle(this);
+        checkLicenses();
     }
 }
 
