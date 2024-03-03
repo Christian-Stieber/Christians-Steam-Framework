@@ -119,6 +119,7 @@ void OwnedGamesModule::getOwnedGames()
         }
         request.set_include_appinfo(true);
         request.set_include_played_free_games(true);
+        request.set_skip_unvetted_apps(false);
         response=SteamBot::Modules::UnifiedMessageClient::execute<GetOwnedGamesInfo::ResultType>("Player.GetOwnedGames#1", std::move(request));
     }
 
