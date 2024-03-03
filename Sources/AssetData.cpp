@@ -147,7 +147,7 @@ static AssetInfo::ItemType checkItemType_TradingCard(const boost::json::value& j
                         std::string_view string(*link);
                         if (SteamBot::AssetKey::parseString(string, "https://steamcommunity.com/my/gamecards/"))
                         {
-                            SteamBot::AppID appId;
+                            auto appId=SteamBot::AppID::None;
                             if (SteamBot::parseNumberSlash(string, appId))
                             {
                                 assert(appId==assetInfo.marketFeeApp);

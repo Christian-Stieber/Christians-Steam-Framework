@@ -24,8 +24,14 @@
 #include <vector>
 #include <span>
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wrestrict"
+#endif
 #include <boost/log/trivial.hpp>
-
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 #include "steamdatabase/protobufs/steam/steammessages_base.pb.h"
 
 #include "Connection/Base.hpp"

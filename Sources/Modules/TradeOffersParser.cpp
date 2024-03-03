@@ -237,7 +237,7 @@ std::function<void(const HTMLParser::Tree::Element&)> Parser::handleTradeOffer(c
             if (number.starts_with(tradeofferid_prefix))
             {
                 number.remove_prefix(strlen(tradeofferid_prefix));
-                SteamBot::TradeOfferID tradeOfferId;
+                auto tradeOfferId=SteamBot::TradeOfferID::None;
                 if (SteamBot::parseNumber(number, tradeOfferId))
                 {
                     currentTradeOffer=std::make_unique<TradeOffer>();
