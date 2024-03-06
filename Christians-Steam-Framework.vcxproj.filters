@@ -321,6 +321,9 @@
     <ClCompile Include="Sources\Client\Execute.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Sources\Modules\InventoryNotification.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Sources\OpenSSL\XCrypt.hpp">
@@ -858,6 +861,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Headers\Client\Execute.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\Modules\InventoryNotification.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
