@@ -107,3 +107,30 @@ namespace SteamBot
         }
     }
 }
+
+/************************************************************************/
+/*
+ * The whiteboard will get the Licenses::Ptr before we send this
+ * message.
+ *
+ * Also, this will be sent whenever we get a new license list, even
+ * if nothing was added.
+ */
+
+namespace SteamBot
+{
+    namespace Modules
+    {
+        namespace LicenseList
+        {
+            namespace Messageboard
+            {
+                class NewLicenses
+                {
+                public:
+                    std::vector<SteamBot::PackageID> licenses;
+                };
+            }
+        }
+    }
+}
