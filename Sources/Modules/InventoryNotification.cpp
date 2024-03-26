@@ -17,9 +17,9 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#include "Modules/UnifiedMessageClient.hpp"
 #include "Client/Module.hpp"
 #include "Modules/InventoryNotification.hpp"
-#include "Modules/UnifiedMessageClient.hpp"
 #include "Helpers/JSON.hpp"
 #include "Helpers/ProtoBuf.hpp"
 #include "UI/UI.hpp"

@@ -73,6 +73,7 @@
     <ClCompile Include="Sources\Modules\GetBadgeData\Printable.cpp" />
     <ClCompile Include="Sources\Modules\Heartbeat.cpp" />
     <ClCompile Include="Sources\Modules\Inventory.cpp" />
+    <ClCompile Include="Sources\Modules\InventoryNotification.cpp" />
     <ClCompile Include="Sources\Modules\LicenseList.cpp" />
     <ClCompile Include="Sources\Modules\Login-Auth.cpp" />
     <ClCompile Include="Sources\Modules\LoginTracking.cpp" />
@@ -229,6 +230,7 @@
     <ClInclude Include="Headers\Modules\GetBadgeData.hpp" />
     <ClInclude Include="Headers\Modules\Heartbeat.hpp" />
     <ClInclude Include="Headers\Modules\Inventory.hpp" />
+    <ClInclude Include="Headers\Modules\InventoryNotification.hpp" />
     <ClInclude Include="Headers\Modules\LicenseList.hpp" />
     <ClInclude Include="Headers\Modules\Login.hpp" />
     <ClInclude Include="Headers\Modules\LoginTracking.hpp" />

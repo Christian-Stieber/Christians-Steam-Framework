@@ -30,6 +30,7 @@
 
 typedef SteamBot::Modules::LicenseList::Whiteboard::LicenseIdentifier LicenseIdentifier;
 typedef SteamBot::Modules::LicenseList::Whiteboard::Licenses Licenses;
+typedef SteamBot::Modules::LicenseList::Messageboard::NewLicenses NewLicenses;
 
 /************************************************************************/
 
@@ -202,6 +203,9 @@ void LicenseListModule::handle(std::shared_ptr<const Steam::CMsgClientLicenseLis
     auto licenses=std::make_shared<Licenses>();
 
     auto existingLicenses=client.whiteboard.get<Licenses::Ptr>(nullptr);
+    auto newLicenses=std::make_shared<NewLicenses>();
+
+    std::vector<SteamBot::PackageID> newPackages;
 
     for (int index=0; index<message->content.licenses_size(); index++)
     {
@@ -212,6 +216,12 @@ void LicenseListModule::handle(std::shared_ptr<const Steam::CMsgClientLicenseLis
             if (packageId!=SteamBot::PackageID::Steam)		// we don't need this
             {
                 auto license=std::make_shared<Licenses::LicenseInfo>(licenseData);
+
+                if (!existingLicenses || existingLicenses->licenses.find(license->packageId)==existingLicenses->licenses.end())
+                {
+                    newLicenses->licenses.push_back(license->packageId);
+                }
+
                 bool success=licenses->licenses.try_emplace(license->packageId, std::move(license)).second;
                 assert(success);
             }
@@ -219,9 +229,17 @@ void LicenseListModule::handle(std::shared_ptr<const Steam::CMsgClientLicenseLis
     }
 
     BOOST_LOG_TRIVIAL(info) << "license list: " << *licenses;
-    SteamBot::UI::OutputText() << "account has " << licenses->licenses.size() << " licenses";
+    {
+        SteamBot::UI::OutputText output;
+        output << "account has " << licenses->licenses.size() << " licenses";
+        if (!newLicenses->licenses.empty())
+        {
+            output << " (+" << newLicenses->licenses.size() << ")";
+        }
+    }
 
     client.whiteboard.set<Licenses::Ptr>(std::move(licenses));
+    client.messageboard.send(std::move(newLicenses));
 }
 
 /************************************************************************/
