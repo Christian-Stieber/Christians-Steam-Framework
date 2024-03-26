@@ -34,6 +34,8 @@ ParsedToken::~ParsedToken() =default;
 /************************************************************************/
 /*
  * SteamKit Samples/1a.Authentication/Program.cs -> ParseJsonWebToken()
+ *
+ * Throws if the token can't be parsed properly
  */
 
 ParsedToken::ParsedToken(std::string_view token)
@@ -57,8 +59,5 @@ ParsedToken::ParsedToken(std::string_view token)
     }
 
     const auto bytes=SteamBot::Base64::decode(data);
-
-    boost::json::error_code error;
-    json=boost::json::parse(std::string_view((const char*)bytes.data(), bytes.size()), error).as_object();
-    assert(!error);
+    json=boost::json::parse(std::string_view((const char*)bytes.data(), bytes.size())).as_object();
 }

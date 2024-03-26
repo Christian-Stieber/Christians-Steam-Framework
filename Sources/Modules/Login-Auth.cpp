@@ -37,6 +37,7 @@
 #include "Steam/ProtoBuf/steammessages_clientserver_login.hpp"
 
 #include <boost/log/trivial.hpp>
+#include <boost/exception/diagnostic_information.hpp>
 #include <cmath>
 
 /************************************************************************/
@@ -616,8 +617,19 @@ void LoginModule::doLogon()
     message->content.set_supports_rate_limit_response(true);	// ???
     if (!refreshToken.empty())
     {
-        BOOST_LOG_TRIVIAL(debug) << "refresh token: " << SteamBot::Modules::Login::ParsedToken{refreshToken}.toJson();
+        BOOST_LOG_TRIVIAL(debug) << "refresh token: " << refreshToken;
         message->content.set_access_token(refreshToken);
+
+        try
+        {
+            SteamBot::Modules::Login::ParsedToken parsed(refreshToken);
+            BOOST_LOG_TRIVIAL(debug) << "refresh token: " << parsed.toJson();
+        }
+        catch(...)
+        {
+            BOOST_LOG_TRIVIAL(error) << "error while parsing refresh token: "
+                                     << boost::current_exception_diagnostic_information();
+        }
     }
 
     // All this is very weird
