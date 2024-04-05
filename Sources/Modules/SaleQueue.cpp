@@ -69,7 +69,7 @@ static QueueState hasSaleCards()
         virtual ~QueuePageParser() =default;
 
     private:
-        virtual void endElement(const HTMLParser::Tree::Element& element) override
+        virtual void endElement(HTMLParser::Tree::Element& element) override
         {
             if (element.name=="div" && SteamBot::HTML::checkClass(element, "subtext"))
             {

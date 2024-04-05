@@ -299,7 +299,7 @@ std::function<void(const HTMLParser::Tree::Element&)> Parser::startElement(const
 
 /************************************************************************/
 
-void Parser::endElement(const HTMLParser::Tree::Element& element)
+void Parser::endElement(HTMLParser::Tree::Element& element)
 {
     handleTradePartner(element) || handleItemsBanner(element) || handleCurrencyAmount(element);
 }

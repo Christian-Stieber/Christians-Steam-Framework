@@ -75,7 +75,7 @@ namespace
             return nullptr;
         }
 
-        virtual void endElement(const HTMLParser::Tree::Element& element) override
+        virtual void endElement(HTMLParser::Tree::Element& element) override
         {
             handleEnd_progress_info_bold(element) || handleEnd_pagebtn(element);
         }

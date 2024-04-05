@@ -65,7 +65,7 @@ namespace SteamBot
 
                 private:
                     virtual std::function<void(const HTMLParser::Tree::Element&)> startElement(const HTMLParser::Tree::Element&) override;
-                    virtual void endElement(const HTMLParser::Tree::Element&) override;
+                    virtual void endElement(HTMLParser::Tree::Element&) override;
                 };
             }
         }
