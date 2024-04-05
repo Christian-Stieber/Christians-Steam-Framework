@@ -44,6 +44,11 @@ namespace SteamBot
             public:
                 boost::json::object data;	// this is the KeyValue data from "buffer"
 
+                std::vector<SteamBot::AppID> appIds;	// data->appids
+
+            private:
+                void getAppIds();
+
             public:
                 PackageInfo(const boost::json::value&);
                 PackageInfo(PackageID);

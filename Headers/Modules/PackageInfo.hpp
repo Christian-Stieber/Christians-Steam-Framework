@@ -19,41 +19,15 @@
 
 #pragma once
 
-#include <boost/url/url.hpp>
-
 /************************************************************************/
 
 namespace SteamBot
 {
-    namespace URLs
+    namespace Modules
     {
-        class NoURLException { };
-
-        boost::urls::url getClientCommunityURL();
-    }
-}
-
-/************************************************************************/
-/*
- * Set a URL param to an integer value. No localization.
- */
-
-namespace SteamBot
-{
-    namespace URLs
-    {
-        template <std::integral T> void setParam_(boost::urls::url&, const char*, T);
-
-        template <std::integral T> void setParam(boost::urls::url& url, const char* name, T value)
+        namespace PackageInfo
         {
-            if constexpr (std::is_signed_v<T>)
-            {
-                return setParam_(url, name, static_cast<long long>(value));
-            }
-            else
-            {
-                return setParam_(url, name, static_cast<unsigned long long>(value));
-            }
+            void use();
         }
     }
 }

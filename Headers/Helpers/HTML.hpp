@@ -28,6 +28,7 @@ namespace HTMLParser
     namespace Tree
     {
         class Element;
+        class Node;
     }
 }
 
@@ -62,5 +63,18 @@ namespace SteamBot
     namespace HTML
     {
         std::string getCleanText(const HTMLParser::Tree::Element&);
+    }
+}
+
+/************************************************************************/
+/*
+ * Check whether this is a node with only whitespace
+ */
+
+namespace SteamBot
+{
+    namespace HTML
+    {
+        bool isWhitespace(const HTMLParser::Tree::Node&);
     }
 }

@@ -29,6 +29,7 @@
 #include "Steam/ProtoBuf/steammessages_clientserver_appinfo.hpp"
 
 #include "Client/Module.hpp"
+#include "Helpers/JSON.hpp"
 #include "Modules/Connection.hpp"
 #include "Modules/PackageData.hpp"
 #include "DataFile.hpp"
@@ -111,27 +112,6 @@ namespace
 
 /************************************************************************/
 
-static void iterateOverAppids(const PackageInfo& package, std::function<void(SteamBot::AppID)> function)
-{
-    if (auto appidsValue=package.data.if_contains("appids"))
-    {
-        if (auto appids=appidsValue->if_object())
-        {
-            for (const auto& item : *appids)
-            {
-                // ToDo: does the name actually mean something?
-                // This was a KeyValue, which doesn't have arrays -- but that
-                // doesn't mean the name can't have any meaning
-
-                auto appId=item.value().to_number<std::underlying_type_t<SteamBot::AppID>>();
-                function(static_cast<SteamBot::AppID>(appId));
-            }
-        }
-    }
-}
-
-/************************************************************************/
-
 void PackageData::storeNew_noLock(std::shared_ptr<PackageInfo> packageInfo)
 {
     // If we have a previous item, unlink it from the apps
@@ -139,30 +119,32 @@ void PackageData::storeNew_noLock(std::shared_ptr<PackageInfo> packageInfo)
         auto packageIterator=data.find(packageInfo->packageId);
         if (packageIterator!=data.end())
         {
-            iterateOverAppids(*(packageIterator->second), [this, packageId=packageInfo->packageId](SteamBot::AppID appId) {
+            for (const auto appId: packageIterator->second->appIds)
+            {
                 auto appIterator=appData.find(appId);
                 if (appIterator!=appData.end())
                 {
-                    auto count=SteamBot::erase(appIterator->second, [packageId](SteamBot::PackageID item) { return item==packageId; });
+                    auto count=SteamBot::erase(appIterator->second, [packageId=packageInfo->packageId](SteamBot::PackageID item) { return item==packageId; });
                     assert(count==0 || count==1);
                 }
-            });
+            }
         }
     }
 
     // Link the new package to the apps
     {
-        iterateOverAppids(*packageInfo, [this, packageId=packageInfo->packageId](SteamBot::AppID appId) {
+        for (const auto appId: packageInfo->appIds)
+        {
             auto& items=appData[appId];
             for (SteamBot::PackageID item : items)
             {
-                if (item==packageId)
+                if (item==packageInfo->packageId)
                 {
                     return;
                 }
             }
-            items.push_back(packageId);
-        });
+            items.push_back(packageInfo->packageId);
+        }
     }
     data[packageInfo->packageId]=std::move(packageInfo);
 }
@@ -204,6 +186,27 @@ PackageInfo::PackageInfo(SteamBot::PackageID packageId_)
 static const char data_key[]="data";
 
 /************************************************************************/
+
+void PackageInfo::getAppIds()
+{
+    if (auto appidsValue=data.if_contains("appids"))
+    {
+        if (auto appids=appidsValue->if_object())
+        {
+            for (const auto& item : *appids)
+            {
+                // ToDo: does the name actually mean something?
+                // This was a KeyValue, which doesn't have arrays -- but that
+                // doesn't mean the name can't have any meaning
+
+                auto appId=SteamBot::JSON::toNumber<SteamBot::AppID>(item.value());
+                appIds.push_back(appId);
+            }
+        }
+    }
+}
+
+/************************************************************************/
 /*
  * Make sure this matches the toJson()
  */
@@ -212,6 +215,7 @@ PackageInfo::PackageInfo(const boost::json::value& json)
     : LicenseIdentifier(json)
 {
     data=json.at(data_key).as_object();
+    getAppIds();
 }
 
 /************************************************************************/

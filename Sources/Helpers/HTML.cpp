@@ -122,3 +122,18 @@ std::string SteamBot::HTML::getCleanText(const HTMLParser::Tree::Element& elemen
     }
     return collector.result;
 }
+
+/************************************************************************/
+
+bool SteamBot::HTML::isWhitespace(const HTMLParser::Tree::Node& node)
+{
+    if (auto text=dynamic_cast<const HTMLParser::Tree::Text*>(&node))
+    {
+        for (const char c: text->text)
+        {
+            if (c!=0x09 && c!=0x0a && c!=0x0d) return false;
+        }
+        return true;
+    }
+    return false;
+}

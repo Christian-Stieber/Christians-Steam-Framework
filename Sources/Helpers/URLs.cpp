@@ -21,6 +21,8 @@
 #include "Modules/Login.hpp"
 #include "Client/Client.hpp"
 
+#include <charconv>
+
 /************************************************************************/
 /*
  * Get a steam-community URL with the SteamID.
@@ -39,3 +41,16 @@ boost::urls::url SteamBot::URLs::getClientCommunityURL()
     }
     throw NoURLException();
 }
+
+/************************************************************************/
+
+template <std::integral T> void SteamBot::URLs::setParam_(boost::urls::url& url, const char* name, T value)
+{
+    char string[32];
+    auto result=std::to_chars(string, string+sizeof(string), value);
+    assert(result.ec==std::errc());
+    url.params().set(name, std::string_view(string, result.ptr));
+}
+
+template void SteamBot::URLs::setParam_(boost::urls::url&, const char*, long long);
+template void SteamBot::URLs::setParam_(boost::urls::url&, const char*, unsigned long long);
