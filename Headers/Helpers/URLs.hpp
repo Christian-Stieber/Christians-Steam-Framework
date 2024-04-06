@@ -19,7 +19,12 @@
 
 #pragma once
 
+#include "Helpers/ParseNumber.hpp"
+
+#include <optional>
+
 #include <boost/url/url.hpp>
+#include <boost/url/url_view.hpp>
 
 /************************************************************************/
 
@@ -54,6 +59,34 @@ namespace SteamBot
             {
                 return setParam_(url, name, static_cast<unsigned long long>(value));
             }
+        }
+    }
+}
+
+/************************************************************************/
+/*
+ * Returns a numeric query param
+ */
+
+namespace SteamBot
+{
+    namespace URLs
+    {
+        template <typename T> std::optional<T> getParam(const boost::urls::url_view& url, std::string_view name)
+        {
+            std::optional<T> result;
+
+            const auto& params=url.params();
+            auto iterator=params.find_last(name);
+            if (iterator!=params.end())
+            {
+                T value;
+                if (SteamBot::parseNumber((*iterator).value, value))
+                {
+                    result=value;
+                }
+            }
+            return result;
         }
     }
 }
