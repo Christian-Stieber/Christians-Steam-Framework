@@ -110,21 +110,6 @@ static std::string* getTextSpan(HTMLParser::Tree::Element& element)
  *    https://help.steampowered.com/en/wizard/HelpWithGameIssue/?appid=<APP-ID>&issueid=123
  * which is basically the page to request game removal. Don't worry, it require more
  * clicks that I'm not doing.
- *
- * There are up to two distinct sections on this page that I'm
- * interested in. In most cases, the "top" section just lists the
- * licenses that we have for the game, in various format, and not
- * always with the name of the package -- it might just be something
- * like "purchased on steam" with a link to to receipt page.
- * This might require a bit of guessing, but there's a good chance
- * that we can link package names to our package-ids by using the
- * registration date.
- *
- * If we actually own muliple packages with the game, we'll get
- * another section that lets the user select which package to remove
- * from the account. This is the jackpot case, since these buttons
- * a labelled with the package name already, and they have links with
- * the package-id.
  */
 
 namespace
@@ -150,7 +135,26 @@ namespace
         public:
             unsigned int currentYear=0;
             std::unordered_map<SteamBot::PackageID, std::string> packages;
+            std::vector<SteamBot::PackageID> packageIds;
             std::vector<LineItemRow> lineItemRows;
+
+        public:
+            // Some assumptions...
+            bool validate() const
+            {
+                if (!packages.empty())
+                {
+                    if (packages.size()==1) return false;
+                    if (!packageIds.empty()) return false;
+                    if (packages.size()!=lineItemRows.size()) return false;
+                }
+                else
+                {
+                    if (packageIds.size()!=1) return false;
+                    if (lineItemRows.size()!=1) return false;
+                }
+                return true;
+            }
         };
 
     private:
@@ -166,6 +170,55 @@ namespace
         virtual ~SupportPageParser() =default;
 
     private:
+        // This is the less convenient type of button on the bottom.
+        // They are in a <form> that has the package-id, but there's no
+        // name to be found.
+        //
+        // These returned in the packageIds list.
+
+        bool handleRemovalForm(HTMLParser::Tree::Element& element)
+        {
+            if (element.name=="form" && SteamBot::HTML::checkAttribute(element, "id", "submit_remove_package_form"))
+            {
+                std::optional<SteamBot::PackageID> childPackageId;
+                std::optional<SteamBot::AppID> childAppId;
+                for (const auto& childNode: element.children)
+                {
+                    if (auto child=dynamic_cast<HTMLParser::Tree::Element*>(childNode.get()))
+                    {
+                        if (child->name=="input")
+                        {
+                            if (SteamBot::HTML::checkAttribute(*child, "id", "packageid"))
+                            {
+                                assert(!childPackageId);
+                                childPackageId=SteamBot::HTML::getAttribute<SteamBot::PackageID>(*child, "value");
+                            }
+                            else if (SteamBot::HTML::checkAttribute(*child, "id", "appiid"))
+                            {
+                                assert(!childAppId);
+                                childAppId=SteamBot::HTML::getAttribute<SteamBot::AppID>(*child, "value");
+                            }
+                        }
+                    }
+                }
+                if (childPackageId && childAppId)
+                {
+                    assert(childAppId==appId);
+                    result.packageIds.push_back(childPackageId.value());
+                }
+                return true;
+            }
+            return false;
+        }
+
+    private:
+        // These are the texts at the "top" of the page, like
+        //    Jan 1, 2023 -  Purchased on Steam - view receipt
+        //    Nov 29, 2014 -  Activated as part of: Tomb Raider GOTY Edition
+        //    Jan 7 -  Purchased as part of: Immortals Fenyx Rising - Gold Edition - view receipt
+        //
+        // These are returned a list of date/text HTML elements, for later processing
+
         bool handleLineItemRow(HTMLParser::Tree::Element& element)
         {
             if (element.name=="div" && SteamBot::HTML::checkClass(element, "lineitemrow"))
@@ -208,6 +261,12 @@ namespace
         }
 
     private:
+        // These are the buttons that appear when the game is provided by multiple licenses.
+        // This is the jackpot -- the button itself has the name of the package, and
+        // a parameter of the URL it leads to is the package-id.
+        //
+        // These are stored in the packages map, package-id -> name.
+
         void handlePackageButton(HTMLParser::Tree::Element& element)
         {
             if (element.name=="a" &&
@@ -239,7 +298,7 @@ namespace
     public:
         virtual void endElement(HTMLParser::Tree::Element& element) override
         {
-            if (!handleLineItemRow(element))
+            if (!handleLineItemRow(element) && !handleRemovalForm(element))
             {
                 handlePackageButton(element);
             }
@@ -313,6 +372,7 @@ static SupportPageParser::Result getMainSupportPage(SteamBot::AppID appId)
         BOOST_LOG_TRIVIAL(error) << "PackageInfo: could not find package information on main support page";
     }
 
+    assert(result.validate());
     return result;
 }
 
@@ -404,26 +464,16 @@ void PackageInfoModule::updateLicenseInfo(const SteamBot::AppID appId)
 {
     auto result=getMainSupportPage(appId);
 
-    for (const auto& item: result.packages)
+    if (!result.packages.empty())
     {
-        std::cout << SteamBot::toInteger(item.first) << ": " << item.second << std::endl;
+        for (const auto& item: result.packages)
+        {
+            std::cout << SteamBot::toInteger(item.first) << ": " << item.second << std::endl;
+        }
     }
-
-    for (const auto& item: result.lineItemRows)
+    else
     {
-        std::cout << SteamBot::HTML::getCleanText(*item.date) << "(";
-
-        ParseDate parser;
-        if (parser.parse(*item.date, result.currentYear))
-        {
-            std::cout << parser.day << "." << parser.month+1 << "." << parser.year;
-        }
-        else
-        {
-            std::cout << "couldn't parse";
-        }
-        std::cout << "): ";
-        std::cout << SteamBot::HTML::getCleanText(*item.text) << std::endl;
+        std::cout << SteamBot::toInteger(result.packageIds.front()) << ": " << SteamBot::HTML::getCleanText(*(result.lineItemRows.front().text)) << std::endl;
     }
 }
 
@@ -439,11 +489,7 @@ void PackageInfoModule::handle(std::shared_ptr<const NewLicenses> newLicenses)
         {
             for (const auto appId: packageInfo->appIds)
             {
-                // if (SteamBot::toInteger(appId)==203160)
-                {
-                    updateLicenseInfo(appId);
-                    // return;
-                }
+                updateLicenseInfo(appId);
             }
         }
     }
