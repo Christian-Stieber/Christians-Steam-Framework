@@ -28,6 +28,8 @@ namespace SteamBot
 {
     namespace Time
     {
+        struct tm& toCalendar(std::chrono::system_clock::time_point, bool, struct tm&);
+
         std::string toString(std::chrono::system_clock::time_point, bool utc=false);
         std::string toString(std::chrono::minutes);
     }

@@ -26,34 +26,40 @@
 
 /************************************************************************/
 
-std::string SteamBot::Time::toString(std::chrono::system_clock::time_point when, bool utc)
+struct tm& SteamBot::Time::toCalendar(std::chrono::system_clock::time_point when, bool utc, struct tm& myTm)
 {
-    const time_t timeBuffer=decltype(when)::clock::to_time_t(when);
-
-    struct tm tmBuffer;
+    const time_t timestamp=decltype(when)::clock::to_time_t(when);
     if (utc)
     {
 #ifdef __linux__
-		auto result=gmtime_r(&timeBuffer, &tmBuffer);
+		auto result=gmtime_r(&timestamp, &myTm);
 		assert(result!=nullptr);
 #else
-		auto result=_gmtime64_s(&tmBuffer, &timeBuffer);
+		auto result=_gmtime64_s(&myTm, &timestamp);
 		assert(result==0);
 #endif
     }
     else
     {
 #ifdef __linux__
-		auto result=localtime_r(&timeBuffer, &tmBuffer);
+		auto result=localtime_r(&timestamp, &myTm);
 		assert(result!=nullptr);
 #else
-		auto result=_localtime64_s(&tmBuffer, &timeBuffer);
+		auto result=_localtime64_s(&myTm, &timestamp);
 		assert(result==0);
 #endif
     }
 
+    return myTm;
+}
+
+/************************************************************************/
+
+std::string SteamBot::Time::toString(std::chrono::system_clock::time_point when, bool utc)
+{
+    struct tm myTm;
     char buffer[200];
-    auto size=strftime(buffer, sizeof(buffer), "%F %T", &tmBuffer);
+    auto size=strftime(buffer, sizeof(buffer), "%F %T", &toCalendar(when, utc, myTm));
 
     return std::string(buffer, size);
 }
