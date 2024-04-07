@@ -137,3 +137,17 @@ bool SteamBot::HTML::isWhitespace(const HTMLParser::Tree::Node& node)
     }
     return false;
 }
+
+/************************************************************************/
+
+bool SteamBot::HTML::checkAttribute(const HTMLParser::Tree::Element& element, std::string_view name, std::string_view value)
+{
+    if (auto string=element.getAttribute(name))
+    {
+        if (*string==value)
+        {
+            return true;
+        }
+    }
+    return false;
+}

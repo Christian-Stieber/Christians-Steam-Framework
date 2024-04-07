@@ -20,17 +20,10 @@
 #pragma once
 
 #include <string>
+#include <optional>
 
-/************************************************************************/
-
-namespace HTMLParser
-{
-    namespace Tree
-    {
-        class Element;
-        class Node;
-    }
-}
+#include "Helpers/ParseNumber.hpp"
+#include "HTMLParser/Tree.hpp"
 
 /************************************************************************/
 /*
@@ -76,5 +69,47 @@ namespace SteamBot
     namespace HTML
     {
         bool isWhitespace(const HTMLParser::Tree::Node&);
+    }
+}
+
+/************************************************************************/
+/*
+ * Check for a specific attribute value
+ */
+
+namespace SteamBot
+{
+    namespace HTML
+    {
+        bool checkAttribute(const HTMLParser::Tree::Element&, std::string_view, std::string_view);
+    }
+}
+
+/************************************************************************/
+/*
+ * Returns a numeric attribute
+ */
+
+#include <iostream>
+
+namespace SteamBot
+{
+    namespace HTML
+    {
+        template <typename T> std::optional<T> getAttribute(const HTMLParser::Tree::Element& element, std::string_view name)
+        {
+            std::optional<T> result;
+
+            if (auto string=element.getAttribute(name))
+            {
+                T value;
+                if (SteamBot::parseNumber(*string, value))
+                {
+                    result=value;
+                }
+            }
+
+            return result;
+        }
     }
 }
