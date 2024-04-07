@@ -22,6 +22,7 @@
 #include "Client/Module.hpp"
 #include "Helpers/URLs.hpp"
 #include "Helpers/HTML.hpp"
+#include "Helpers/Time.hpp"
 #include "Modules/LicenseList.hpp"
 #include "Modules/PackageData.hpp"
 #include "Modules/PackageInfo.hpp"
@@ -147,6 +148,7 @@ namespace
         class Result
         {
         public:
+            unsigned int currentYear=0;
             std::unordered_map<SteamBot::PackageID, std::string> packages;
             std::vector<LineItemRow> lineItemRows;
         };
@@ -246,28 +248,58 @@ namespace
 }
 
 /************************************************************************/
+/*
+ * The "delta" is added to the timestamp: I'm trying to use this to
+ * account for clocks not being exactly in sync.
+ */
+
+static unsigned int getCurrentYear(std::chrono::seconds delta)
+{
+    struct tm myTm;
+    auto currentYear=SteamBot::Time::toCalendar(std::chrono::system_clock::now()+delta, false, myTm).tm_year+1900;
+    return std::make_unsigned_t<decltype(currentYear)>(currentYear);
+}
+
+/************************************************************************/
 
 static SupportPageParser::Result getMainSupportPage(SteamBot::AppID appId)
 {
-    auto request=std::make_shared<SteamBot::Modules::WebSession::Messageboard::Request>();
-    request->queryMaker=[appId]() {
-        static const boost::urls::url_view myUrl("https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123");
-        auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, myUrl);
-        SteamBot::URLs::setParam(query->url, "appid", SteamBot::toInteger(appId));
-        return query;
-    };
-
-    std::cout << request->queryMaker()->url << std::endl;
-
-    auto response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
-    if (response->query->response.result()!=boost::beast::http::status::ok)
-    {
-        throw ErrorException();
-    }
-
-    auto string=SteamBot::HTTPClient::parseString(*(response->query));
-
     SupportPageParser::Result result;
+
+    // Repeat loading if the year changes in between. This could mess up the
+    // returned dates, since they don't include the year number if it's the
+    // current one, creating a race condition.
+
+    std::shared_ptr<const SteamBot::Modules::WebSession::Messageboard::Response> response;
+    while (true)
+    {
+        auto request=std::make_shared<SteamBot::Modules::WebSession::Messageboard::Request>();
+        request->queryMaker=[appId, &result]() {
+            static const boost::urls::url_view myUrl("https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123");
+            auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, myUrl);
+            SteamBot::URLs::setParam(query->url, "appid", SteamBot::toInteger(appId));
+            result.currentYear=getCurrentYear(std::chrono::seconds(-15));
+            return query;
+        };
+
+        std::cout << request->queryMaker()->url << std::endl;
+
+        response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
+        if (response->query->response.result()!=boost::beast::http::status::ok)
+        {
+            throw ErrorException();
+        }
+
+        unsigned int currentYear=getCurrentYear(std::chrono::seconds(15));
+        if (result.currentYear==currentYear)
+        {
+            break;
+        }
+        result.currentYear=currentYear;
+    }
+    auto string=SteamBot::HTTPClient::parseString(*(response->query));
+    response.reset();
+
     try
     {
         SupportPageParser(string, appId, result).parse();
@@ -286,6 +318,85 @@ static SupportPageParser::Result getMainSupportPage(SteamBot::AppID appId)
 
 /************************************************************************/
 /*
+ * The two formats I've seen so far are:
+ *    "Sep 23, 2015 - "
+ *    "Feb 12 - "
+ */
+
+namespace
+{
+    class ParseDate
+    {
+    private:
+        std::string_view string;
+
+    public:
+        unsigned int day;	// 1..31
+        unsigned int month;	// 0..11
+        unsigned int year;	// 1900..
+
+    private:
+        bool parseString(std::string_view prefix)
+        {
+            if (string.starts_with(prefix))
+            {
+                string.remove_prefix(prefix.size());
+                return true;
+            }
+            return false;
+        }
+
+        bool parseMonth()
+        {
+            static const std::string_view months[]={ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+            for (month=0; month<std::size(months); month++)
+            {
+                if (parseString(months[month]))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool parseInteger(unsigned int& value)
+        {
+            const auto result=std::from_chars(string.data(), string.data()+string.size(), value);
+            if (result.ec==std::errc())
+            {
+                auto diff=result.ptr-string.data();
+                assert(diff>=0);
+                string.remove_prefix(static_cast<size_t>(diff));
+                return true;
+            }
+            return false;
+        }
+
+        bool parseYear()
+        {
+            if (parseString(", "))
+            {
+                return parseInteger(year);
+            }
+            else
+            {
+                return true;
+            }
+        }
+
+    public:
+        bool parse(HTMLParser::Tree::Element& element, unsigned int currentYear)
+        {
+            year=currentYear;
+            auto buffer=SteamBot::HTML::getCleanText(element);
+            string=buffer;
+            return parseMonth() && parseString(" ") && parseInteger(day) && parseYear() && parseString("\xC2\xA0-");
+        }
+    };
+}
+
+/************************************************************************/
+/*
  * https://stackoverflow.com/a/78208586/826751
  */
 
@@ -300,7 +411,19 @@ void PackageInfoModule::updateLicenseInfo(const SteamBot::AppID appId)
 
     for (const auto& item: result.lineItemRows)
     {
-        std::cout << SteamBot::HTML::getCleanText(*item.date) << ": " << SteamBot::HTML::getCleanText(*item.text) << std::endl;
+        std::cout << SteamBot::HTML::getCleanText(*item.date) << "(";
+
+        ParseDate parser;
+        if (parser.parse(*item.date, result.currentYear))
+        {
+            std::cout << parser.day << "." << parser.month+1 << "." << parser.year;
+        }
+        else
+        {
+            std::cout << "couldn't parse";
+        }
+        std::cout << "): ";
+        std::cout << SteamBot::HTML::getCleanText(*item.text) << std::endl;
     }
 }
 
@@ -316,10 +439,10 @@ void PackageInfoModule::handle(std::shared_ptr<const NewLicenses> newLicenses)
         {
             for (const auto appId: packageInfo->appIds)
             {
-                if (SteamBot::toInteger(appId)==203160)
+                // if (SteamBot::toInteger(appId)==203160)
                 {
                     updateLicenseInfo(appId);
-                    return;
+                    // return;
                 }
             }
         }
