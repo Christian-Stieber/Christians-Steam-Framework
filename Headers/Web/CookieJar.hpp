@@ -50,12 +50,13 @@ namespace SteamBot
                 std::string value;
 
             private:
+                void setDomain(const std::vector<std::string_view>&, const boost::urls::url_view_base*);
                 void setContent(std::string_view);
 
             public:
                 // Takes a set-cookie header.
                 // May throw InvalidCookieException.
-                Cookie(std::string_view);
+                Cookie(std::string_view, const boost::urls::url_view_base* url=nullptr);
                 ~Cookie();
 
             public:
@@ -67,6 +68,9 @@ namespace SteamBot
             mutable boost::fibers::mutex mutex;
 
             std::vector<std::unique_ptr<const Cookie>> cookies;
+
+        private:
+            bool store(std::unique_ptr<Cookie>&&);
 
         public:
             CookieJar();
@@ -81,8 +85,17 @@ namespace SteamBot
             // Returns whether anything was updated
             bool update(const boost::urls::url_view&, const boost::beast::http::fields&);
 
-            // Pass the URL, and we'll return the string for the cookie header.
-            std::string get(const boost::urls::url_view&) const;
+            bool update(std::unique_ptr<Cookie>);
+
+        public:
+            // Iterate over matching cookies
+            void iterate(const boost::urls::url_view_base&, std::function<void(const Cookie&)>) const;
+
+            // Return the string for the cookie header
+            std::string get(const boost::urls::url_view_base&) const;
+
+            // Return the value for a cookie, if it exists
+            std::string get(const boost::urls::url_view_base&, std::string_view) const;
 
         public:
             // Access the cookies for the calling thread.

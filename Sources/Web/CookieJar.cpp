@@ -63,7 +63,7 @@ bool Cookie::match(const Cookie& other) const
 
 /************************************************************************/
 
-static void trimSpaces(std::string_view item)
+static void trimSpaces(std::string_view& item)
 {
     while (item.size()>0 && item.front()==' ')
     {
@@ -146,11 +146,53 @@ void Cookie::setContent(std::string_view string)
 }
 
 /************************************************************************/
+
+static std::string_view findItem(const std::vector<std::string_view>& items, std::string_view name)
+{
+    std::string_view result;
+    for (const auto& item: items)
+    {
+        auto equals=item.find('=');
+        if (equals!=std::string_view::npos && equals>0)
+        {
+            std::string_view view(item.data(), equals);
+            trimSpaces(view);
+            if (SteamBot::caseInsensitiveStringCompare_equal(name, view))
+            {
+                result=std::string_view(item.data()+equals+1, item.size()-equals-1);
+                trimSpaces(result);
+                break;
+            }
+        }
+    }
+    return result;
+}
+
+/************************************************************************/
+
+void Cookie::setDomain(const std::vector<std::string_view>& items, const boost::urls::url_view_base* url)
+{
+    domain=findItem(items, "Domain");
+    if (domain.empty())
+    {
+        if (url==nullptr || url->host_type()!=boost::urls::host_type::name)
+        {
+            throw InvalidCookieException();		// missing domain
+        }
+        domain=url->host_name();
+    }
+    if (domain.front()!='.')
+    {
+        domain.insert(0,".");
+    }
+}
+
+/************************************************************************/
 /*
  * https://stackoverflow.com/questions/1969232/what-are-allowed-characters-in-cookies
  */
 
-Cookie::Cookie(std::string_view string)
+Cookie::Cookie(std::string_view string, const boost::urls::url_view_base* url)
 {
     auto items=split(string);
 
@@ -161,13 +203,111 @@ Cookie::Cookie(std::string_view string)
 
     // first item is the cookie itself
     setContent(items[0]);
+    items.erase(items.begin());
+
+    setDomain(items, url);
 
     // ToDo: handle the other stuff...
 }
 
 /************************************************************************/
 
-bool CookieJar::update(const boost::urls::url_view&, const boost::beast::http::fields& headers)
+bool CookieJar::update(std::unique_ptr<CookieJar::Cookie> cookie)
+{
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    return store(std::move(cookie));
+}
+
+/************************************************************************/
+
+static bool checkDomain(std::string_view host, std::string_view domain)
+{
+    if (!domain.empty())
+    {
+        assert(domain[0]=='.');
+
+        if (domain.length()-1==host.length())
+        {
+            domain.remove_prefix(1);
+        }
+
+        if (domain.length()<=host.length())
+        {
+            std::string_view end=host;
+            end.remove_prefix(host.length()-domain.length());
+            if (SteamBot::caseInsensitiveStringCompare_equal(end, domain))
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/************************************************************************/
+
+void CookieJar::iterate(const boost::urls::url_view_base& url, std::function<void(const Cookie&)> callback) const
+{
+    if (url.host_type()==boost::urls::host_type::name)
+    {
+        const auto host=url.host_name();
+        std::lock_guard<decltype(mutex)> lock(mutex);
+        for (const auto& cookie : cookies)
+        {
+            if (checkDomain(host, cookie->domain))
+            {
+                // ToDo: check path
+
+                callback(*cookie);
+            }
+        }
+    }
+}
+
+/************************************************************************/
+/*
+ * Note: you need to lock the mutex yourself
+ *
+ * Returne true if something was changed.
+ */
+
+bool CookieJar::store(std::unique_ptr<Cookie>&& cookie)
+{
+    bool wasUpdated=false;
+    bool found=false;
+
+    for (auto cookieIterator=cookies.begin(); cookieIterator!=cookies.end(); ++cookieIterator)
+    {
+        if (cookieIterator->get()->match(*cookie))
+        {
+            found=true;
+            if (cookie->value.empty())
+            {
+                cookies.erase(cookieIterator);
+                wasUpdated=true;
+            }
+            else
+            {
+                if (cookieIterator->get()->value!=cookie->value)
+                {
+                    cookieIterator->operator=(std::move(cookie));
+                    wasUpdated=true;
+                }
+            }
+            break;
+        }
+    }
+    if (!found)
+    {
+        cookies.push_back(std::move(cookie));
+        wasUpdated=true;
+    }
+    return wasUpdated;
+}
+
+/************************************************************************/
+
+bool CookieJar::update(const boost::urls::url_view& url, const boost::beast::http::fields& headers)
 {
     bool wasUpdated=false;
     auto setCookies=headers.equal_range(boost::beast::http::field::set_cookie);
@@ -176,32 +316,9 @@ bool CookieJar::update(const boost::urls::url_view&, const boost::beast::http::f
     {
         try
         {
-            bool found=false;
-            auto cookie=std::make_unique<Cookie>(setIterator->value());
-            for (auto cookieIterator=cookies.begin(); cookieIterator!=cookies.end(); ++cookieIterator)
+            if (store(std::make_unique<Cookie>(setIterator->value(), &url)))
             {
-                if (cookieIterator->get()->match(*cookie))
-                {
-                    found=true;
-                    if (cookie->value.empty())
-                    {
-                        cookies.erase(cookieIterator);
-                        wasUpdated=true;
-                    }
-                    else
-                    {
-                        if (cookieIterator->get()->value!=cookie->value)
-                        {
-                            cookieIterator->operator=(std::move(cookie));
-                            wasUpdated=true;
-                        }
-                    }
-                    break;
-                }
-            }
-            if (!found)
-            {
-                cookies.push_back(std::move(cookie));
+                wasUpdated=true;
             }
         }
         catch(const InvalidCookieException&)
@@ -220,12 +337,14 @@ boost::json::value Cookie::toJson() const
     boost::json::object json;
     json["name"]=name;
     json["value"]=value;
+    if (!domain.empty()) json["domain"]=domain;
+
 #if 0
     // not supported yet
-    json["domain"]=domain;
     json["includeSubdomains"]=includeSubdomains;
     json["path"]=path;
 #endif
+
     return json;
 }
 
@@ -255,16 +374,25 @@ std::shared_ptr<CookieJar> CookieJar::get()
 
 /************************************************************************/
 
-std::string CookieJar::get(const boost::urls::url_view&) const
+std::string CookieJar::get(const boost::urls::url_view_base& url) const
 {
     std::string result;
-    {
-        std::lock_guard<decltype(mutex)> lock(mutex);
-        for (const auto& cookie : cookies)
+    iterate(url, [&result](const Cookie& cookie){
+        setCookie(result, cookie.name, cookie.value);
+    });
+    return result;
+}
+
+/************************************************************************/
+
+std::string CookieJar::get(const boost::urls::url_view_base& url, std::string_view name) const
+{
+    std::string result;
+    iterate(url, [&result, &name](const Cookie& cookie){
+        if (cookie.name==name)
         {
-            // ToDo: check domain/path...
-            setCookie(result, cookie->name, cookie->value);
+            result=cookie.value;
         }
-    }
+    });
     return result;
 }
