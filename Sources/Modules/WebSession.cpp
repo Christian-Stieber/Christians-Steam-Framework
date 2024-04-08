@@ -66,19 +66,23 @@ namespace
         SteamBot::Messageboard::WaiterType<Request> requestWaiter;
 
     private:
+        std::shared_ptr<SteamBot::Web::CookieJar> cookies{std::make_shared<SteamBot::Web::CookieJar>()};
+
         boost::fibers::mutex accessTokenMutex;
         std::string accessToken;	// don't access this directly, use getAccessToken()
 
         std::chrono::steady_clock::time_point timestamp;
 
     private:
-        static void setTimezoneCookie(std::string&);
-        void setLoginCookie(std::string&);
+        void setCookie(std::string_view, std::string_view);
+        void setTimezoneCookie();
+        void setLoginCookie();
 
         void handleRequests();
 
     public:
         std::string getAccessToken();
+        std::string getSessionId(const boost::urls::url_view_base&) const;
 
         void handle(std::shared_ptr<const Request>);
 
@@ -133,6 +137,27 @@ std::string WebSessionModule::getAccessToken()
 }
 
 /************************************************************************/
+
+void WebSessionModule::setCookie(std::string_view name, std::string_view value)
+{
+    std::string cookie;
+    cookie.append(name);
+    cookie.append("=");
+    cookie.append(value);
+    cookie.append("; Path=/; Domain=");
+
+    size_t length=cookie.length();
+
+    static const std::string_view domains[]={ "steamcommunity.com", "steampowered.com" };
+    for (auto& domain: domains)
+    {
+        cookie.erase(length);
+        cookie.append(domain);
+        cookies->update(std::make_unique<SteamBot::Web::CookieJar::Cookie>(cookie));
+    }
+}
+
+/************************************************************************/
 /*
  * Report proper time when doing timezone-based calculations, see
  * setTimezoneCookies() from
@@ -148,7 +173,7 @@ std::string WebSessionModule::getAccessToken()
 #define CHRISTIAN_USE_TIMEZONE
 #endif
 
-void WebSessionModule::setTimezoneCookie(std::string& cookies)
+void WebSessionModule::setTimezoneCookie()
 {
     auto timepoint=std::chrono::system_clock::now();
 
@@ -168,9 +193,9 @@ void WebSessionModule::setTimezoneCookie(std::string& cookies)
         BOOST_LOG_TRIVIAL(error) << "std::chrono::get_tzdb() failed: " << exception.what();
 	}
 #else
-    auto timestamp=std::chrono::system_clock::to_time_t(timepoint);
+    auto myTimestamp=std::chrono::system_clock::to_time_t(timepoint);
     struct tm timedata;
-    if (localtime_r(&timestamp, &timedata)!=nullptr)
+    if (localtime_r(&myTimestamp, &timedata)!=nullptr)
 	{
 		offset=timedata.tm_gmtoff;
 	}
@@ -178,13 +203,12 @@ void WebSessionModule::setTimezoneCookie(std::string& cookies)
 
     std::string value(std::to_string(offset));
     value.append(",0");
-
-    SteamBot::Web::setCookie(cookies, "timezoneOffset", value);
+    setCookie("timezoneOffset", value);
 }
 
 /************************************************************************/
 
-void WebSessionModule::setLoginCookie(std::string& cookies)
+void WebSessionModule::setLoginCookie()
 {
     std::ostringstream value;
 
@@ -198,7 +222,7 @@ void WebSessionModule::setLoginCookie(std::string& cookies)
         value << getAccessToken();
     }
 
-    SteamBot::Web::setCookie(cookies, "steamLoginSecure", value.str());
+    setCookie("steamLoginSecure", value.view());
 }
 
 /************************************************************************/
@@ -212,30 +236,15 @@ void WebSessionModule::handle(std::shared_ptr<const Request> message)
 
 void WebSessionModule::handleRequests()
 {
+    setTimezoneCookie();
+    setLoginCookie();
+    // SteamBot::Web::setCookie(myCookies, "sessionid", SteamBot::Modules::WebSession::getSessionId());
     while (!requests.empty())
     {
         auto& front=requests.front();
 
         auto query=front->queryMaker();
-        {
-            std::string myCookies;
-            setTimezoneCookie(myCookies);
-            setLoginCookie(myCookies);
-            SteamBot::Web::setCookie(myCookies, "sessionid", SteamBot::Modules::WebSession::getSessionId());
-
-#if 0
-            // After 60 seconds, make the cookies invalid
-            if (timestamp<std::chrono::steady_clock::now()-std::chrono::seconds(60))
-            {
-                static const std::string_view cookie="steamLoginSecure=";
-                auto position=myCookies.find(cookie);
-                assert(position!=std::string::npos);
-                assert(position+cookie.size()+1<myCookies.size());
-                myCookies[position+cookie.size()]++;
-            }
-#endif
-            query->request.base().set(boost::beast::http::field::cookie, std::move(myCookies));
-        }
+        query->cookies=cookies;
 
         query=SteamBot::HTTPClient::perform(std::move(query));
 
@@ -313,11 +322,28 @@ std::shared_ptr<const Response> SteamBot::Modules::WebSession::makeQuery(std::sh
 
 /************************************************************************/
 
+std::string WebSessionModule::getSessionId(const boost::urls::url_view_base& url) const
+{
+    return cookies->get(url, "sessionid");
+}
+
+/************************************************************************/
+
 std::string SteamBot::Modules::WebSession::getSessionId()
 {
     const auto steamId=SteamBot::Client::getClient().whiteboard.get<SteamBot::Modules::Login::Whiteboard::SteamID>();
     const std::string steamIdString=std::to_string(steamId.getValue());
     return SteamBot::Base64::encode(std::span<const std::byte>((const std::byte*)steamIdString.data(), steamIdString.size()));
+}
+
+/************************************************************************/
+/*
+ * Only call this from other modules
+ */
+
+std::string SteamBot::Modules::WebSession::getSessionId(const boost::urls::url_view_base& url)
+{
+    return SteamBot::Client::getClient().getModule<WebSessionModule>()->getSessionId(url);
 }
 
 /************************************************************************/

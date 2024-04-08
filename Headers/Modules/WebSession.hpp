@@ -74,7 +74,9 @@ namespace SteamBot
 
             std::shared_ptr<const Messageboard::Response> makeQuery(std::shared_ptr<Messageboard::Request>);
 
+            // Note: these are entirely different things...
             std::string getSessionId();
+            std::string getSessionId(const boost::urls::url_view_base&);
         }
     }
 }
