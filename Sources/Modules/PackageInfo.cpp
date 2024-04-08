@@ -110,6 +110,64 @@ static std::string* getTextSpan(HTMLParser::Tree::Element& element)
 
 /************************************************************************/
 /*
+ * In many cases, we need to get the package name from the
+ * purchase receipt. We get the URL from the support page.
+ */
+
+namespace
+{
+    class ReceiptPageParser : public HTMLParser::Parser
+    {
+    public:
+        class Result
+        {
+        public:
+            std::string packageName;
+        };
+
+    private:
+        Result& result;
+
+    public:
+        ReceiptPageParser(std::string_view html, Result& result_)
+            : HTMLParser::Parser(html), result(result_)
+        {
+        }
+
+        virtual ~ReceiptPageParser() =default;
+
+    private:
+        // <span class="purchase_detail_field">RPG Maker XP Limited Free Promotional Package - Feb 2024</span>
+        bool handleName(HTMLParser::Tree::Element& element)
+        {
+            if (element.name=="span" && SteamBot::HTML::checkClass(element, "purchase_detail_field"))
+            {
+                std::cout << "foo 1" << std::endl;
+                if (element.children.size()==1)
+                {
+                    std::cout << "foo 2" << std::endl;
+                    if (auto text=dynamic_cast<HTMLParser::Tree::Text*>(element.children.front().get()))
+                    {
+                        std::cout << "foo 3" << std::endl;
+                        assert(result.packageName.empty());
+                        result.packageName=std::move(text->text);
+                    }
+                }
+                return true;
+            }
+            return false;
+        }
+
+    public:
+        virtual void endElement(HTMLParser::Tree::Element& element) override
+        {
+            handleName(element);
+        }
+    };
+}
+
+/************************************************************************/
+/*
  * The support page I'm interested in is
  *    https://help.steampowered.com/en/wizard/HelpWithGameIssue/?appid=<APP-ID>&issueid=123
  * which is basically the page to request game removal. Don't worry, it require more
@@ -137,6 +195,9 @@ namespace
         class Result
         {
         public:
+            boost::urls::url url;
+
+        public:
             unsigned int currentYear=0;
             std::unordered_map<SteamBot::PackageID, std::string> packages;
             std::vector<SteamBot::PackageID> packageIds;
@@ -148,6 +209,7 @@ namespace
 
         public:
             void handlePackageNames();
+            void getReceipts();
             bool validate() const;
         };
 
@@ -336,6 +398,7 @@ static SupportPageParser::Result getMainSupportPage(SteamBot::AppID appId)
         };
 
         std::cout << request->queryMaker()->url << std::endl;
+        result.url=request->queryMaker()->url;
 
         response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
         if (response->query->response.result()!=boost::beast::http::status::ok)
@@ -366,7 +429,6 @@ static SupportPageParser::Result getMainSupportPage(SteamBot::AppID appId)
         BOOST_LOG_TRIVIAL(error) << "PackageInfo: could not find package information on main support page";
     }
 
-    assert(result.validate());
     return result;
 }
 
@@ -547,7 +609,124 @@ void SupportPageParser::Result::handlePackageNames()
         {
             packageIds.clear();
         }
-        assert(validate());
+    }
+}
+
+/************************************************************************/
+/*
+ * Not actually the receipt page, but it seems to work anyway.
+ * See transformReceiptLink() below.
+ */
+
+static ReceiptPageParser::Result getReceipt(const boost::urls::url_view_base& url)
+{
+    ReceiptPageParser::Result result;
+
+    auto request=std::make_shared<SteamBot::Modules::WebSession::Messageboard::Request>();
+    request->queryMaker=[&url]() {
+        auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, url);
+        return query;
+    };
+
+    std::cout << request->queryMaker()->url << std::endl;
+
+    auto response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
+    if (response->query->response.result()!=boost::beast::http::status::ok)
+    {
+        throw ErrorException();
+    }
+
+    auto string=SteamBot::HTTPClient::parseString(*(response->query));
+    BOOST_LOG_TRIVIAL(info) << "Kargor: " << string;
+
+    try
+    {
+        ReceiptPageParser(string, result).parse();
+    }
+    catch(...)
+    {
+    }
+
+    return result;
+}
+
+/************************************************************************/
+/*
+ * For some reason, I couldn't figure out how to load the actual
+ * receipt page (i.e. the one that "view receipt" points to) --
+ * no matter what, I always end up at a generic support page.
+ *
+ * However, I can "ask" a more specific question to get to another
+ * page which also has the package name... and it loads just fine.
+ * Funny enough, it even works with the receipt page parser that
+ * I made initially...
+ */
+
+static bool transformReceiptLink(const std::string& href, boost::urls::url& url)
+{
+    const boost::urls::url_view hrefUrl(href);
+    auto transactionId=hrefUrl.params().find("transid");
+    if (transactionId!=hrefUrl.params().end())
+    {
+        static const boost::urls::url_view newUrl{"https://help.steampowered.com/en/wizard/HelpWithPurchaseIssue/?issueid=213"};
+        url=newUrl;
+        url.params().set((*transactionId).key, (*transactionId).value);
+        return true;
+    }
+    return false;
+}
+
+/************************************************************************/
+/*
+ * This is meant to handle lineItemRows of the kind
+ *    <span>Purchased on Steam&nbsp;-&nbsp;<a href="...">view receipt</a></span>
+ */
+
+void SupportPageParser::Result::getReceipts()
+{
+    if (packages.empty())
+    {
+        assert(packageIds.size()==1 && lineItemRows.size()==1);
+        assert(lineItemRows.front().text->name=="span");
+
+        if (lineItemRows.front().text->children.size()==2)
+        {
+            if (auto text=dynamic_cast<HTMLParser::Tree::Text*>(lineItemRows.front().text->children[0].get()))
+            {
+                static const std::string_view prefix("Purchased on Steam" NBSP "-" NBSP);
+                if (text->text==prefix)
+                {
+                    if (auto element=dynamic_cast<HTMLParser::Tree::Element*>(lineItemRows.front().text->children[1].get()))
+                    {
+                        if (element->name=="a" && element->children.size()==1)
+                        {
+                            if (auto viewText=dynamic_cast<HTMLParser::Tree::Text*>(element->children.front().get()))
+                            {
+                                static const std::string_view viewReceipt("view receipt");
+                                if (viewText->text==viewReceipt)
+                                {
+                                    if (auto href=element->getAttribute("href"))
+                                    {
+                                        boost::urls::url myUrl;
+                                        if (transformReceiptLink(*href, myUrl))
+                                        {
+                                            const boost::urls::url_view receiptUrl(*href);
+                                            auto result=getReceipt(myUrl);
+                                            if (!result.packageName.empty())
+                                            {
+                                                bool success=packages.emplace(packageIds.front(), std::move(result.packageName)).second;
+                                                assert(success);
+                                                packageIds.clear();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -559,7 +738,13 @@ void SupportPageParser::Result::handlePackageNames()
 void PackageInfoModule::updateLicenseInfo(const SteamBot::AppID appId)
 {
     auto result=getMainSupportPage(appId);
+    assert(result.validate());
+
     result.handlePackageNames();
+    assert(result.validate());
+
+    result.getReceipts();
+    assert(result.validate());
 
     if (!result.packages.empty())
     {
