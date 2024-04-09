@@ -601,7 +601,8 @@ bool SupportPageParser::Result::validate() const
 /************************************************************************/
 /*
  * We are trying to resolve lineItemRows[0]. Check whether this is the
- *    <span>Added to your Steam library as part of: <package name></span>
+ *    <span>Added to your Steam library as part of: <package name></span> or
+ *    <span>Activated as part of: <package name></span> or
  * kind, and process it if so.
  */
 
@@ -611,14 +612,29 @@ bool SupportPageParser::Result::handleActivation()
     {
         if (auto text=dynamic_cast<HTMLParser::Tree::Text*>(lineItemRows.front().text->children.front().get()))
         {
-            static const std::string_view prefix("Added to your Steam library as part of: ");
-            if (text->text.starts_with(prefix))
+            static const std::string_view prefixes[]={
+                "Added to your Steam library as part of:",
+                "Activated as part of:"
+            };
+
+            for (const auto& prefix: prefixes)
             {
-                std::string_view packageName(text->text);
-                packageName.remove_prefix(prefix.size());
-                auto success=packages.emplace(packageIds.front(), packageName).second;
-                assert(success);
-                return true;
+                if (text->text.starts_with(prefix))
+                {
+                    std::string_view packageName(text->text);
+                    packageName.remove_prefix(prefix.size());
+                    if (packageName.starts_with(" "))
+                    {
+                        packageName.remove_prefix(1);
+                    }
+                    else if (packageName.starts_with(NBSP))
+                    {
+                        packageName.remove_prefix(strlen(NBSP));
+                    }
+                    auto success=packages.emplace(packageIds.front(), packageName).second;
+                    assert(success);
+                    return true;
+                }
             }
         }
     }
