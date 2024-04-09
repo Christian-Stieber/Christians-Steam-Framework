@@ -29,6 +29,7 @@
 #include "Modules/PackageInfo.hpp"
 #include "Modules/WebSession.hpp"
 #include "HTMLParser/Parser.hpp"
+#include "UI/UI.hpp"
 
 /************************************************************************/
 
@@ -832,6 +833,7 @@ void PackageInfoModule::updateLicenseInfo(const SteamBot::AppID appId)
         for (auto& item: result.packages)
         {
             BOOST_LOG_TRIVIAL(info) << "package-id " << SteamBot::toInteger(item.first) << " has name \"" << item.second << "\"";
+            SteamBot::UI::OutputText() << "package-id " << SteamBot::toInteger(item.first) << " has name \"" << item.second << "\"";
             PackageInfo::get().set(item.first, std::make_shared<PackageInfo::Info>(std::move(item.second), timestamp));
         }
     }
@@ -841,6 +843,7 @@ void PackageInfoModule::updateLicenseInfo(const SteamBot::AppID appId)
             << "unable to find name for package-id "
             << SteamBot::toInteger(result.packageIds.front()) << ": "
             << SteamBot::HTML::getCleanText(*(result.lineItemRows.front().text));
+        SteamBot::UI::OutputText() << "unable to find name for package-id " << SteamBot::toInteger(result.packageIds.front());
     }
 }
 
