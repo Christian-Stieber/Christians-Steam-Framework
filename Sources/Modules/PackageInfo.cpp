@@ -45,6 +45,11 @@ class ErrorException { };
 
 /************************************************************************/
 
+static const char packageNameKey[]="name";
+static const char packageUpdatedKey[]="when";
+
+/************************************************************************/
+
 namespace
 {
     class PackageInfo
@@ -66,6 +71,24 @@ namespace
             }
 
             ~Info() =default;
+
+        public:
+            Info(const boost::json::value& json)
+            {
+                auto& object=json.as_object();
+                packageName=object.at(packageNameKey).as_string();
+
+                time_t when=object.at(packageUpdatedKey).to_number<time_t>();
+                updated=std::chrono::system_clock::from_time_t(when);
+            }
+
+            boost::json::value toJson() const
+            {
+                boost::json::object json;
+                json[packageNameKey]=packageName;
+                json[packageUpdatedKey]=std::chrono::system_clock::to_time_t(updated);
+                return json;
+            }
         };
 
     private:
@@ -74,7 +97,28 @@ namespace
         bool changed=false;
 
     private:
-        PackageInfo() =default;
+        SteamBot::DataFile& file{SteamBot::DataFile::get("PackageNames", SteamBot::DataFile::FileType::Steam)};
+        std::chrono::steady_clock::time_point lastSave;
+
+    private:
+        PackageInfo()
+        {
+            file.examine([this](const boost::json::value& json) {
+                for (const auto& item : json.as_object())
+                {
+                    SteamBot::PackageID packageId;
+                    if (SteamBot::parseNumber(item.key(),packageId))
+                    {
+                        auto info=std::make_shared<Info>(item.value());
+                        bool success=infos.emplace(packageId, std::move(info)).second;
+                        assert(success);
+                    }
+                }
+            });
+            lastSave=decltype(lastSave)::clock::now();
+            BOOST_LOG_TRIVIAL(debug) << "loaded package names from file: " << toJson_noMutex();
+        }
+
         ~PackageInfo() =default;
 
     public:
@@ -97,6 +141,48 @@ namespace
             std::lock_guard<decltype(mutex)> lock(mutex);
             infos[packageId]=std::move(info);
             changed=true;
+        }
+
+    public:
+        boost::json::value toJson_noMutex() const
+        {
+            boost::json::object json;
+            for (const auto& item: infos)
+            {
+                char buffer[64];
+                auto result=std::to_chars(buffer, buffer+sizeof(buffer)-1, SteamBot::toInteger(item.first));
+                if (result.ec==std::errc())
+                {
+                    auto length=result.ptr-buffer;
+                    assert(length>0);
+                    std::string_view key(buffer, static_cast<size_t>(length));
+                    bool success=json.insert(boost::json::key_value_pair(key, item.second->toJson())).second;
+                    assert(success);
+                }
+                else
+                {
+                    assert(false);
+                }
+            }
+            return json;
+        }
+
+    public:
+        void save(bool force=false)
+        {
+            std::lock_guard<decltype(mutex)> lock(mutex);
+            if (changed)
+            {
+                if (force || decltype(lastSave)::clock::now()-lastSave>=std::chrono::seconds(60))
+                {
+                    file.update([this](boost::json::value& fileData) {
+                        fileData=toJson_noMutex();
+                        return true;
+                    });
+                    lastSave=decltype(lastSave)::clock::now();
+                    changed=false;
+                }
+            }
         }
 
     public:
@@ -871,8 +957,10 @@ void PackageInfoModule::handle(std::shared_ptr<const NewLicenses> newLicenses)
                     updateLicenseInfo(appId);
                 }
             }
+            PackageInfo::get().save(false);
         }
     }
+    PackageInfo::get().save(true);
 }
 
 /************************************************************************/
