@@ -20,6 +20,7 @@
 /************************************************************************/
 
 #include "Client/Module.hpp"
+#include "Client/Mutex.hpp"
 #include "Helpers/URLs.hpp"
 #include "Helpers/HTML.hpp"
 #include "Helpers/Time.hpp"
@@ -28,8 +29,6 @@
 #include "Modules/PackageInfo.hpp"
 #include "Modules/WebSession.hpp"
 #include "HTMLParser/Parser.hpp"
-
-#include <iostream>
 
 /************************************************************************/
 
@@ -47,8 +46,79 @@ class ErrorException { };
 
 namespace
 {
+    class PackageInfo
+    {
+    public:
+        class Info
+        {
+        public:
+            typedef std::shared_ptr<const Info> Ptr;
+
+        public:
+            std::string packageName;
+            std::chrono::system_clock::time_point updated;
+
+        public:
+            Info(decltype(packageName) packageName_, decltype(updated) updated_)
+                : packageName(std::move(packageName_)), updated(std::move(updated_))
+            {
+            }
+
+            ~Info() =default;
+        };
+
+    private:
+        boost::fibers::mutex mutex;
+        std::unordered_map<SteamBot::PackageID, Info::Ptr> infos;
+        bool changed=false;
+
+    private:
+        PackageInfo() =default;
+        ~PackageInfo() =default;
+
+    public:
+        Info::Ptr get(SteamBot::PackageID packageId)
+        {
+            Info::Ptr result;
+            {
+                std::lock_guard<decltype(mutex)> lock(mutex);
+                auto iterator=infos.find(packageId);
+                if (iterator!=infos.end())
+                {
+                    result=iterator->second;
+                }
+            }
+            return result;
+        }
+
+        void set(SteamBot::PackageID packageId, Info::Ptr info)
+        {
+            std::lock_guard<decltype(mutex)> lock(mutex);
+            infos[packageId]=std::move(info);
+            changed=true;
+        }
+
+    public:
+        static PackageInfo& get()
+        {
+            static PackageInfo packageInfo;
+            return packageInfo;
+        }
+    };
+}
+
+/************************************************************************/
+
+namespace
+{
     class PackageInfoModule : public SteamBot::Client::Module
     {
+    private:
+        // We use this to only let one fiber request a package name,
+        // to avoid multiple clients requesting the same package
+        // at the same time. So, this is a rather "large" mutex.
+        static inline SteamBot::Mutex mutex;
+
     private:
         SteamBot::Messageboard::WaiterType<NewLicenses> newLicensesWaiter;
 
@@ -142,13 +212,10 @@ namespace
         {
             if (element.name=="span" && SteamBot::HTML::checkClass(element, "purchase_detail_field"))
             {
-                std::cout << "foo 1" << std::endl;
                 if (element.children.size()==1)
                 {
-                    std::cout << "foo 2" << std::endl;
                     if (auto text=dynamic_cast<HTMLParser::Tree::Text*>(element.children.front().get()))
                     {
-                        std::cout << "foo 3" << std::endl;
                         assert(result.packageName.empty());
                         result.packageName=std::move(text->text);
                     }
@@ -397,7 +464,6 @@ static SupportPageParser::Result getMainSupportPage(SteamBot::AppID appId)
             return query;
         };
 
-        std::cout << request->queryMaker()->url << std::endl;
         result.url=request->queryMaker()->url;
 
         response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
@@ -628,8 +694,6 @@ static ReceiptPageParser::Result getReceipt(const boost::urls::url_view_base& ur
         return query;
     };
 
-    std::cout << request->queryMaker()->url << std::endl;
-
     auto response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
     if (response->query->response.result()!=boost::beast::http::status::ok)
     {
@@ -637,7 +701,6 @@ static ReceiptPageParser::Result getReceipt(const boost::urls::url_view_base& ur
     }
 
     auto string=SteamBot::HTTPClient::parseString(*(response->query));
-    BOOST_LOG_TRIVIAL(info) << "Kargor: " << string;
 
     try
     {
@@ -737,6 +800,8 @@ void SupportPageParser::Result::getReceipts()
 
 void PackageInfoModule::updateLicenseInfo(const SteamBot::AppID appId)
 {
+    auto timestamp=std::chrono::system_clock::now();
+
     auto result=getMainSupportPage(appId);
     assert(result.validate());
 
@@ -748,14 +813,18 @@ void PackageInfoModule::updateLicenseInfo(const SteamBot::AppID appId)
 
     if (!result.packages.empty())
     {
-        for (const auto& item: result.packages)
+        for (auto& item: result.packages)
         {
-            std::cout << SteamBot::toInteger(item.first) << ": " << item.second << std::endl;
+            BOOST_LOG_TRIVIAL(info) << "package-id " << SteamBot::toInteger(item.first) << " has name \"" << item.second << "\"";
+            PackageInfo::get().set(item.first, std::make_shared<PackageInfo::Info>(std::move(item.second), timestamp));
         }
     }
     else
     {
-        std::cout << "unprocessed " << SteamBot::toInteger(result.packageIds.front()) << ": " << SteamBot::HTML::getCleanText(*(result.lineItemRows.front().text)) << std::endl;
+        BOOST_LOG_TRIVIAL(info)
+            << "unable to find name for package-id "
+            << SteamBot::toInteger(result.packageIds.front()) << ": "
+            << SteamBot::HTML::getCleanText(*(result.lineItemRows.front().text));
     }
 }
 
@@ -765,13 +834,23 @@ void PackageInfoModule::handle(std::shared_ptr<const NewLicenses> newLicenses)
 {
     for (const auto packageId : newLicenses->licenses)
     {
-        typedef SteamBot::Modules::LicenseList::Whiteboard::LicenseIdentifier LicenseIdentifier;
-        auto packageInfo=SteamBot::Modules::PackageData::getPackageInfo(LicenseIdentifier(packageId));
-        if (packageInfo!=nullptr)
+        auto cancellation=SteamBot::Client::getClient().cancel.registerObject(mutex);
+
+        std::lock_guard<decltype(mutex)> lock(mutex);
+        if (auto info=PackageInfo::get().get(packageId))
         {
-            for (const auto appId: packageInfo->appIds)
+            BOOST_LOG_TRIVIAL(info) << "package-id " << SteamBot::toInteger(packageId) << " already has known name \"" << info->packageName << "\"";
+        }
+        else
+        {
+            typedef SteamBot::Modules::LicenseList::Whiteboard::LicenseIdentifier LicenseIdentifier;
+            auto packageInfo=SteamBot::Modules::PackageData::getPackageInfo(LicenseIdentifier(packageId));
+            if (packageInfo!=nullptr)
             {
-                updateLicenseInfo(appId);
+                for (const auto appId: packageInfo->appIds)
+                {
+                    updateLicenseInfo(appId);
+                }
             }
         }
     }
