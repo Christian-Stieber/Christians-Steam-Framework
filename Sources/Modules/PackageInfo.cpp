@@ -392,6 +392,13 @@ namespace
             std::vector<LineItemRow> lineItemRows;
 
         private:
+            void eraseLine(size_t index)
+            {
+                lineItemRows.erase(lineItemRows.begin()+static_cast<decltype(lineItemRows)::difference_type>(index));
+                packageIds.erase(packageIds.begin()+static_cast<decltype(packageIds)::difference_type>(index));
+            }
+
+        private:
             bool handleActivation(size_t);
             bool handlePurchase(size_t);
 
@@ -638,10 +645,10 @@ static SupportPageParser::Result getMainSupportPage(SteamBot::AppID appId)
         BOOST_LOG_TRIVIAL(error) << "PackageInfo: could not find package information on main support page";
     }
 
-    assert(result.lineItemRows.size()==result.packageIds.size());
     return result;
 }
 
+#if 0
 /************************************************************************/
 /*
  * The two formats I've seen so far are:
@@ -720,6 +727,7 @@ namespace
         }
     };
 }
+#endif
 
 /************************************************************************/
 /*
@@ -814,23 +822,23 @@ bool SupportPageParser::Result::handlePurchase(size_t index)
 
 void SupportPageParser::Result::handlePackageNames()
 {
-    assert(lineItemRows.size()==packageIds.size());
-
-    size_t index=0;
-    while (index<lineItemRows.size())
+    if (lineItemRows.size()==packageIds.size())
     {
-        assert(lineItemRows.at(index).text->name=="span");
+        size_t index=0;
+        while (index<lineItemRows.size())
+        {
+            assert(lineItemRows.at(index).text->name=="span");
 
-        if (packageIds.at(index)==SteamBot::PackageID::Steam ||
-            handleActivation(index) ||
-            handlePurchase(index))
-        {
-            lineItemRows.erase(lineItemRows.begin()+static_cast<decltype(lineItemRows)::difference_type>(index));
-            packageIds.erase(packageIds.begin()+static_cast<decltype(packageIds)::difference_type>(index));
-        }
-        else
-        {
-            index++;
+            if (packageIds.at(index)==SteamBot::PackageID::Steam ||
+                handleActivation(index) ||
+                handlePurchase(index))
+            {
+                eraseLine(index);
+            }
+            else
+            {
+                index++;
+            }
         }
     }
 }
@@ -904,39 +912,44 @@ static bool transformReceiptLink(const std::string& href, boost::urls::url& url)
 
 void SupportPageParser::Result::getReceipts()
 {
-    if (packages.empty())
+    if (lineItemRows.size()==packageIds.size())
     {
-        assert(packageIds.size()==1 && lineItemRows.size()==1);
-        assert(lineItemRows.front().text->name=="span");
-
-        if (lineItemRows.front().text->children.size()==2)
+        for (size_t index=0; index<lineItemRows.size(); index++)
         {
-            if (auto text=dynamic_cast<HTMLParser::Tree::Text*>(lineItemRows.front().text->children[0].get()))
+            const auto& lineItemRow=lineItemRows.at(index);
+
+            assert(lineItemRow.text->name=="span");
+            if (lineItemRow.text->children.size()==2)
             {
-                static const std::string_view prefix("Purchased on Steam" NBSP "-" NBSP);
-                if (text->text==prefix)
+                if (auto text=dynamic_cast<HTMLParser::Tree::Text*>(lineItemRow.text->children[0].get()))
                 {
-                    if (auto element=dynamic_cast<HTMLParser::Tree::Element*>(lineItemRows.front().text->children[1].get()))
+                    static const std::string_view prefix("Purchased on Steam" NBSP "-" NBSP);
+                    if (text->text==prefix)
                     {
-                        if (element->name=="a" && element->children.size()==1)
+                        if (auto element=dynamic_cast<HTMLParser::Tree::Element*>(lineItemRow.text->children[1].get()))
                         {
-                            if (auto viewText=dynamic_cast<HTMLParser::Tree::Text*>(element->children.front().get()))
+                            if (element->name=="a" && element->children.size()==1)
                             {
-                                static const std::string_view viewReceipt("view receipt");
-                                if (viewText->text==viewReceipt)
+                                if (auto viewText=dynamic_cast<HTMLParser::Tree::Text*>(element->children.front().get()))
                                 {
-                                    if (auto href=element->getAttribute("href"))
+                                    static const std::string_view viewReceipt("view receipt");
+                                    if (viewText->text==viewReceipt)
                                     {
-                                        boost::urls::url myUrl;
-                                        if (transformReceiptLink(*href, myUrl))
+                                        if (auto href=element->getAttribute("href"))
                                         {
-                                            const boost::urls::url_view receiptUrl(*href);
-                                            auto result=getReceipt(myUrl);
-                                            if (!result.packageName.empty())
+                                            boost::urls::url myUrl;
+                                            if (transformReceiptLink(*href, myUrl))
                                             {
-                                                bool success=packages.emplace(packageIds.front(), std::move(result.packageName)).second;
-                                                assert(success);
-                                                packageIds.clear();
+                                                const boost::urls::url_view receiptUrl(*href);
+                                                auto result=getReceipt(myUrl);
+                                                if (!result.packageName.empty())
+                                                {
+                                                    bool success=packages.emplace(packageIds.at(index), std::move(result.packageName)).second;
+                                                    assert(success);
+
+                                                    eraseLine(index);
+                                                    index--;
+                                                }
                                             }
                                         }
                                     }
