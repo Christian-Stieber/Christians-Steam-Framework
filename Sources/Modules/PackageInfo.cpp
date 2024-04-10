@@ -892,16 +892,27 @@ static ReceiptPageParser::Result getReceipt(const boost::urls::url_view_base& ur
 
 static bool transformReceiptLink(const std::string& href, boost::urls::url& url)
 {
-    const boost::urls::url_view hrefUrl(href);
-    auto transactionId=hrefUrl.params().find("transid");
-    if (transactionId!=hrefUrl.params().end())
     {
         static const boost::urls::url_view newUrl{"https://help.steampowered.com/en/wizard/HelpWithPurchaseIssue/?issueid=213"};
         url=newUrl;
-        url.params().set((*transactionId).key, (*transactionId).value);
-        return true;
     }
-    return false;
+
+    const boost::urls::url_view hrefUrl(href);
+    const auto& hrefParams=hrefUrl.params();
+
+    bool success=false;
+    static const std::string_view attributes[]={ "line_item", "transid" };
+    for (const auto& name: attributes)
+    {
+        auto value=hrefParams.find(name);
+        if (value!=hrefParams.end())
+        {
+            url.params().set((*value).key, (*value).value);
+            success=true;
+        }
+    }
+
+    return success;
 }
 
 /************************************************************************/
