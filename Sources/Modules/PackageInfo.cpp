@@ -62,11 +62,10 @@ namespace
 
         public:
             std::string packageName;
-            std::chrono::system_clock::time_point updated;
 
         public:
-            Info(decltype(packageName) packageName_, decltype(updated) updated_)
-                : packageName(std::move(packageName_)), updated(std::move(updated_))
+            Info(decltype(packageName) packageName_)
+                : packageName(std::move(packageName_))
             {
             }
 
@@ -77,16 +76,12 @@ namespace
             {
                 auto& object=json.as_object();
                 packageName=object.at(packageNameKey).as_string();
-
-                time_t when=object.at(packageUpdatedKey).to_number<time_t>();
-                updated=std::chrono::system_clock::from_time_t(when);
             }
 
             boost::json::value toJson() const
             {
                 boost::json::object json;
                 json[packageNameKey]=packageName;
-                json[packageUpdatedKey]=std::chrono::system_clock::to_time_t(updated);
                 return json;
             }
         };
@@ -962,8 +957,6 @@ void SupportPageParser::Result::getReceipts()
 
 void PackageInfoModule::updateLicenseInfo(const SteamBot::AppID appId)
 {
-    auto timestamp=std::chrono::system_clock::now();
-
     auto result=getMainSupportPage(appId);
     result.handlePackageNames();
     result.getReceipts();
@@ -974,7 +967,7 @@ void PackageInfoModule::updateLicenseInfo(const SteamBot::AppID appId)
         {
             BOOST_LOG_TRIVIAL(info) << "app-id " << SteamBot::toInteger(appId) << "; package-id " << SteamBot::toInteger(item.first) << " has name \"" << item.second << "\"";
             SteamBot::UI::OutputText() << "app-id " << SteamBot::toInteger(appId) << "; package-id " << SteamBot::toInteger(item.first) << " has name \"" << item.second << "\"";
-            PackageInfo::get().set(item.first, std::make_shared<PackageInfo::Info>(std::move(item.second), timestamp));
+            PackageInfo::get().set(item.first, std::make_shared<PackageInfo::Info>(std::move(item.second)));
         }
     }
     else
