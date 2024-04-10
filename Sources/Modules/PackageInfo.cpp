@@ -322,6 +322,45 @@ namespace
 
 /************************************************************************/
 /*
+ * Checks whether we are looking at a lineItemRow referencing an inventory gift
+ *
+ *   Purchased as part of: <package name> - view receipt | View in your Steam Inventory
+ *   In your inventory as part of: <package name> - View in your Steam Inventory
+ *
+ * Example case for me:
+ *   https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=35723
+ */
+
+static bool isInventoryLine(const HTMLParser::Tree::Element& span)
+{
+    assert(span.name=="span");
+    if (!span.children.empty())
+    {
+        const auto* inventoryCandidate=dynamic_cast<const HTMLParser::Tree::Element*>(span.children.back().get());
+        if (inventoryCandidate!=nullptr && inventoryCandidate->name=="span")
+        {
+            if (!inventoryCandidate->children.empty())
+            {
+                inventoryCandidate=dynamic_cast<const HTMLParser::Tree::Element*>(inventoryCandidate->children.back().get());
+            }
+        }
+        if (inventoryCandidate!=nullptr && inventoryCandidate->name=="a" && inventoryCandidate->children.size()==1)
+        {
+            if (auto text=dynamic_cast<const HTMLParser::Tree::Text*>(inventoryCandidate->children.front().get()))
+            {
+                if (text->text=="Steam Inventory")
+                {
+                    BOOST_LOG_TRIVIAL(info) << "ignored an inventory line: \"" << SteamBot::HTML::getCleanText(span) << "\"";
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+/************************************************************************/
+/*
  * The support page I'm interested in is
  *    https://help.steampowered.com/en/wizard/HelpWithGameIssue/?appid=<APP-ID>&issueid=123
  * which is basically the page to request game removal. Don't worry, it require more
@@ -427,6 +466,9 @@ namespace
         //    Jan 7 -  Purchased as part of: Immortals Fenyx Rising - Gold Edition - view receipt
         //
         // These are returned a list of date/text HTML elements, for later processing
+        //
+        // Note: I'm now trying to ignore the lines referring to inventory gift copies, as
+        // these mess up the other logic
 
         bool handleLineItemRow(HTMLParser::Tree::Element& element)
         {
@@ -462,7 +504,10 @@ namespace
 
                 if (spans.size()==2)
                 {
-                    result.lineItemRows.emplace_back(std::move(spans[0]), std::move(spans[1]));
+                    if (!isInventoryLine(*(spans[1])))
+                    {
+                        result.lineItemRows.emplace_back(std::move(spans[0]), std::move(spans[1]));
+                    }
                 }
                 return true;
             }
