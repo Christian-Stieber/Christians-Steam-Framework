@@ -358,13 +358,12 @@ namespace
             std::vector<LineItemRow> lineItemRows;
 
         private:
-            bool handleActivation();
-            bool handlePurchase();
+            bool handleActivation(size_t);
+            bool handlePurchase(size_t);
 
         public:
             void handlePackageNames();
             void getReceipts();
-            bool validate() const;
         };
 
     private:
@@ -476,8 +475,15 @@ namespace
         // a parameter of the URL it leads to is the package-id.
         //
         // These are stored in the packages map, package-id -> name.
+        //
+        // Note: for me, the page
+        //    https://help.steampowered.com/en/wizard/HelpWithGameIssue/?appid=1078000&issueid=123
+        // haas a broken button with no text; the button for the RobocraftX package somehow
+        // doesn't get the name. for that reason alone I'm handling multiple
+        // packageIds/lineItemRows (used to be just one): in case I encounter this empty
+        // button, I just treat it as a packageId/lineItemRow case handled later.
 
-        void handlePackageButton(HTMLParser::Tree::Element& element)
+        bool handlePackageButton(HTMLParser::Tree::Element& element)
         {
             if (element.name=="a" &&
                 SteamBot::HTML::checkClass(element, "help_wizard_button") &&
@@ -493,25 +499,35 @@ namespace
                     {
                         if (auto packageId=SteamBot::URLs::getParam<SteamBot::PackageID>(url, "chosenpackage"))
                         {
-                            bool success=false;
+                            // no button text in *my*
+                            //   https://help.steampowered.com/en/wizard/HelpWithGameIssue/?appid=1078000&issueid=123
+                            // It misses the "RobocraftX" package.
                             if (auto text=getTextSpan(element))
                             {
-                                success=result.packages.emplace(packageId.value(), std::move(*text)).second;
+                                bool success=result.packages.emplace(packageId.value(), std::move(*text)).second;
+                                assert(success);
+
+                                // add a dummy into the packageIds
+                                result.packageIds.push_back(SteamBot::PackageID::Steam);
                             }
-                            assert(success);
+                            else
+                            {
+                                // this makes us look at the lineItemRow later, to
+                                // get the name from it or load the receipt page
+                                result.packageIds.push_back(packageId.value());
+                            }
+                            return true;
                         }
                     }
                 }
             }
+            return false;
         }
 
     public:
         virtual void endElement(HTMLParser::Tree::Element& element) override
         {
-            if (!handleLineItemRow(element) && !handleRemovalForm(element))
-            {
-                handlePackageButton(element);
-            }
+            handleLineItemRow(element) || handleRemovalForm(element) || handlePackageButton(element);
         }
     };
 }
@@ -582,6 +598,7 @@ static SupportPageParser::Result getMainSupportPage(SteamBot::AppID appId)
         BOOST_LOG_TRIVIAL(error) << "PackageInfo: could not find package information on main support page";
     }
 
+    assert(result.lineItemRows.size()==result.packageIds.size());
     return result;
 }
 
@@ -666,38 +683,20 @@ namespace
 
 /************************************************************************/
 /*
- * These are some assumptions that I believe to be true, and will
- * rely on when processing the data.
- */
-
-bool SupportPageParser::Result::validate() const
-{
-    if (!packages.empty())
-    {
-        if (!packageIds.empty()) return false;
-        if (packages.size()!=lineItemRows.size()) return false;
-    }
-    else
-    {
-        if (packageIds.size()!=1) return false;
-        if (lineItemRows.size()!=1) return false;
-    }
-    return true;
-}
-
-/************************************************************************/
-/*
  * We are trying to resolve lineItemRows[0]. Check whether this is the
  *    <span>Added to your Steam library as part of: <package name></span> or
  *    <span>Activated as part of: <package name></span> or
  * kind, and process it if so.
+ *
+ * "index" is for the lineItemRows/packageIds.
  */
 
-bool SupportPageParser::Result::handleActivation()
+bool SupportPageParser::Result::handleActivation(size_t index)
 {
-    if (lineItemRows.front().text->children.size()==1)
+    const auto& lineItemRow=lineItemRows.at(index);
+    if (lineItemRow.text->children.size()==1)
     {
-        if (auto text=dynamic_cast<HTMLParser::Tree::Text*>(lineItemRows.front().text->children.front().get()))
+        if (auto text=dynamic_cast<HTMLParser::Tree::Text*>(lineItemRow.text->children.front().get()))
         {
             static const std::string_view prefixes[]={
                 "Added to your Steam library as part of:",
@@ -718,7 +717,7 @@ bool SupportPageParser::Result::handleActivation()
                     {
                         packageName.remove_prefix(strlen(NBSP));
                     }
-                    auto success=packages.emplace(packageIds.front(), packageName).second;
+                    auto success=packages.emplace(packageIds.at(index), packageName).second;
                     assert(success);
                     return true;
                 }
@@ -733,24 +732,27 @@ bool SupportPageParser::Result::handleActivation()
  * We are trying to resolve lineItemRows[0]. Check whether this is the
  *   <span>Purchased as part of:&nbsp;<a href="...">Red Orchestra 2 - Free Day</a>&nbsp;-&nbsp;<a href="...">view receipt</a></span>
  * kind, and process it if so.
- */
+ *
+ * "index" is for the lineItemRows/packageIds.
+*/
 
-bool SupportPageParser::Result::handlePurchase()
+bool SupportPageParser::Result::handlePurchase(size_t index)
 {
-    if (lineItemRows.front().text->children.size()==4)
+    const auto& lineItemRow=lineItemRows.at(index);
+    if (lineItemRow.text->children.size()==4)
     {
-        if (auto text=dynamic_cast<HTMLParser::Tree::Text*>(lineItemRows.front().text->children[0].get()))
+        if (auto text=dynamic_cast<HTMLParser::Tree::Text*>(lineItemRow.text->children[0].get()))
         {
             static const std::string_view prefix("Purchased as part of:" NBSP);
             if (text->text==prefix)
             {
-                if (auto element=dynamic_cast<HTMLParser::Tree::Element*>(lineItemRows.front().text->children[1].get()))
+                if (auto element=dynamic_cast<HTMLParser::Tree::Element*>(lineItemRow.text->children[1].get()))
                 {
                     if (element->name=="a" && element->children.size()==1)
                     {
                         if (auto packageName=dynamic_cast<HTMLParser::Tree::Text*>(element->children.front().get()))
                         {
-                            auto success=packages.emplace(packageIds.front(), std::move(packageName->text)).second;
+                            auto success=packages.emplace(packageIds.at(index), std::move(packageName->text)).second;
                             assert(success);
                             return true;
                         }
@@ -766,17 +768,29 @@ bool SupportPageParser::Result::handlePurchase()
 /*
  * This should handle the cases where the support page already tells
  * us "Actived/Purchased as part of: <package name>"
+ *
+ * Erases the successfully processed lineItemRow/packageId from the data.
  */
 
 void SupportPageParser::Result::handlePackageNames()
 {
-    if (packages.empty())
+    assert(lineItemRows.size()==packageIds.size());
+
+    size_t index=0;
+    while (index<lineItemRows.size())
     {
-        assert(packageIds.size()==1 && lineItemRows.size()==1);
-        assert(lineItemRows.front().text->name=="span");
-        if (handleActivation() || handlePurchase())
+        assert(lineItemRows.at(index).text->name=="span");
+
+        if (packageIds.at(index)==SteamBot::PackageID::Steam ||
+            handleActivation(index) ||
+            handlePurchase(index))
         {
-            packageIds.clear();
+            lineItemRows.erase(lineItemRows.begin()+static_cast<decltype(lineItemRows)::difference_type>(index));
+            packageIds.erase(packageIds.begin()+static_cast<decltype(packageIds)::difference_type>(index));
+        }
+        else
+        {
+            index++;
         }
     }
 }
@@ -906,13 +920,8 @@ void PackageInfoModule::updateLicenseInfo(const SteamBot::AppID appId)
     auto timestamp=std::chrono::system_clock::now();
 
     auto result=getMainSupportPage(appId);
-    assert(result.validate());
-
     result.handlePackageNames();
-    assert(result.validate());
-
     result.getReceipts();
-    assert(result.validate());
 
     if (!result.packages.empty())
     {
