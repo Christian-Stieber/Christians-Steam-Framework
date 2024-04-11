@@ -153,3 +153,13 @@ namespace Steam
         };
     }
 }
+
+/************************************************************************/
+
+namespace Steam
+{
+    namespace KeyValue
+    {
+        std::unique_ptr<Node> deserialize(std::string_view, std::string&);
+    }
+}

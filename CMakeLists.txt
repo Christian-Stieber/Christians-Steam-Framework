@@ -71,7 +71,7 @@ list(APPEND SRCS Asio/Asio Asio/Signals Asio/HTTPClient Asio/Fiber Asio/Connecti
 list(APPEND SRCS Client/Client Client/Waiter Client/Whiteboard Client/Messageboard Client/Execute Client/Module Client/Sleep Client/ClientInfo)
 list(APPEND SRCS Connection/Endpoint Connection/Serialize Connection/Base Connection/TCP Connection/Message Connection/Encrypted)
 list(APPEND SRCS OpenSSL/Exception OpenSSL/SHA1 OpenSSL/RSA OpenSSL/AESBase OpenSSL/AES OpenSSL/AESHMAC OpenSSL/Random)
-list(APPEND SRCS Steam/OSType Steam/KeyValue Steam/KeyValue_Serialize Steam/KeyValue_Deserialize)
+list(APPEND SRCS Steam/OSType Steam/KeyValue Steam/KeyValue_Serialize Steam/KeyValue_Deserialize Steam/KeyValue_Deserialize_Text)
 list(APPEND SRCS Steam/MachineInfo Steam/MachineInfo/Linux)
 list(APPEND SRCS Web/URLEncode)
 list(APPEND SRCS Web/Cookies)
