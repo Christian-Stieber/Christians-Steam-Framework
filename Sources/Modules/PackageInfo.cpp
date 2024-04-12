@@ -24,12 +24,14 @@
 #include "Helpers/URLs.hpp"
 #include "Helpers/HTML.hpp"
 #include "Helpers/Time.hpp"
+#include "Helpers/StringCompare.hpp"
 #include "Modules/LicenseList.hpp"
 #include "Modules/PackageData.hpp"
 #include "Modules/PackageInfo.hpp"
 #include "Modules/WebSession.hpp"
 #include "HTMLParser/Parser.hpp"
 #include "UI/UI.hpp"
+#include "AppInfo.hpp"
 
 /************************************************************************/
 
@@ -981,27 +983,42 @@ void SupportPageParser::Result::getReceipts()
 
 void PackageInfoModule::updateLicenseInfo(const SteamBot::AppID appId)
 {
-    auto result=getMainSupportPage(appId);
-    result.handlePackageNames();
-    result.getReceipts();
-
-    if (!result.packages.empty())
+    auto appTypeValue=SteamBot::AppInfo::get(appId, "common", "type");
+    if (appTypeValue)
     {
-        for (auto& item: result.packages)
+        if (auto appTypeString=appTypeValue.value().if_string())
         {
-            BOOST_LOG_TRIVIAL(info) << "app-id " << SteamBot::toInteger(appId) << "; package-id " << SteamBot::toInteger(item.first) << " has name \"" << item.second << "\"";
-            SteamBot::UI::OutputText() << "app-id " << SteamBot::toInteger(appId) << "; package-id " << SteamBot::toInteger(item.first) << " has name \"" << item.second << "\"";
-            PackageInfo::get().set(item.first, std::make_shared<PackageInfo::Info>(std::move(item.second)));
+            if (SteamBot::caseInsensitiveStringCompare_equal(*appTypeString, "game") ||
+                SteamBot::caseInsensitiveStringCompare_equal(*appTypeString, "dlc"))
+            {
+                auto result=getMainSupportPage(appId);
+                result.handlePackageNames();
+                result.getReceipts();
+
+                if (!result.packages.empty())
+                {
+                    for (auto& item: result.packages)
+                    {
+                        BOOST_LOG_TRIVIAL(info) << "app-id " << SteamBot::toInteger(appId) << "; package-id " << SteamBot::toInteger(item.first) << " has name \"" << item.second << "\"";
+                        SteamBot::UI::OutputText() << "app-id " << SteamBot::toInteger(appId) << "; package-id " << SteamBot::toInteger(item.first) << " has name \"" << item.second << "\"";
+                        PackageInfo::get().set(item.first, std::make_shared<PackageInfo::Info>(std::move(item.second)));
+                    }
+                }
+                else
+                {
+                    BOOST_LOG_TRIVIAL(info)
+                        << "app-id" << SteamBot::toInteger(appId)
+                        << ": unable to find name for package-id "
+                        << SteamBot::toInteger(result.packageIds.front()) << ": "
+                        << SteamBot::HTML::getCleanText(*(result.lineItemRows.front().text));
+                    SteamBot::UI::OutputText() << "app-id " << SteamBot::toInteger(appId) << ": unable to find name for package-id " << SteamBot::toInteger(result.packageIds.front());
+                }
+            }
+            else
+            {
+                BOOST_LOG_TRIVIAL(info) << "app-id " << SteamBot::toInteger(appId) << " has unsupported type " << *appTypeString;
+            }
         }
-    }
-    else
-    {
-        BOOST_LOG_TRIVIAL(info)
-            << "app-id" << SteamBot::toInteger(appId)
-            << ": unable to find name for package-id "
-            << SteamBot::toInteger(result.packageIds.front()) << ": "
-            << SteamBot::HTML::getCleanText(*(result.lineItemRows.front().text));
-        SteamBot::UI::OutputText() << "app-id " << SteamBot::toInteger(appId) << ": unable to find name for package-id " << SteamBot::toInteger(result.packageIds.front());
     }
 }
 
