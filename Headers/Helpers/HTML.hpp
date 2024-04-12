@@ -102,7 +102,7 @@ namespace SteamBot
 
             if (auto string=element.getAttribute(name))
             {
-                T value;
+                T value{};
                 if (SteamBot::parseNumber(*string, value))
                 {
                     result=value;

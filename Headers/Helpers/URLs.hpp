@@ -80,7 +80,7 @@ namespace SteamBot
             auto iterator=params.find_last(name);
             if (iterator!=params.end())
             {
-                T value;
+                T value{};
                 if (SteamBot::parseNumber((*iterator).value, value))
                 {
                     result=value;
