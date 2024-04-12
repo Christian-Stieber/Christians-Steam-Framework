@@ -24,7 +24,6 @@
 
 #include "Steam/ProtoBuf/steammessages_clientserver_appinfo.hpp"
 
-#include <charconv>
 #include <cassert>
 
 /************************************************************************/
@@ -60,26 +59,10 @@ namespace
             return true;
         }
 
-    private:
-        static std::string makeString(SteamBot::AppID appId)
-        {
-            std::string string;
-            {
-                char appIdString[64];
-                auto result=std::to_chars(appIdString, appIdString+sizeof(appIdString)-1, SteamBot::toInteger(appId));
-                assert(result.ec== std::errc());
-                if (result.ec==std::errc())
-                {
-                    string.assign(appIdString, result.ptr);
-                }
-            }
-            return string;
-        }
-
     public:
         const boost::json::value* get_noMutex(SteamBot::AppID appId)
         {
-            const auto appIdKey=makeString(appId);
+            const std::string appIdKey=SteamBot::toString(SteamBot::toInteger(appId));
 
             {
                 auto iterator=updates.find(appIdKey);
@@ -102,7 +85,7 @@ namespace
     public:
         void update_noMutex(SteamBot::AppID appId, boost::json::value json)
         {
-            auto appIdKey=makeString(appId);
+            const std::string appIdKey=SteamBot::toString(SteamBot::toInteger(appId));
 
             {
                 auto iterator=updates.find(appIdKey);
