@@ -24,6 +24,7 @@
 #include "UI/UI.hpp"
 #include "Helpers/Time.hpp"
 #include "SafeCast.hpp"
+#include "AppInfo.hpp"
 
 #include "steamdatabase/protobufs/steam/steammessages_player.steamclient.pb.h"
 
@@ -118,6 +119,7 @@ void OwnedGamesModule::getOwnedGames()
             request.set_steamid(steamId->getValue());
         }
         request.set_include_appinfo(true);
+        request.set_include_extended_appinfo(true);
         request.set_include_played_free_games(true);
         request.set_skip_unvetted_apps(false);
         response=SteamBot::Modules::UnifiedMessageClient::execute<GetOwnedGamesInfo::ResultType>("Player.GetOwnedGames#1", std::move(request));
@@ -147,6 +149,8 @@ void OwnedGamesModule::getOwnedGames()
             assert(success);
         }
     }
+
+    SteamBot::AppInfo::update(*ownedGames);
 
     BOOST_LOG_TRIVIAL(info) << "owned games: " << *ownedGames;
     SteamBot::UI::OutputText() << "account owns " << ownedGames->games.size() << " games";
