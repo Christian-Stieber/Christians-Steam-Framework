@@ -101,7 +101,7 @@ namespace
     public:
         static AppInfoFile& get()
         {
-            AppInfoFile& file=*new AppInfoFile();
+            static AppInfoFile& file=*new AppInfoFile();
             return file;
         }
     };
@@ -136,8 +136,8 @@ void SteamBot::AppInfo::update(const SteamBot::Modules::OwnedGames::Whiteboard::
 
     if (request)
     {
-        if (auto response=SteamBot::sendAndWait<Steam::CMsgClientPICSProductInfoResponseMessageType>(std::move(request)))
-        {
+        typedef Steam::CMsgClientPICSProductInfoResponseMessageType ResponseType;
+        SteamBot::sendAndWait<ResponseType>(std::move(request),[&appInfoFile](std::shared_ptr<const ResponseType> response) -> bool {
             for (int i=0; i<response->content.apps_size(); i++)
             {
                 auto& app=response->content.apps(i);
@@ -167,8 +167,46 @@ void SteamBot::AppInfo::update(const SteamBot::Modules::OwnedGames::Whiteboard::
                     }
                 }
             }
-        }
+            return !(response->content.has_response_pending() && response->content.response_pending());
+        });
     }
 
     appInfoFile.save_noMutex(true);
+}
+
+/************************************************************************/
+
+bool SteamBot::AppInfo::examine(std::function<bool(const boost::json::value&)> callback)
+{
+    auto& appInfoFile=AppInfoFile::get();
+    std::lock_guard<decltype(appInfoFile.mutex)> lock(appInfoFile.mutex);
+
+    assert(appInfoFile.file!=nullptr);
+    return appInfoFile.file->examine([&callback](const boost::json::value& json) {
+        return callback(json);
+    });
+}
+
+/************************************************************************/
+
+std::optional<boost::json::value> SteamBot::AppInfo::get(std::span<const std::string_view> names)
+{
+    std::optional<boost::json::value> result;
+    examine([&names,&result](const boost::json::value& json) {
+        const boost::json::value* item=&json;
+        for (const auto& name: names)
+        {
+            if (auto object=item->if_object())
+            {
+                if ((item=object->if_contains(name))!=nullptr)
+                {
+                    continue;
+                }
+            }
+            return false;
+        }
+        result=*item;
+        return true;
+    });
+    return result;
 }

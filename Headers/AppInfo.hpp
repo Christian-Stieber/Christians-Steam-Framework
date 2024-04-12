@@ -20,6 +20,9 @@
 #pragma once
 
 #include "Modules/OwnedGames.hpp"
+#include "Helpers/NumberString.hpp"
+
+#include <span>
 
 /************************************************************************/
 /*
@@ -35,6 +38,15 @@ namespace SteamBot
     namespace AppInfo
     {
         void update(const SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames&);
-        bool examine(std::function<bool(const boost::json::object&)>);
+        bool examine(std::function<bool(const boost::json::value&)>);
+
+        std::optional<boost::json::value> get(std::span<const std::string_view>);
+
+        template <typename... ARGS> std::optional<boost::json::value> get(SteamBot::AppID appId, ARGS&& ...args )
+        {
+            auto appIdString=SteamBot::toString(SteamBot::toInteger(appId));
+            std::array<std::string_view, 1+sizeof...(args)> array{appIdString, std::forward<std::string_view>(args)...};
+            return get(array);
+        }
     }
 }

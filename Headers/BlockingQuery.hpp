@@ -23,8 +23,13 @@
 /************************************************************************/
 /*
  * This lets you send a query, and wait for the reply. It will wait
- * for the response SPECIFICALLY fro your request, not just any
+ * for the responses SPECIFICALLY for your request, not just any
  * message of the type.
+ *
+ * Your callback will be called as
+ *    bool callback(std::shared_ptr<const RESPONSE>)
+ * whenever a response comes in. Return false if we expect
+ * more responses, true if we're done.
  *
  * ToDo: since UnifiedMessageClient is also dealing with jobIds,
  * I should probably think about making something more generic
@@ -33,7 +38,7 @@
 
 namespace SteamBot
 {
-    template <typename RESPONSE, typename REQUEST> std::shared_ptr<const RESPONSE> sendAndWait(std::unique_ptr<REQUEST> request)
+    template <typename RESPONSE, typename REQUEST, typename FUNC> void sendAndWait(std::unique_ptr<REQUEST> request, FUNC callback)
     {
         auto& client=SteamBot::Client::getClient();
         auto waiter=SteamBot::Waiter::create();
@@ -52,7 +57,10 @@ namespace SteamBot
             {
                 if (message->header.proto.jobid_target()==jobId.getValue())
                 {
-                    return message;
+                    if (callback(std::move(message)))
+                    {
+                        return;
+                    }
                 }
             }
         }
