@@ -319,6 +319,32 @@ namespace
 
 /************************************************************************/
 /*
+ * Checks whether we are looking at a lineItemRow referencing a key revocation
+ *
+ *    Activated as part of: ... | CD Key was revoked on: ...
+ *
+ * Example case for me:
+ *    https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=479170
+ */
+
+static bool isRevocationLine(const HTMLParser::Tree::Element& span)
+{
+    assert(span.name=="span");
+    if (span.children.size()==1)
+    {
+        if (const auto text=dynamic_cast<const HTMLParser::Tree::Text*>(span.children.front().get()))
+        {
+            if (text->text.find("CD Key was revoked on:")!=std::string::npos)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/************************************************************************/
+/*
  * Checks whether we are looking at a lineItemRow referencing an inventory gift
  *
  *   Purchased as part of: <package name> - view receipt | View in your Steam Inventory
@@ -397,7 +423,7 @@ namespace
         private:
             void eraseLine(size_t index)
             {
-                if (lineItemRows.size()<index)
+                if (index<lineItemRows.size())
                 {
                     lineItemRows.erase(lineItemRows.begin()+static_cast<decltype(lineItemRows)::difference_type>(index));
                 }
@@ -514,7 +540,7 @@ namespace
 
                 if (spans.size()==2)
                 {
-                    if (!isInventoryLine(*(spans[1])))
+                    if (!isInventoryLine(*(spans[1])) && !isRevocationLine(*(spans[1])))
                     {
                         result.lineItemRows.emplace_back(std::move(spans[0]), std::move(spans[1]));
                     }
