@@ -1186,8 +1186,6 @@ void SteamBot::Modules::PackageInfo::use()
  * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=251430
  * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=303260
  * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=271570
- * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=479170
- * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=475550
  * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=570380
  * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=572890
  */
