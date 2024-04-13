@@ -392,20 +392,26 @@ namespace
             std::unordered_map<SteamBot::PackageID, std::string> packages;
             std::vector<SteamBot::PackageID> packageIds;
             std::vector<LineItemRow> lineItemRows;
+            std::vector<std::string> helpDetailsPackages;
 
         private:
             void eraseLine(size_t index)
             {
-                lineItemRows.erase(lineItemRows.begin()+static_cast<decltype(lineItemRows)::difference_type>(index));
+                if (lineItemRows.size()<index)
+                {
+                    lineItemRows.erase(lineItemRows.begin()+static_cast<decltype(lineItemRows)::difference_type>(index));
+                }
                 packageIds.erase(packageIds.begin()+static_cast<decltype(packageIds)::difference_type>(index));
             }
 
         private:
+            bool handleDetail(HTMLParser::Tree::Element&);
             bool handleActivation(size_t);
             bool handlePurchase(size_t);
 
         public:
             void handlePackageNames();
+            void handleDetailName();
             void getReceipts();
         };
 
@@ -519,6 +525,38 @@ namespace
         }
 
     private:
+        // Some pages have a detail section that includes the package name, as in
+        //   You are asking us to permanently remove Defy Gravity from your account .... Other games purchased
+        //   in the same package (Defy Gravity) may also be removed.
+
+        bool handleDetail(HTMLParser::Tree::Element& element)
+        {
+            if (element.name=="b" && element.children.size()==1 &&
+                element.parent->name=="div" && SteamBot::HTML::checkClass(*(element.parent), "help_issue_details"))
+            {
+                for (size_t i=1; i<element.parent->children.size(); i++)
+                {
+                    if (&element==element.parent->children[i].get())
+                    {
+                        if (auto precedingText=dynamic_cast<HTMLParser::Tree::Text*>(element.parent->children[i-1].get()))
+                        {
+                            if (precedingText->text.ends_with("Other games purchased in the same package ("))
+                            {
+                                if (auto packageText=dynamic_cast<HTMLParser::Tree::Text*>(element.children[0].get()))
+                                {
+                                    result.helpDetailsPackages.emplace_back(std::move(packageText->text));
+                                }
+                            }
+                        }
+                        break;
+                    }
+                }
+                return true;
+            }
+            return false;
+        }
+
+    private:
         // These are the buttons that appear when the game is provided by multiple licenses.
         // This is the jackpot -- the button itself has the name of the package, and
         // a parameter of the URL it leads to is the package-id.
@@ -576,7 +614,7 @@ namespace
     public:
         virtual void endElement(HTMLParser::Tree::Element& element) override
         {
-            handleLineItemRow(element) || handleRemovalForm(element) || handlePackageButton(element);
+            handleLineItemRow(element) || handleRemovalForm(element) || handlePackageButton(element) || handleDetail(element);
         }
     };
 }
@@ -646,6 +684,8 @@ static SupportPageParser::Result getMainSupportPage(SteamBot::AppID appId)
     {
         BOOST_LOG_TRIVIAL(error) << "PackageInfo: could not find package information on main support page";
     }
+
+    assert(result.helpDetailsPackages.size()<=1);
 
     return result;
 }
@@ -812,6 +852,25 @@ bool SupportPageParser::Result::handlePurchase(size_t index)
         }
     }
     return false;
+}
+
+/************************************************************************/
+/*
+ * This looks at the detail name (i.e. cases where we get a package
+ * name from the help text).
+ *
+ * I've only seen one such package names in my examples, so I'm
+ * ignoring them if we found more.
+ */
+
+void SupportPageParser::Result::handleDetailName()
+{
+    if (helpDetailsPackages.size()==1 && packageIds.size()==1)
+    {
+        auto success=packages.emplace(packageIds.at(0), helpDetailsPackages[0]).second;
+        assert(success);
+        eraseLine(0);
+    }
 }
 
 /************************************************************************/
@@ -993,6 +1052,7 @@ void PackageInfoModule::updateLicenseInfo(const SteamBot::AppID appId)
             {
                 auto result=getMainSupportPage(appId);
                 result.handlePackageNames();
+                result.handleDetailName();
                 result.getReceipts();
 
                 if (!result.packages.empty())
@@ -1086,3 +1146,22 @@ void PackageInfoModule::run(SteamBot::Client&)
 void SteamBot::Modules::PackageInfo::use()
 {
 }
+
+/************************************************************************/
+/*
+ * This is a collection of support pages that I can't use to get the
+ * package name. They are specific to my account, though, so not useful
+ * for anyone else.
+ *
+ * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=34900
+ * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=239450
+ * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=104900
+ * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=16720
+ * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=251430
+ * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=303260
+ * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=271570
+ * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=479170
+ * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=475550
+ * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=570380
+ * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=572890
+ */
