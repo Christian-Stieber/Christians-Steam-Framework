@@ -36,6 +36,7 @@
 /************************************************************************/
 
 typedef SteamBot::Modules::LicenseList::Messageboard::NewLicenses NewLicenses;
+typedef SteamBot::Modules::PackageInfo::Info Info;
 
 /************************************************************************/
 
@@ -52,42 +53,36 @@ static const char packageUpdatedKey[]="when";
 
 /************************************************************************/
 
+Info::Info(decltype(SteamBot::Modules::PackageInfo::Info::packageName) packageName_)
+    : packageName(std::move(packageName_))
+{
+}
+
+Info::~Info() =default;
+
+/************************************************************************/
+
+Info::Info(const boost::json::value& json)
+{
+    auto& object=json.as_object();
+    packageName=object.at(packageNameKey).as_string();
+}
+
+/************************************************************************/
+
+boost::json::value Info::toJson() const
+{
+    boost::json::object json;
+    json[packageNameKey]=packageName;
+    return json;
+}
+
+/************************************************************************/
+
 namespace
 {
     class PackageInfo
     {
-    public:
-        class Info
-        {
-        public:
-            typedef std::shared_ptr<const Info> Ptr;
-
-        public:
-            std::string packageName;
-
-        public:
-            Info(decltype(packageName) packageName_)
-                : packageName(std::move(packageName_))
-            {
-            }
-
-            ~Info() =default;
-
-        public:
-            Info(const boost::json::value& json)
-            {
-                auto& object=json.as_object();
-                packageName=object.at(packageNameKey).as_string();
-            }
-
-            boost::json::value toJson() const
-            {
-                boost::json::object json;
-                json[packageNameKey]=packageName;
-                return json;
-            }
-        };
-
     private:
         boost::fibers::mutex mutex;
         std::unordered_map<SteamBot::PackageID, Info::Ptr> infos;
@@ -189,6 +184,13 @@ namespace
             return packageInfo;
         }
     };
+}
+
+/************************************************************************/
+
+Info::Ptr Info::get(SteamBot::PackageID packageId)
+{
+    return ::PackageInfo::get().get(packageId);
 }
 
 /************************************************************************/
@@ -1087,7 +1089,7 @@ void PackageInfoModule::updateLicenseInfo(const SteamBot::AppID appId)
                     {
                         BOOST_LOG_TRIVIAL(info) << "app-id " << SteamBot::toInteger(appId) << "; package-id " << SteamBot::toInteger(item.first) << " has name \"" << item.second << "\"";
                         SteamBot::UI::OutputText() << "app-id " << SteamBot::toInteger(appId) << "; package-id " << SteamBot::toInteger(item.first) << " has name \"" << item.second << "\"";
-                        PackageInfo::get().set(item.first, std::make_shared<PackageInfo::Info>(std::move(item.second)));
+                        PackageInfo::get().set(item.first, std::make_shared<Info>(std::move(item.second)));
                     }
                 }
                 else
@@ -1165,12 +1167,6 @@ void PackageInfoModule::run(SteamBot::Client&)
         waiter->wait();
         newLicensesWaiter->handle(this);
     }
-}
-
-/************************************************************************/
-
-void SteamBot::Modules::PackageInfo::use()
-{
 }
 
 /************************************************************************/

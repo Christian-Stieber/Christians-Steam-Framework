@@ -19,6 +19,12 @@
 
 #pragma once
 
+#include "MiscIDs.hpp"
+
+#include <memory>
+#include <string>
+#include <boost/json/value.hpp>
+
 /************************************************************************/
 
 namespace SteamBot
@@ -27,7 +33,24 @@ namespace SteamBot
     {
         namespace PackageInfo
         {
-            void use();
+            class Info
+            {
+            public:
+                typedef std::shared_ptr<const Info> Ptr;
+
+            public:
+                std::string packageName;
+
+            public:
+                Info(decltype(packageName));
+                Info(const boost::json::value&);
+                ~Info();
+
+                boost::json::value toJson() const;
+
+            public:
+                static Ptr get(SteamBot::PackageID);
+            };
         }
     }
 }
