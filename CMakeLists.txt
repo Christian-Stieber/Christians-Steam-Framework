@@ -28,6 +28,7 @@ list(APPEND protoFiles steam/steammessages_clientserver_friends)
 list(APPEND protoFiles steam/steammessages_auth.steamclient)
 list(APPEND protoFiles steam/steammessages_player.steamclient)
 list(APPEND protoFiles steam/steammessages_econ.steamclient)
+list(APPEND protoFiles steam/enums_productinfo)
 
 list(TRANSFORM protoFiles PREPEND "${protoDir}/")
 list(TRANSFORM protoFiles APPEND ".proto")
