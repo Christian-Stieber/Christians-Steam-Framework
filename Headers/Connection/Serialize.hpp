@@ -169,7 +169,14 @@ namespace SteamBot
             /* integer values are read as little-endian */
             template<typename T> T get() requires std::is_integral_v<T>
             {
+#if 0
+                // can we check whether unaligned access is allowed?
                 const auto little=*static_cast<const T*>(static_cast<const void*>(getBytes(sizeof(T)).data()));
+#else
+                // avoid unaligned access
+                T little;
+                std::memcpy(&little, getBytes(sizeof(T)).data(), sizeof(T));
+#endif
                 return boost::endian::little_to_native(little);
             }
 
