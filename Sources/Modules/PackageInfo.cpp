@@ -48,8 +48,8 @@ class ErrorException { };
 
 /************************************************************************/
 
-static const char packageNameKey[]="name";
-static const char packageUpdatedKey[]="when";
+// If there's no name, it means we have been unable to retrieve one
+static const std::string_view packageNameKey="name";
 
 /************************************************************************/
 
@@ -65,7 +65,10 @@ Info::~Info() =default;
 Info::Info(const boost::json::value& json)
 {
     auto& object=json.as_object();
-    packageName=object.at(packageNameKey).as_string();
+    if (auto name=object.if_contains(packageNameKey))
+    {
+        packageName=name->as_string();
+    }
 }
 
 /************************************************************************/
@@ -73,7 +76,10 @@ Info::Info(const boost::json::value& json)
 boost::json::value Info::toJson() const
 {
     boost::json::object json;
-    json[packageNameKey]=packageName;
+    if (!packageName.empty())
+    {
+        json[packageNameKey]=packageName;
+    }
     return json;
 }
 
@@ -1094,23 +1100,24 @@ void PackageInfoModule::updateLicenseInfo(const SteamBot::AppID appId)
                 }
                 else
                 {
-                    // ToDo: how can we get an actual oject that we can << into over multiple statements?
+                    // ToDo: how can we get an actual boost-log object that we can << into over multiple statements?
                     if (result.lineItemRows.empty())
                     {
                         BOOST_LOG_TRIVIAL(info)
-                            << "app-id" << SteamBot::toInteger(appId)
+                            << "app-id " << SteamBot::toInteger(appId)
                             << ": unable to find name for package-id "
                             << SteamBot::toInteger(result.packageIds.front());
                     }
                     else
                     {
                         BOOST_LOG_TRIVIAL(info)
-                            << "app-id" << SteamBot::toInteger(appId)
+                            << "app-id " << SteamBot::toInteger(appId)
                             << ": unable to find name for package-id "
                             << SteamBot::toInteger(result.packageIds.front()) << ": "
                             << SteamBot::HTML::getCleanText(*(result.lineItemRows.front().text));
                     }
                     SteamBot::UI::OutputText() << "app-id " << SteamBot::toInteger(appId) << ": unable to find name for package-id " << SteamBot::toInteger(result.packageIds.front());
+                    PackageInfo::get().set(result.packageIds.front(), std::make_shared<Info>(std::string{}));
                 }
             }
             else
@@ -1176,12 +1183,18 @@ void PackageInfoModule::run(SteamBot::Client&)
  * for anyone else.
  *
  * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=34900
- * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=239450
  * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=104900
  * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=16720
  * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=251430
  * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=303260
- * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=271570
  * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=570380
  * https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=572890
+ *
+ * app-id 34900: unable to find name for package-id 1861
+ * app-id 104900: unable to find name for package-id 14537
+ * app-id 16720: unable to find name for package-id 1596
+ * app-id 251430: unable to find name for package-id 41066
+ * app-id 303260: unable to find name for package-id 44699
+ * app-id 570380: unable to find name for package-id 146436
+ * app-id 572890: unable to find name for package-id 145587
  */

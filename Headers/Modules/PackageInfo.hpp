@@ -39,7 +39,7 @@ namespace SteamBot
                 typedef std::shared_ptr<const Info> Ptr;
 
             public:
-                std::string packageName;
+                std::string packageName;	// empty means we have no name
 
             public:
                 Info(decltype(packageName));
