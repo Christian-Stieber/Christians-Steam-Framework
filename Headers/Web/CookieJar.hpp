@@ -57,6 +57,10 @@ namespace SteamBot
                 // Takes a set-cookie header.
                 // May throw InvalidCookieException.
                 Cookie(std::string_view, const boost::urls::url_view_base* url=nullptr);
+
+                // Takes a name and value
+                Cookie(std::string_view, std::string_view, const boost::urls::url_view_base* url=nullptr);
+
                 ~Cookie();
 
             public:

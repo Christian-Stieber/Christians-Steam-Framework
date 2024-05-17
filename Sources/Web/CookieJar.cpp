@@ -188,6 +188,17 @@ void Cookie::setDomain(const std::vector<std::string_view>& items, const boost::
 }
 
 /************************************************************************/
+
+Cookie::Cookie(std::string_view name_, std::string_view value_, const boost::urls::url_view_base* url)
+{
+    name=name_;
+    value=value_;
+
+    static const std::vector<std::string_view> items;
+    setDomain(items, url);
+}
+
+/************************************************************************/
 /*
  * https://stackoverflow.com/questions/1969232/what-are-allowed-characters-in-cookies
  */
