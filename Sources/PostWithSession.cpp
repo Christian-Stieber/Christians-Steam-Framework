@@ -35,7 +35,8 @@ std::shared_ptr<const Response> PostWithSession::execute()
 
     request=std::make_shared<Request>();
     request->queryMaker=[this]() {
-        SteamBot::Web::formUrlencode(body, "sessionid", SteamBot::Modules::WebSession::getSessionId());
+        SteamBot::Web::formUrlencode(body, "sessionid", SteamBot::Modules::WebSession::getSessionId(url));
+        BOOST_LOG_TRIVIAL(debug) << "PostWithSession body: " << body;
 
         auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::post, std::move(url));
         if (!referer.empty())
