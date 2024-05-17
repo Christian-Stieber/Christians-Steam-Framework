@@ -24,6 +24,8 @@
 #include "Web/Cookies.hpp"
 #include "Modules/UnifiedMessageClient.hpp"
 #include "Base64.hpp"
+#include "OpenSSL/Random.hpp"
+#include "Helpers/HexString.hpp"
 
 #include "steamdatabase/protobufs/steam/steammessages_auth.steamclient.pb.h"
 
@@ -324,7 +326,17 @@ std::shared_ptr<const Response> SteamBot::Modules::WebSession::makeQuery(std::sh
 
 std::string WebSessionModule::getSessionId(const boost::urls::url_view_base& url) const
 {
-    return cookies->get(url, "sessionid");
+    std::string sessionId=cookies->get(url, "sessionid");
+    if (sessionId.empty())
+    {
+        std::array<std::byte, 12> bytes{};
+        SteamBot::OpenSSL::makeRandomBytes(bytes);
+        sessionId=SteamBot::makeHexString(bytes);
+
+        auto cookie=std::make_unique<SteamBot::Web::CookieJar::Cookie>("sessionid",sessionId,&url);
+        cookies->update(std::move(cookie));
+    }
+    return sessionId;
 }
 
 /************************************************************************/
