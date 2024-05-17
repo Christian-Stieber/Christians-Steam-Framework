@@ -24,7 +24,7 @@
 
 /************************************************************************/
 
-template <std::integral T> static std::string SteamBot::toString_(T value)
+template <std::integral T> std::string SteamBot::toString_(T value)
 {
     char buffer[64];
     auto result=std::to_chars(buffer, buffer+sizeof(buffer), value);
@@ -32,5 +32,5 @@ template <std::integral T> static std::string SteamBot::toString_(T value)
     return std::string(buffer, result.ptr);
 }
 
-template static std::string SteamBot::toString_(long long);
-template static std::string SteamBot::toString_(unsigned long long);
+template std::string SteamBot::toString_(long long);
+template std::string SteamBot::toString_(unsigned long long);
