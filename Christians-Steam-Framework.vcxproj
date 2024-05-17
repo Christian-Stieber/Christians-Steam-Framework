@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Sources\AcceptTrade.cpp" />
+    <ClCompile Include="Sources\AppInfo.cpp" />
     <ClCompile Include="Sources\Asio\Asio.cpp" />
     <ClCompile Include="Sources\Asio\Connections.cpp" />
     <ClCompile Include="Sources\Asio\Fiber.cpp" />
@@ -29,6 +30,7 @@
     <ClCompile Include="Sources\AssetKey.cpp" />
     <ClCompile Include="Sources\Base64.cpp" />
     <ClCompile Include="Sources\Boost.cpp" />
+    <ClCompile Include="Sources\CacheFile.cpp" />
     <ClCompile Include="Sources\CancelTrade.cpp" />
     <ClCompile Include="Sources\Client\Client.cpp" />
     <ClCompile Include="Sources\Client\ClientInfo.cpp" />
@@ -49,9 +51,11 @@
     <ClCompile Include="Sources\DestructMonitor.cpp" />
     <ClCompile Include="Sources\Exception.cpp" />
     <ClCompile Include="Sources\ExecuteFibers.cpp" />
+    <ClCompile Include="Sources\Helpers\HexString.cpp" />
     <ClCompile Include="Sources\Helpers\HTML.cpp" />
     <ClCompile Include="Sources\Helpers\JSON.cpp" />
     <ClCompile Include="Sources\Helpers\NextSteamDay.cpp" />
+    <ClCompile Include="Sources\Helpers\NumberString.cpp" />
     <ClCompile Include="Sources\Helpers\ProtoBuf.cpp" />
     <ClCompile Include="Sources\Helpers\StringCompare.cpp" />
     <ClCompile Include="Sources\Helpers\Time.cpp" />
@@ -80,6 +84,7 @@
     <ClCompile Include="Sources\Modules\MultiPacket.cpp" />
     <ClCompile Include="Sources\Modules\OwnedGames.cpp" />
     <ClCompile Include="Sources\Modules\PackageData.cpp" />
+    <ClCompile Include="Sources\Modules\PackageInfo.cpp" />
     <ClCompile Include="Sources\Modules\PersonaState.cpp" />
     <ClCompile Include="Sources\Modules\PlayGames.cpp" />
     <ClCompile Include="Sources\Modules\SaleQueue.cpp" />
@@ -108,6 +113,7 @@
     <ClCompile Include="Sources\Settings.cpp" />
     <ClCompile Include="Sources\Steam\KeyValue.cpp" />
     <ClCompile Include="Sources\Steam\KeyValue_Deserialize.cpp" />
+    <ClCompile Include="Sources\Steam\KeyValue_Deserialize_Text.cpp" />
     <ClCompile Include="Sources\Steam\KeyValue_Serialize.cpp" />
     <ClCompile Include="Sources\Steam\MachineInfo.cpp" />
     <ClCompile Include="Sources\Steam\MachineInfo\Windows.cpp" />
@@ -136,6 +142,7 @@
     <ClInclude Include="Christians-HTML-Parser\Headers\HTMLParser\Parser.hpp" />
     <ClInclude Include="Christians-HTML-Parser\Headers\HTMLParser\Tree.hpp" />
     <ClInclude Include="Headers\AcceptTrade.hpp" />
+    <ClInclude Include="Headers\AppInfo.hpp" />
     <ClInclude Include="Headers\AsioThread.hpp" />
     <ClInclude Include="Headers\AsioYield.hpp" />
     <ClInclude Include="Headers\Asio\Asio.hpp" />
@@ -147,9 +154,11 @@
     <ClInclude Include="Headers\AssetKey.hpp" />
     <ClInclude Include="Headers\Base64.hpp" />
     <ClInclude Include="Headers\BitField.hpp" />
+    <ClInclude Include="Headers\BlockingQuery.hpp" />
     <ClInclude Include="Headers\boost\examples\fiber\asio\detail\yield.hpp" />
     <ClInclude Include="Headers\boost\examples\fiber\asio\round_robin.hpp" />
     <ClInclude Include="Headers\boost\examples\fiber\asio\yield.hpp" />
+    <ClInclude Include="Headers\CacheFile.hpp" />
     <ClInclude Include="Headers\Client\AccountFlags.hpp" />
     <ClInclude Include="Headers\Client\CallbackWaiter.hpp" />
     <ClInclude Include="Headers\Client\Cancel.hpp" />
@@ -162,6 +171,7 @@
     <ClInclude Include="Headers\Client\Fiber.hpp" />
     <ClInclude Include="Headers\Client\Messageboard.hpp" />
     <ClInclude Include="Headers\Client\Module.hpp" />
+    <ClInclude Include="Headers\Client\Mutex.hpp" />
     <ClInclude Include="Headers\Client\OSType.hpp" />
     <ClInclude Include="Headers\Client\ResultWaiter.hpp" />
     <ClInclude Include="Headers\Client\Service.hpp" />
@@ -206,8 +216,10 @@
     <ClInclude Include="Headers\GameID.hpp" />
     <ClInclude Include="Headers\GlobalID.hpp" />
     <ClInclude Include="Headers\Helpers\Destruct.hpp" />
+    <ClInclude Include="Headers\Helpers\HexString.hpp" />
     <ClInclude Include="Headers\Helpers\HTML.hpp" />
     <ClInclude Include="Headers\Helpers\JSON.hpp" />
+    <ClInclude Include="Headers\Helpers\NumberString.hpp" />
     <ClInclude Include="Headers\Helpers\ParseNumber.hpp" />
     <ClInclude Include="Headers\Helpers\ProtoBuf.hpp" />
     <ClInclude Include="Headers\Helpers\ProtoPuf.hpp" />
@@ -237,6 +249,7 @@
     <ClInclude Include="Headers\Modules\MultiPacket.hpp" />
     <ClInclude Include="Headers\Modules\OwnedGames.hpp" />
     <ClInclude Include="Headers\Modules\PackageData.hpp" />
+    <ClInclude Include="Headers\Modules\PackageInfo.hpp" />
     <ClInclude Include="Headers\Modules\PersonaState.hpp" />
     <ClInclude Include="Headers\Modules\PlayGames.hpp" />
     <ClInclude Include="Headers\Modules\SaleQueue.hpp" />
@@ -341,6 +354,9 @@
       <FileType>Document</FileType>
     </CustomBuild>
     <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_econ.steamclient.proto">
+      <FileType>Document</FileType>
+    </CustomBuild>
+    <CustomBuild Include="steamdatabase\protobufs\steam\enums_productinfo.proto">
       <FileType>Document</FileType>
     </CustomBuild>
     <None Include="packages.config" />

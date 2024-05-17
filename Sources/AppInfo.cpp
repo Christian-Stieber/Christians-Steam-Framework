@@ -17,9 +17,9 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#include "BlockingQuery.hpp"
 #include "AppInfo.hpp"
 #include "CacheFile.hpp"
-#include "BlockingQuery.hpp"
 #include "Steam/KeyValue.hpp"
 
 #include "Steam/ProtoBuf/steammessages_clientserver_appinfo.hpp"
