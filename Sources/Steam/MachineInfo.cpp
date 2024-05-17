@@ -19,6 +19,7 @@
 
 #include "Steam/MachineInfo.hpp"
 #include "OpenSSL/SHA1.hpp"
+#include "Helpers/HexString.hpp"
 
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/asio/ip/host_name.hpp>
@@ -26,36 +27,12 @@
 
 /************************************************************************/
 
-static char hexDigit(uint8_t digit)
-{
-	if (digit<10) return '0'+digit;
-	if (digit<16) return 'a'-10+digit;
-	assert(false);
-	return '?';
-}
-
-/************************************************************************/
-
-static void appendByte(std::string& string, uint8_t byte)
-{
-	string+=hexDigit(byte>>4);
-	string+=hexDigit(byte&0x0f);
-}
-
-/************************************************************************/
-
 const std::string& Steam::MachineInfo::EthernetAddress::getString() const
 {
 	if (string.empty())
 	{
-		string.reserve(address.size()*3-1);
-		for (uint8_t byte : address)
-		{
-			if (!string.empty()) string+=':';
-			appendByte(string, byte);
-		}
+        string=SteamBot::makeHexString(address, ':');
 	}
-
 	return string;
 }
 
@@ -63,15 +40,9 @@ const std::string& Steam::MachineInfo::EthernetAddress::getString() const
 
 static std::string getHexString(std::span<const std::byte> bytes)
 {
-	std::string result;
 	std::array<std::byte, 20> hash;
 	SteamBot::OpenSSL::calculateSHA1(bytes, std::span<std::byte, 20>(hash.data(), hash.size()));
-	result.reserve(hash.size()*2);
-	for (const auto byte : hash)
-	{
-		appendByte(result, static_cast<uint8_t>(byte));
-	}
-	return result;
+    return SteamBot::makeHexString(hash);
 }
 
 /************************************************************************/
