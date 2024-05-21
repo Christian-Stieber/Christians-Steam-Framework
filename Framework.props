@@ -10,13 +10,13 @@
       <AdditionalOptions>/bigobj /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <CustomBuild>
-      <Command>vcpkg_installed\x64-windows\tools\protobuf\protoc.exe --proto_path=%(RelativeDir) --proto_path=steamdatabase\protobufs --cpp_out=$(IntDir)%(RelativeDir) %(Identity)</Command>
+      <Command>vcpkg_installed\x64-windows\tools\protobuf\protoc.exe --proto_path=%(RelativeDir) --proto_path=steamdatabase\protofiles --cpp_out=$(IntDir)\steamdatabase\protobufs\steam %(Identity)</Command>
     </CustomBuild>
     <CustomBuild>
       <Message>Protobuf Compiler %(Identity)</Message>
     </CustomBuild>
     <CustomBuild>
-      <Outputs>$(Intdir)%(RelativeDir)%(Filename).pb.h;$(IntDir)%(RelativeDir)%(Filename).pb.cc</Outputs>
+      <Outputs>$(Intdir)\steamdatabase\protobufs\steam\%(Filename).pb.h;$(IntDir)\steamdatabase\protobufs\steam\%(Filename).pb.cc</Outputs>
       <OutputItemType>ClCompile</OutputItemType>
     </CustomBuild>
   </ItemDefinitionGroup>

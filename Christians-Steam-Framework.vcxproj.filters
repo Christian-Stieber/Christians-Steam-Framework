@@ -905,52 +905,55 @@
     <ClInclude Include="Headers\Modules\PackageInfo.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Headers\Main.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_base.proto">
+    <CustomBuild Include="steamdatabase\protofiles\steam\steammessages_base.proto">
       <Filter>Protobufs\steam</Filter>
     </CustomBuild>
-    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver.proto">
+    <CustomBuild Include="steamdatabase\protofiles\steam\steammessages_clientserver.proto">
       <Filter>Protobufs\steam</Filter>
     </CustomBuild>
-    <CustomBuild Include="steamdatabase\protobufs\steam\encrypted_app_ticket.proto">
+    <CustomBuild Include="steamdatabase\protofiles\steam\encrypted_app_ticket.proto">
       <Filter>Protobufs\steam</Filter>
     </CustomBuild>
-    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver_friends.proto">
+    <CustomBuild Include="steamdatabase\protofiles\steam\steammessages_clientserver_friends.proto">
       <Filter>Protobufs\steam</Filter>
     </CustomBuild>
-    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver_login.proto">
+    <CustomBuild Include="steamdatabase\protofiles\steam\steammessages_clientserver_login.proto">
       <Filter>Protobufs\steam</Filter>
     </CustomBuild>
-    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver_uds.proto">
+    <CustomBuild Include="steamdatabase\protofiles\steam\steammessages_clientserver_uds.proto">
       <Filter>Protobufs\steam</Filter>
     </CustomBuild>
-    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_player.steamclient.proto">
+    <CustomBuild Include="steamdatabase\protofiles\steam\steammessages_player.steamclient.proto">
       <Filter>Protobufs\steam</Filter>
     </CustomBuild>
-    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_auth.steamclient.proto">
+    <CustomBuild Include="steamdatabase\protofiles\steam\steammessages_auth.steamclient.proto">
       <Filter>Protobufs\steam</Filter>
     </CustomBuild>
-    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_unified_base.steamclient.proto">
+    <CustomBuild Include="steamdatabase\protofiles\steam\steammessages_unified_base.steamclient.proto">
       <Filter>Protobufs\steam</Filter>
     </CustomBuild>
-    <CustomBuild Include="steamdatabase\protobufs\steam\enums.proto">
+    <CustomBuild Include="steamdatabase\protofiles\steam\enums.proto">
       <Filter>Protobufs\steam</Filter>
     </CustomBuild>
-    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver_2.proto">
+    <CustomBuild Include="steamdatabase\protofiles\steam\steammessages_clientserver_2.proto">
       <Filter>Protobufs\steam</Filter>
     </CustomBuild>
-    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_clientserver_appinfo.proto">
+    <CustomBuild Include="steamdatabase\protofiles\steam\steammessages_clientserver_appinfo.proto">
       <Filter>Protobufs\steam</Filter>
     </CustomBuild>
-    <CustomBuild Include="steamdatabase\protobufs\steam\steammessages_econ.steamclient.proto">
+    <CustomBuild Include="steamdatabase\protofiles\steam\steammessages_econ.steamclient.proto">
       <Filter>Protobufs\steam</Filter>
     </CustomBuild>
-    <CustomBuild Include="steamdatabase\protobufs\steam\enums_productinfo.proto">
+    <CustomBuild Include="steamdatabase\protofiles\steam\enums_productinfo.proto">
       <Filter>Protobufs\steam</Filter>
     </CustomBuild>
   </ItemGroup>
