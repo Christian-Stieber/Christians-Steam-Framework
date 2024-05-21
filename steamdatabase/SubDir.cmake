@@ -18,5 +18,8 @@ set_target_properties(protobuf::protoc PROPERTIES IMPORTED_LOCATION "${CMAKE_CUR
 ######################################################################
 
 protobuf_generate_cpp(ProtoSources ProtoHeaders ${protoFiles})
-add_library("${PROJECT_NAME}" STATIC ${ProtoSources} ${ProtoHeaders})
-target_include_directories("${PROJECT_NAME}" PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+
+set(targetName "steamdatabase-protobufs-${myDir}")
+add_library("${targetName}" STATIC ${ProtoSources} ${ProtoHeaders})
+target_link_libraries("${targetName}" INTERFACE "${Protobuf_LIBRARIES}")
+target_include_directories("${targetName}" PRIVATE ${CMAKE_CURRENT_BINARY_DIR})

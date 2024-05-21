@@ -15,9 +15,11 @@ cmake_minimum_required(VERSION 3.25)
 
 project("steamdatabase-protobufs" LANGUAGES CXX)
 
+add_library("${PROJECT_NAME}" INTERFACE)
+
 foreach(protobufs-directory steam)
   add_subdirectory(protobufs/${protobufs-directory})
-  target_link_libraries(${PROJECT_NAME} PUBLIC steamdatabase-protobufs-${protobufs-directory})
+  target_link_libraries(${PROJECT_NAME} INTERFACE steamdatabase-protobufs-${protobufs-directory})
 endforeach()
 
 target_include_directories("${PROJECT_NAME}" INTERFACE "${CMAKE_CURRENT_BINARY_DIR}/..")
