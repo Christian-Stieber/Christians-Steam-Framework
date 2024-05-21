@@ -1,132 +1,78 @@
-cmake_minimum_required(VERSION 3.23)
+######################################################################
+#
+# Use with a command like
+#   cmake -S . -B build/Debug -D CMAKE_BUILD_TYPE=Debug
+#   cmake --build build/Debug
 
-project(ChristiansSteamFramework CXX)
+# set(CMAKE_VERBOSE_MAKEFILE ON)
+
+######################################################################
+
+cmake_minimum_required(VERSION 3.25)
+
+project(ChristiansSteamFramework LANGUAGES CXX)
 add_library(${PROJECT_NAME} STATIC)
 
-include(CMakefile.Common)
-
-######################################################################
-# https://developpaper.com/correct-use-of-protobuf-in-cmake/
-#
-# ToDo: does it really have to be that complicated?
-# Took hours to set up...
-
-cmake_path(SET protoDir "${CMAKE_CURRENT_SOURCE_DIR}")
-cmake_path(APPEND protoDir "steamdatabase" "protobufs")
-
-list(APPEND protoFiles steam/steammessages_base)
-list(APPEND protoFiles steam/steammessages_clientserver)
-list(APPEND protoFiles steam/steammessages_clientserver_login)
-list(APPEND protoFiles steam/steammessages_clientserver_2)
-list(APPEND protoFiles steam/steammessages_clientserver_appinfo)
-list(APPEND protoFiles steam/enums)
-list(APPEND protoFiles steam/encrypted_app_ticket)
-list(APPEND protoFiles steam/steammessages_unified_base.steamclient)
-list(APPEND protoFiles steam/steammessages_player.steamclient)
-list(APPEND protoFiles steam/steammessages_clientserver_uds)
-list(APPEND protoFiles steam/steammessages_clientserver_friends)
-list(APPEND protoFiles steam/steammessages_auth.steamclient)
-list(APPEND protoFiles steam/steammessages_player.steamclient)
-list(APPEND protoFiles steam/steammessages_econ.steamclient)
-list(APPEND protoFiles steam/enums_productinfo)
-
-list(TRANSFORM protoFiles PREPEND "${protoDir}/")
-list(TRANSFORM protoFiles APPEND ".proto")
-
-cmake_path(SET protoSteamDir "${protoDir}")
-cmake_path(APPEND protoSteamDir "steam")
-
-foreach(protoFile ${protoFiles})
-   file(RELATIVE_PATH protoRelativeFile "${CMAKE_CURRENT_SOURCE_DIR}" "${protoFile}")
-   cmake_path(GET protoFile PARENT_PATH protoFileSourceDir)
-   cmake_path(GET protoFile FILENAME protoFileName)
-   cmake_path(GET protoRelativeFile PARENT_PATH protoFileDir)
-   cmake_path(GET protoRelativeFile STEM LAST_ONLY protoFileStem)
-
-   cmake_path(SET protoFileTargetDir "${CMAKE_CURRENT_BINARY_DIR}")
-   cmake_path(APPEND protoFileTargetDir "${protoRelativeFile}")
-   cmake_path(REMOVE_FILENAME protoFileTargetDir)
-   file(MAKE_DIRECTORY "${protoFileTargetDir}")
-
-   cmake_path(SET finalName "${protoFileTargetDir}")
-   cmake_path(APPEND finalName "${protoFileStem}")
-
-   execute_process(COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} ${PROTO_FLAGS} "-I${protoFileSourceDir}" "-I${protoDir}" "-I${protoSteamDir}" --cpp_out=${protoFileTargetDir} ${protoFileName}
-                   WORKING_DIRECTORY "${protoFileSourceDir}"
-                   ERROR_FILE "${finalName}.errors")
-   execute_process(COMMAND "grep" -v "libprotobuf WARNING .* No syntax specified for the proto file:" INPUT_FILE "${finalName}.errors" OUTPUT_FILE "/dev/stderr")
-
-   list(APPEND PROTO_SRCS "${finalName}.pb.cc")
-   list(APPEND PROTO_HDRS "${finalName}.pb.h")
-endforeach()
+target_include_directories(${PROJECT_NAME} PUBLIC "Headers")
+target_include_directories(${PROJECT_NAME} PUBLIC "Christians-HTML-Parser/Headers")
 
 ######################################################################
 
-list(APPEND SRCS Boost)
+include("CompileOptions.cmake")
+setCompileOptions(${PROJECT_NAME})
 
 ######################################################################
 
-list(APPEND SRCS Main Logging WorkingDir Universe Random Base64 DestructMonitor JobID DataFile Settings AssetKey RateLimit Exception)
-list(APPEND SRCS AssetData SendTrade SendInventory PostWithSession AcceptTrade DeclineTrade CancelTrade ExecuteFibers MaintainBPE)
-list(APPEND SRCS CacheFile AppInfo)
-list(APPEND SRCS Asio/Asio Asio/Signals Asio/HTTPClient Asio/Fiber Asio/Connections)
-list(APPEND SRCS Client/Client Client/Waiter Client/Whiteboard Client/Messageboard Client/Execute Client/Module Client/Sleep Client/ClientInfo)
-list(APPEND SRCS Connection/Endpoint Connection/Serialize Connection/Base Connection/TCP Connection/Message Connection/Encrypted)
-list(APPEND SRCS OpenSSL/Exception OpenSSL/SHA1 OpenSSL/RSA OpenSSL/AESBase OpenSSL/AES OpenSSL/AESHMAC OpenSSL/Random)
-list(APPEND SRCS Steam/OSType Steam/KeyValue Steam/KeyValue_Serialize Steam/KeyValue_Deserialize Steam/KeyValue_Deserialize_Text)
-list(APPEND SRCS Steam/MachineInfo Steam/MachineInfo/Linux)
-list(APPEND SRCS Web/URLEncode)
-list(APPEND SRCS Web/Cookies)
-list(APPEND SRCS Web/CookieJar)
-list(APPEND SRCS Helpers/Time Helpers/NextSteamDay)
-list(APPEND SRCS Helpers/URLs)
-list(APPEND SRCS Helpers/HTML)
-list(APPEND SRCS Helpers/JSON)
-list(APPEND SRCS Helpers/ProtoBuf)
-list(APPEND SRCS Helpers/NumberString)
-list(APPEND SRCS Helpers/StringCompare)
-list(APPEND SRCS Helpers/HexString)
-list(APPEND SRCS UI/UI)
-list(APPEND SRCS Modules/AutoLoadTradeoffers)
-list(APPEND SRCS Modules/AutoAccept)
-list(APPEND SRCS Modules/Executor)
-list(APPEND SRCS Modules/Connection)
-list(APPEND SRCS Modules/MultiPacket)
-list(APPEND SRCS Modules/Heartbeat)
-list(APPEND SRCS Modules/UnifiedMessageClient)
-list(APPEND SRCS Modules/UnifiedMessageServer)
-list(APPEND SRCS Modules/OwnedGames)
-list(APPEND SRCS Modules/LicenseList)
-list(APPEND SRCS Modules/PackageInfo)
-list(APPEND SRCS Modules/PackageData)
-list(APPEND SRCS Modules/ClientAppList)
-list(APPEND SRCS Modules/PersonaState)
-list(APPEND SRCS Modules/WebSession)
-list(APPEND SRCS Modules/PlayGames)
-list(APPEND SRCS Modules/Login-Auth ParseToken)
-list(APPEND SRCS Modules/AddFreeLicense)
-list(APPEND SRCS Modules/CardFarmer)
-list(APPEND SRCS Modules/DiscoveryQueue)
-list(APPEND SRCS Modules/SaleQueue)
-list(APPEND SRCS Modules/SaleSticker)
-list(APPEND SRCS Modules/ClientNotification)
-list(APPEND SRCS Modules/TradeOffers Modules/TradeOffersParser)
-list(APPEND SRCS Modules/Inventory)
-list(APPEND SRCS Modules/TradeToken)
-list(APPEND SRCS Modules/LoginTracking)
-list(APPEND SRCS Modules/ViewStream)
-list(APPEND SRCS Modules/InventoryNotification)
-list(APPEND SRCS Modules/GetBadgeData/ParseBadgePage Modules/GetBadgeData/GetBadgeData Modules/GetBadgeData/Printable)
-list(APPEND SRCS WebAPI/WebAPI WebAPI/ISteamDirectory/GetCMList)
-
-include_directories("Christians-HTML-Parser/Headers")
+add_subdirectory(steamdatabase)
+target_link_libraries(${PROJECT_NAME} PUBLIC steamdatabase-protobufs)
 
 ######################################################################
 
-list(TRANSFORM SRCS PREPEND "Sources/")
-list(TRANSFORM SRCS APPEND ".cpp")
+set(OPENSSL_USE_STATIC_LIBS TRUE)
+find_package(OpenSSL 3 REQUIRED)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${OPENSSL_LIBRARIES})
 
-target_sources(${PROJECT_NAME} PRIVATE ${SRCS} ${PROTO_SRCS})
+######################################################################
 
-# https://stackoverflow.com/questions/13638408/override-compile-flags-for-single-files
-SET_SOURCE_FILES_PROPERTIES( ${SRCS} PROPERTIES COMPILE_FLAGS ${WarningOptions} )
+set(Boost_USE_STATIC_LIBS ON)
+find_package(Boost 1.81.0 REQUIRED COMPONENTS context coroutine system log log_setup iostreams fiber program_options)
+target_include_directories(${PROJECT_NAME} PUBLIC ${Boost_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
+
+######################################################################
+
+target_link_libraries(${PROJECT_NAME} PUBLIC pthread systemd atomic)
+
+######################################################################
+
+function(addSource directory)
+  list(TRANSFORM ARGN PREPEND "Sources/${directory}/")
+  list(TRANSFORM ARGN APPEND ".cpp")
+  target_sources(${PROJECT_NAME} PRIVATE ${ARGN})
+endfunction(addSource)
+
+addSource("Helpers" Time NextSteamDay URLs HTML JSON ProtoBuf NumberString StringCompare HexString)
+
+addSource("Modules"
+  AutoLoadTradeoffers AutoAccept Executor Connection MultiPacket Heartbeat UnifiedMessageClient
+  UnifiedMessageServer OwnedGames LicenseList PackageInfo PackageData ClientAppList PersonaState
+  WebSession PlayGames Login-Auth AddFreeLicense CardFarmer DiscoveryQueue SaleQueue ViewStream
+  SaleSticker ClientNotification TradeOffers TradeOffersParser Inventory TradeToken LoginTracking
+  InventoryNotification GetBadgeData/ParseBadgePage GetBadgeData/GetBadgeData GetBadgeData/Printable)
+
+addSource("."
+  Main Logging WorkingDir Universe Random Base64 DestructMonitor JobID DataFile Settings AssetKey
+  RateLimit Exception AssetData SendTrade SendInventory PostWithSession AcceptTrade DeclineTrade
+  CancelTrade ExecuteFibers MaintainBPE CacheFile AppInfo Boost ParseToken)
+
+addSource("Asio" Asio Signals HTTPClient Fiber Connections)
+addSource("Client" Client Waiter Whiteboard Messageboard Execute Module Sleep ClientInfo)
+addSource("Connection" Endpoint Serialize Base TCP Message Encrypted)
+addSource("OpenSSL" Exception SHA1 RSA AESBase AES AESHMAC Random)
+addSource("Web" URLEncode Cookies CookieJar)
+addSource("WebAPI" WebAPI ISteamDirectory/GetCMList)
+addSource("UI" UI)
+
+addSource("Steam"
+  OSType KeyValue KeyValue_Serialize KeyValue_Deserialize KeyValue_Deserialize_Text MachineInfo
+  MachineInfo/Linux)
