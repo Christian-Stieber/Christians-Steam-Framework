@@ -32,6 +32,7 @@
 #include "Client/Sleep.hpp"
 #include "Helpers/JSON.hpp"
 #include "UI/UI.hpp"
+#include "EnumString.hpp"
 
 #include "steamdatabase/protobufs/steam/steammessages_auth.steamclient.pb.h"
 #include "Steam/ProtoBuf/steammessages_clientserver_login.hpp"
@@ -210,6 +211,7 @@ namespace
         static void sendHello();
         PublicKey getPublicKey();
         void startAuthSession();
+        void loginFailed(const char*);
     };
 
     LoginModule::Init<LoginModule> init;
@@ -659,11 +661,28 @@ void LoginModule::doLogon()
 
 /************************************************************************/
 
+void LoginModule::loginFailed(const char* reason)
+{
+    SteamBot::UI::OutputText output;
+    output << "login " << reason << "; removing login key";
+    getClient().dataFile.update([](boost::json::value& json) {
+        SteamBot::JSON::eraseItem(json, Keys::Login, Keys::Refresh);
+        // SteamBot::JSON::eraseItem(json, Keys::Login, Keys::Access);
+        return true;
+    });
+    getClient().quit(true);
+}
+
+/************************************************************************/
+
 void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMessageType> message)
 {
     if (message->content.has_eresult())
     {
-        switch(static_cast<SteamBot::ResultCode>(message->content.eresult()))
+        const auto resultCode=static_cast<SteamBot::ResultCode>(message->content.eresult());
+        SteamBot::UI::OutputText() << "Login result: " << SteamBot::enumToStringAlways(resultCode);
+
+        switch(resultCode)
         {
         case SteamBot::ResultCode::OK:
             {
@@ -716,22 +735,22 @@ void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMes
         case SteamBot::ResultCode::InvalidPassword:
         case SteamBot::ResultCode::InvalidSignature:
             // We don't even send passwords, so it must be the refreshToken
-            SteamBot::UI::Thread::outputText("login failed; removing login key");
-            getClient().dataFile.update([](boost::json::value& json) {
-                SteamBot::JSON::eraseItem(json, Keys::Login, Keys::Refresh);
-                // SteamBot::JSON::eraseItem(json, Keys::Login, Keys::Access);
-                return true;
-            });
-            getClient().quit(true);
+            loginFailed("failed");
             break;
 
         case SteamBot::ResultCode::TryAnotherCM:
         case SteamBot::ResultCode::ServiceUnavailable:
+            SteamBot::UI::Thread::outputText("login unavailable");
             getClient().quit(true);
+            break;
+
+        case SteamBot::ResultCode::Expired:
+            loginFailed("expired");
             break;
 
         default:
             assert(false);
+            break;
         }
     }
 }
