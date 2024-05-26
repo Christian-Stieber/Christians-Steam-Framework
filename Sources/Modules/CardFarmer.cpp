@@ -21,9 +21,11 @@
 #include "Modules/GetBadgeData.hpp"
 #include "Modules/OwnedGames.hpp"
 #include "Modules/CardFarmer.hpp"
+#include "Modules/PackageData.hpp"
 #include "UI/UI.hpp"
+#include "Helpers/Time.hpp"
 
-#include <set>
+#include <unordered_set>
 
 /************************************************************************/
 /*
@@ -44,45 +46,61 @@ namespace
     class CardFarmerModule : public SteamBot::Client::Module
     {
     private:
-        class GameInfo
+        class FarmInfo
         {
-        private:
-            SteamBot::AppID game=SteamBot::AppID::None;
+        public:
+            const SteamBot::AppID appId=SteamBot::AppID::None;
             unsigned int cardsRemaining;
-            std::chrono::minutes playTime;
 
         public:
-            GameInfo(SteamBot::AppID game_, unsigned int cardsRemaining_, std::chrono::minutes playTime_)
-                : game(game_), cardsRemaining(cardsRemaining_), playTime(playTime_)
+            FarmInfo(SteamBot::AppID appId_, unsigned int cardsRemaining_)
+                : appId(appId_), cardsRemaining(cardsRemaining_)
             {
             }
-
-            std::strong_ordering constexpr operator<=>(const GameInfo& other) const
-            {
-                if (cardsRemaining<other.cardsRemaining) return std::strong_ordering::less;
-                if (cardsRemaining>other.cardsRemaining) return std::strong_ordering::greater;
-
-                if (playTime>other.playTime) return std::strong_ordering::less;
-                if (playTime<other.playTime) return std::strong_ordering::greater;
-
-                return game<=>other.game;
-            }
-
-            bool constexpr operator==(const GameInfo& other) const { return operator<=>(other)==std::strong_ordering::equal; }
-            bool constexpr operator<(const GameInfo& other) const { return operator<=>(other)==std::strong_ordering::less; }
 
         public:
-            void output(const OwnedGames& ownedGames) const
+            std::shared_ptr<const OwnedGames::GameInfo> getInfo() const
             {
-                auto gameInfo=ownedGames.getInfo(game);
-                assert(gameInfo!=nullptr);
-
-                SteamBot::UI::OutputText() << "\"" << gameInfo->name << "\" (" << SteamBot::toInteger(game) << ") has " << cardsRemaining << " cards left to get";
+                return SteamBot::Modules::OwnedGames::getInfo(appId);
             }
+
+        public:
+            void print(SteamBot::UI::OutputText&) const;
+            bool isRefundable() const;
+
+        public:
+#if 0
+            class Less
+            {
+            public:
+                bool operator()(const std::unique_ptr<FarmInfo>& left, const std::unique_ptr<FarmInfo>& right) const
+                {
+                    return SteamBot::toInteger(left->appId)<SteamBot::toInteger(right->appid);
+                }
+            };
+#else
+            class Hash
+            {
+            public:
+                std::size_t operator()(const std::unique_ptr<FarmInfo>& key) const
+                {
+                    return std::hash<decltype(key->appId)>{}(key->appId);
+                }
+            };
+
+            class Equal
+            {
+            public:
+                bool operator()(const std::unique_ptr<FarmInfo>& left, const std::unique_ptr<FarmInfo>& right) const
+                {
+                    return SteamBot::toInteger(left->appId)==SteamBot::toInteger(right->appId);
+                }
+            };
+#endif
         };
 
     private:
-        std::vector<GameInfo> games;
+        std::unordered_set<std::unique_ptr<FarmInfo>, FarmInfo::Hash, FarmInfo::Equal> games;
 
     private:
         void processBadgeData(const BadgeData&);
@@ -98,35 +116,102 @@ namespace
 }
 
 /************************************************************************/
+/*
+ * I'm not entirely sure how to determine refundability, so for now
+ * I'm considering a game to be refundable if it has a playtime of
+ * less than 2.5 hours, and there is at least one license that's not
+ * paid by "ActivationKey" or "Complimentary" and has a purchase date
+ * less than 15 days ago (approximate; I don't use calendar data).
+ *
+ * Note: this is a somewhat expensive operation, so we just ignore
+ * these games right away to avoid having to re-check.
+ *
+ * Also, in case of missing data, we assume it's refundable.
+ */
 
-void CardFarmerModule::processBadgeData(const BadgeData& badgeData)
+bool CardFarmerModule::FarmInfo::isRefundable() const
 {
-    std::set<GameInfo> allGames;
-
-    if (auto ownedGames=getClient().whiteboard.has<OwnedGames::Ptr>())
+    if (const auto gameInfo=getInfo())
     {
-        unsigned int total=0;
-        for (const auto& item : badgeData.badges)
+        if (gameInfo->playtimeForever<=std::chrono::minutes(60+60+30))
         {
-            if (auto cardsRemaining=item.second.cardsRemaining.value_or(0))
+            const auto purchaseLimit=std::chrono::system_clock::now()-std::chrono::days(15);
+            const auto packages=SteamBot::Modules::PackageData::getPackageInfo(appId);
+            for (const auto& package : packages)
             {
-                if (auto ownedGame=(*ownedGames)->getInfo(item.first))
+                if (auto licenseInfo=SteamBot::Modules::LicenseList::getLicenseInfo(package->packageId))
                 {
-                    auto result=allGames.emplace(item.first, cardsRemaining, ownedGame->playtimeForever).second;
-                    assert(result);
-
-                    total+=cardsRemaining;
+                    if (licenseInfo->paymentMethod!=SteamBot::PaymentMethod::ActivationCode &&
+                        licenseInfo->paymentMethod!=SteamBot::PaymentMethod::Complimentary)
+                    {
+                        if (licenseInfo->timeCreated>=purchaseLimit)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                else
+                {
+                    // That's a bit of a problem with DLCs (like the "World of Warships" stuff):
+                    // ToDo: We don't currently have license info...
+                    // return true;
                 }
             }
         }
+        return false;
+    }
+    return true;
+}
 
-        SteamBot::UI::OutputText() << "you have " << total << " cards to farm across " << allGames.size() << " games";
+/************************************************************************/
 
-        for (const auto& item : allGames)
+void CardFarmerModule::FarmInfo::print(SteamBot::UI::OutputText& output) const
+{
+    output << SteamBot::toInteger(appId);
+    if (auto gameInfo=getInfo())
+    {
+        output << " (" << gameInfo->name << ") with "
+               << SteamBot::Time::toString(gameInfo->playtimeForever) << " playtime has "
+               << cardsRemaining << " cards left to get";
+    }
+    else
+    {
+        output << " has no GameInfo";
+    }
+}
+
+/************************************************************************/
+
+void CardFarmerModule::processBadgeData(const BadgeData& badgeData)
+{
+    decltype(games) myGames;
+
+    unsigned int total=0;
+    for (const auto& item : badgeData.badges)
+    {
+        if (auto cardsRemaining=item.second.cardsRemaining.value_or(0))
         {
-            item.output(**ownedGames);
+            auto game=std::make_unique<FarmInfo>(item.first, cardsRemaining);
+
+            SteamBot::UI::OutputText output;
+            game->print(output);
+
+            if (game->isRefundable())
+            {
+                output << " (might still be refundable; ignoring)";
+            }
+            else
+            {
+                auto result=myGames.insert(std::move(game)).second;
+                assert(result);
+
+                total+=cardsRemaining;
+            }
         }
     }
+    SteamBot::UI::OutputText() << "you have " << total << " cards to farm across " << myGames.size() << " games";
+
+    games=std::move(myGames);
 }
 
 /************************************************************************/
