@@ -130,7 +130,11 @@ namespace SteamBot
 
 /************************************************************************/
 /*
- * This is sent when data for a game changed.
+ * This is sent when data for a game changed. For now(?), this happens
+ * only in response to update requests, or new license data coming in.
+ *
+ * Note that (last time I checked), Steam only updates playtime data
+ * every 30 minutes for an active game, or when the game is stopped.
  */
 
 namespace SteamBot
@@ -145,6 +149,12 @@ namespace SteamBot
                 {
                 public:
                     SteamBot::AppID appId;
+
+                public:
+                    GameChanged(SteamBot::AppID appId_)
+                        : appId(appId_)
+                    {
+                    }
                 };
             }
         }

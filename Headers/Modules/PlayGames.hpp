@@ -21,15 +21,16 @@
 /*
  * The PlayGames module lets you start and stop "playing" games.
  *
- * Of course, it doesn't launch anything; it just tells Steam that
- * you're "playing" the game.
+ * This module will also attempt to keep OwnedGames playtime data
+ * updated. However, see OwnedGames -> GameChanged for playtime
+ * accuracy concerns; if you want more accurate data, you'll need to
+ * track it yourself and just sync up with OwnedGames updates if and
+ * when they come in.
  *
- * In addition, since I don't currently know whether I can get Steam
- * to update me on playtimes, I'm occasionally requesting a data
- * update from OwnedGames for the games that are being "played"
- * through this module. This includes requesting a an update when a
- * game is stopped -- since that's when Steam seems to reliably update
- * its data.
+ * Also note that we cannot currently(?) track what Steam ACTUALLY
+ * considers being played: I'm merely assuming it does what I tell it.
+ * You can make this more reliable by limiting the game count to a
+ * reasonably low-ish number.
  */
 
 /************************************************************************/
@@ -43,6 +44,9 @@
 #include <boost/json/value.hpp>
 
 /************************************************************************/
+/*
+ * Send this message to start/stop "playing" a game
+ */
 
 namespace SteamBot
 {
@@ -72,6 +76,10 @@ namespace SteamBot
 }
 
 /************************************************************************/
+/*
+ * This provides the list of games that are currently "played" by
+ * our module.
+ */
 
 namespace SteamBot
 {

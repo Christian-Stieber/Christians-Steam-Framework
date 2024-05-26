@@ -192,7 +192,10 @@ std::vector<SteamBot::AppID> OwnedGames::getGames_(const std::vector<SteamBot::A
                 if (existingGame==nullptr || *existingGame!=*game)
                 {
                     changed.push_back(game->appId);
-                    SteamBot::UI::OutputText() << "game change: " << game->toJson();	// debugging, remove later
+                    if (appIds!=nullptr)
+                    {
+                        BOOST_LOG_TRIVIAL(info) << "game data changed: " << game->toJson();
+                    }
                 }
             }
 
@@ -207,9 +210,12 @@ std::vector<SteamBot::AppID> OwnedGames::getGames_(const std::vector<SteamBot::A
 
 void OwnedGamesModule::reportChanged(const std::vector<SteamBot::AppID>& appIds) const
 {
-    /* ToDo: send out messages */
-
-    SteamBot::UI::OutputText() << appIds.size() << " games have been updated";		// just for debugging, remove later
+    auto& messageboard=getClient().messageboard;
+    for (SteamBot::AppID appId : appIds)
+    {
+        auto message=std::make_shared<SteamBot::Modules::OwnedGames::Messageboard::GameChanged>(appId);
+        messageboard.send(std::move(message));
+    }
 }
 
 /************************************************************************/

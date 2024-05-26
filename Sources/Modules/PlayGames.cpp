@@ -67,7 +67,7 @@ namespace
 
         UpdateClock::time_point getNextUpdate() const
         {
-            return lastUpdate+std::chrono::minutes(1);
+            return lastUpdate+std::chrono::minutes(5);
         }
 
     private:
