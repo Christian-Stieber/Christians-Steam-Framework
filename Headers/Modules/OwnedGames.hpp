@@ -118,6 +118,10 @@ namespace SteamBot
                 {
                 public:
                     std::vector<SteamBot::AppID> appIds;
+
+                public:
+                    UpdateGames(std::vector<SteamBot::AppID> _={});
+                    ~UpdateGames();
                 };
             }
         }

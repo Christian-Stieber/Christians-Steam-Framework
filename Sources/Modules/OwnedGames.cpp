@@ -76,6 +76,15 @@ bool OwnedGames::GameInfo::operator==(const OwnedGames::GameInfo&) const =defaul
 
 /************************************************************************/
 
+UpdateGames::UpdateGames(std::vector<SteamBot::AppID> appIds_)
+    : appIds(std::move(appIds_))
+{
+}
+
+UpdateGames::~UpdateGames() =default;
+
+/************************************************************************/
+
 boost::json::value OwnedGames::GameInfo::toJson() const
 {
     boost::json::object json;

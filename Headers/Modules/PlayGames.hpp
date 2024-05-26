@@ -17,10 +17,30 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+/************************************************************************/
+/*
+ * The PlayGames module lets you start and stop "playing" games.
+ *
+ * Of course, it doesn't launch anything; it just tells Steam that
+ * you're "playing" the game.
+ *
+ * In addition, since I don't currently know whether I can get Steam
+ * to update me on playtimes, I'm occasionally requesting a data
+ * update from OwnedGames for the games that are being "played"
+ * through this module. This includes requesting a an update when a
+ * game is stopped -- since that's when Steam seems to reliably update
+ * its data.
+ */
+
+/************************************************************************/
+
 #pragma once
 
-#include "Printable.hpp"
 #include "MiscIDs.hpp"
+
+#include <vector>
+
+#include <boost/json/value.hpp>
 
 /************************************************************************/
 
@@ -32,7 +52,7 @@ namespace SteamBot
         {
             namespace Messageboard
             {
-                class PlayGame : public Printable
+                class PlayGame
                 {
                 public:
                     AppID appId=AppID::None;
@@ -40,8 +60,8 @@ namespace SteamBot
 
                 public:
                     PlayGame();
-                    virtual ~PlayGame();
-                    virtual boost::json::value toJson() const override;
+                    ~PlayGame();
+                    boost::json::value toJson() const;
 
                 public:
                     static void play(AppID, bool);

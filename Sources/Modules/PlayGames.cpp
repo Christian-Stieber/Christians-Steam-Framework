@@ -60,6 +60,18 @@ namespace
         std::vector<SteamBot::AppID> games;
 
     private:
+        std::chrono::steady_clock::time_point lastUpdate;	// used for the attempt to update the playtime
+
+    private:
+        typedef decltype(lastUpdate)::clock UpdateClock;
+
+        UpdateClock::time_point getNextUpdate() const
+        {
+            return lastUpdate+std::chrono::minutes(1);
+        }
+
+    private:
+        void performUpdate();
         void reportGames() const;
         void sendGames() const;
 
@@ -158,7 +170,8 @@ void PlayGamesModule::sendGames() const
 
 void PlayGamesModule::handle(std::shared_ptr<const PlayGame> message)
 {
-    BOOST_LOG_TRIVIAL(debug) << "received PlayGame request: " << *message;
+    BOOST_LOG_TRIVIAL(debug) << "received PlayGame request: " << message->toJson();
+
     if (message->start)
     {
         for (const auto appId : games)
@@ -184,6 +197,29 @@ void PlayGamesModule::handle(std::shared_ptr<const PlayGame> message)
     }
 
     sendGames();
+
+    if (!message->start)
+    {
+        auto updateMessage=std::make_shared<SteamBot::Modules::OwnedGames::Messageboard::UpdateGames>(std::vector<SteamBot::AppID>{message->appId});
+        getClient().messageboard.send(std::move(updateMessage));
+    }
+}
+
+/************************************************************************/
+
+void PlayGamesModule::performUpdate()
+{
+    if (!games.empty())
+    {
+        if (UpdateClock::now()>=getNextUpdate())
+        {
+            auto updateMessage=std::make_shared<SteamBot::Modules::OwnedGames::Messageboard::UpdateGames>(games);
+            getClient().messageboard.send(std::move(updateMessage));
+            lastUpdate=UpdateClock::now();
+            return;
+        }
+    }
+    assert(false);
 }
 
 /************************************************************************/
@@ -201,8 +237,18 @@ void PlayGamesModule::run(SteamBot::Client&)
 
     while (true)
     {
-        waiter->wait();
         playGame->handle(this);
+        if (games.empty())
+        {
+            waiter->wait();
+        }
+        else
+        {
+            if (!waiter->wait<UpdateClock>(getNextUpdate()))
+            {
+                performUpdate();
+            }
+        }
     }
 }
 
