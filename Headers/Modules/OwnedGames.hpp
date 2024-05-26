@@ -20,11 +20,25 @@
 #pragma once
 
 #include "MiscIDs.hpp"
-#include "Printable.hpp"
 
 #include <string>
 #include <unordered_map>
 #include <memory>
+
+#include <boost/json/value.hpp>
+
+/************************************************************************/
+/*
+ * This will monitor the license list, and retrieve information about
+ * owned games from Steam.
+ *
+ * It will also monitor the played games (for now, only games that we
+ * are playing ourselves), and update the playtime information.
+ *
+ * Note: updates to specific games, like updating playtime, will not
+ * create a new whitelist item. You can look for GameChanged messages,
+ * though.
+ */
 
 /************************************************************************/
 
@@ -40,36 +54,93 @@ namespace SteamBot
             {
                 // Note: the whiteboard actually holds an OwnedGames::Ptr!!!!
 
-                class OwnedGames : public Printable
+                class OwnedGames
                 {
                 public:
                     typedef std::shared_ptr<const OwnedGames> Ptr;
 
                 public:
-                    class GameInfo : public Printable
+                    class GameInfo
                     {
                     public:
                         GameInfo();
-                        virtual ~GameInfo();
-                        virtual boost::json::value toJson() const override;
+                        ~GameInfo();
 
                     public:
                         AppID appId;
                         std::string name;
                         std::chrono::system_clock::time_point lastPlayed;
                         std::chrono::minutes playtimeForever{0};
+
+                    public:
+                        boost::json::value toJson() const;
+
+                        std::strong_ordering operator<=>(const GameInfo&) const;
+                        bool operator==(const GameInfo&) const;
                     };
+
+                public:
+                    // Internal
+                    std::vector<SteamBot::AppID> getGames_(const std::vector<SteamBot::AppID>* appIds=nullptr);
 
                 public:
                     std::unordered_map<AppID, std::shared_ptr<const GameInfo>> games;
 
                 public:
-                    const GameInfo* getInfo(AppID) const;
+                    std::shared_ptr<const GameInfo> getInfo(AppID) const;
 
                 public:
                     OwnedGames();
-                    virtual ~OwnedGames();
-                    virtual boost::json::value toJson() const override;
+                    ~OwnedGames();
+                    boost::json::value toJson() const;
+                };
+            }
+
+            std::shared_ptr<const Whiteboard::OwnedGames::GameInfo> getInfo(AppID);
+        }
+    }
+}
+
+/************************************************************************/
+/*
+ * Send this to request re-checking specific games
+ */
+
+namespace SteamBot
+{
+    namespace Modules
+    {
+        namespace OwnedGames
+        {
+            namespace Messageboard
+            {
+                class UpdateGames
+                {
+                public:
+                    std::vector<SteamBot::AppID> appIds;
+                };
+            }
+        }
+    }
+}
+
+/************************************************************************/
+/*
+ * This is sent when data for a game changed.
+ */
+
+namespace SteamBot
+{
+    namespace Modules
+    {
+        namespace OwnedGames
+        {
+            namespace Messageboard
+            {
+                class GameChanged
+                {
+                public:
+                    SteamBot::AppID appId;
                 };
             }
         }
