@@ -150,12 +150,6 @@ bool CardFarmerModule::FarmInfo::isRefundable() const
                         }
                     }
                 }
-                else
-                {
-                    // That's a bit of a problem with DLCs (like the "World of Warships" stuff):
-                    // ToDo: We don't currently have license info...
-                    // return true;
-                }
             }
         }
         return false;
