@@ -74,6 +74,19 @@ namespace SteamBot
 
 /************************************************************************/
 /*
+ * Note sure why I put this in HTML...
+ */
+
+namespace SteamBot
+{
+    namespace HTML
+    {
+        void trimWhitespace(std::string_view&);
+    }
+}
+
+/************************************************************************/
+/*
  * Check for a specific attribute value
  */
 

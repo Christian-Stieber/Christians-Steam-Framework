@@ -20,7 +20,7 @@
 #include "Client/Module.hpp"
 #include "Modules/WebSession.hpp"
 #include "Modules/OwnedGames.hpp"
-#include "Modules/GetBadgeData.hpp"
+#include "Modules/BadgeData.hpp"
 #include "Helpers/URLs.hpp"
 #include "UI/UI.hpp"
 
@@ -30,7 +30,9 @@
 
 /************************************************************************/
 
-typedef SteamBot::Modules::GetPageData::Whiteboard::BadgeData BadgeData;
+typedef SteamBot::Modules::BadgeData::Whiteboard::BadgeData BadgeData;
+typedef SteamBot::Modules::BadgeData::Messageboard::UpdateBadge UpdateBadge;
+
 typedef SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames OwnedGames;
 
 typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
@@ -49,10 +51,14 @@ namespace
     {
     private:
         SteamBot::Whiteboard::WaiterType<OwnedGames::Ptr> ownedGamesWaiter;
+        SteamBot::Messageboard::WaiterType<UpdateBadge> updateBadgeWaiter;
 
     private:
         bool getAll();
         void updateBadges();
+
+    public:
+        void handle(std::shared_ptr<const UpdateBadge>);
 
     public:
         GetBadgeDataModule() =default;
@@ -70,6 +76,7 @@ namespace
 void GetBadgeDataModule::init(SteamBot::Client& client)
 {
     ownedGamesWaiter=client.whiteboard.createWaiter<OwnedGames::Ptr>(*waiter);
+    updateBadgeWaiter=client.messageboard.createWaiter<UpdateBadge>(*waiter);
 }
 
 /************************************************************************/
@@ -132,6 +139,12 @@ void GetBadgeDataModule::updateBadges()
 
 /************************************************************************/
 
+void GetBadgeDataModule::handle(std::shared_ptr<const UpdateBadge>)
+{
+}
+
+/************************************************************************/
+
 void GetBadgeDataModule::run(SteamBot::Client&)
 {
     while (true)
@@ -141,11 +154,21 @@ void GetBadgeDataModule::run(SteamBot::Client&)
         {
             updateBadges();
         }
+
+        updateBadgeWaiter->handle(this);
     }
 }
 
 /************************************************************************/
 
-void SteamBot::Modules::GetPageData::use()
+void SteamBot::Modules::BadgeData::Messageboard::UpdateBadge::update(AppID appId)
+{
+    auto message=std::make_shared<UpdateBadge>(appId);
+    SteamBot::Client::getClient().messageboard.send(std::move(message));
+}
+
+/************************************************************************/
+
+void SteamBot::Modules::BadgeData::use()
 {
 }

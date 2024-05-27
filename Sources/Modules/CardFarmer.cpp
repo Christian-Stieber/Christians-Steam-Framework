@@ -18,7 +18,7 @@
  */
 
 #include "Client/Module.hpp"
-#include "Modules/GetBadgeData.hpp"
+#include "Modules/BadgeData.hpp"
 #include "Modules/OwnedGames.hpp"
 #include "Modules/CardFarmer.hpp"
 #include "Modules/PackageData.hpp"
@@ -37,7 +37,7 @@ static constexpr unsigned int maxGames=10;
 
 /************************************************************************/
 
-typedef SteamBot::Modules::GetPageData::Whiteboard::BadgeData BadgeData;
+typedef SteamBot::Modules::BadgeData::Whiteboard::BadgeData BadgeData;
 typedef SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames OwnedGames;
 
 /************************************************************************/
@@ -192,9 +192,10 @@ void CardFarmerModule::processBadgeData(const BadgeData& badgeData)
     unsigned int total=0;
     for (const auto& item : badgeData.badges)
     {
-        if (auto cardsRemaining=item.second.cardsRemaining.value_or(0))
+        const auto cardsReceived=item.second.cardsReceived;
+        const auto cardsRemaining=item.second.cardsEarned-item.second.cardsReceived;
+        if (cardsRemaining>0)
         {
-            auto cardsReceived=item.second.cardsReceived.value_or(0);
             auto game=std::make_unique<FarmInfo>(item.first, cardsRemaining, cardsReceived);
 
             SteamBot::UI::OutputText output;
@@ -345,7 +346,6 @@ std::vector<SteamBot::AppID> CardFarmerModule::selectMultipleGames() const
 
 void CardFarmerModule::farmGames()
 {
-#if 0
     std::vector<SteamBot::AppID> myGames;
 
     if (auto game=selectSingleGame())
@@ -371,9 +371,12 @@ void CardFarmerModule::farmGames()
     playing=std::move(myGames);
     for (SteamBot::AppID appId : playing)
     {
+#if 0
         SteamBot::Modules::PlayGames::Messageboard::PlayGame::play(appId, true);
-    }
+#else
+        (void)appId;
 #endif
+    }
 }
 
 /************************************************************************/
@@ -404,5 +407,5 @@ void CardFarmerModule::run(SteamBot::Client& client)
 
 void SteamBot::Modules::CardFarmer::use()
 {
-    SteamBot::Modules::GetPageData::use();
+    SteamBot::Modules::BadgeData::use();
 }

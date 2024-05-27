@@ -25,6 +25,6 @@ namespace SteamBot
 {
     namespace GetPageData
     {
-        bool parseBadgePage(std::string_view, SteamBot::Modules::GetPageData::Whiteboard::BadgeData&);
+        bool parseBadgePage(std::string_view, SteamBot::Modules::BadgeData::Whiteboard::BadgeData&);
     }
 }

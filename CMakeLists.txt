@@ -58,7 +58,7 @@ addSource("Modules"
   UnifiedMessageServer OwnedGames LicenseList PackageInfo PackageData ClientAppList PersonaState
   WebSession PlayGames Login-Auth AddFreeLicense CardFarmer DiscoveryQueue SaleQueue ViewStream
   SaleSticker ClientNotification TradeOffers TradeOffersParser Inventory TradeToken LoginTracking
-  InventoryNotification GetBadgeData/ParseBadgePage GetBadgeData/GetBadgeData GetBadgeData/Printable)
+  InventoryNotification BadgeData/ParseBadgePage BadgeData/GetBadgeData BadgeData/BadgeInfo)
 
 addSource("."
   Main Logging WorkingDir Universe Random Base64 DestructMonitor JobID DataFile Settings AssetKey

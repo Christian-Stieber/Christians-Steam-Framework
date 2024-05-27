@@ -125,6 +125,31 @@ std::string SteamBot::HTML::getCleanText(const HTMLParser::Tree::Element& elemen
 
 /************************************************************************/
 
+void SteamBot::HTML::trimWhitespace(std::string_view& string)
+{
+    while (!string.empty())
+    {
+        char c=string.front();
+        if (c!=' ' && c!=0x09 && c!=0x0a && c!=0x0d)
+        {
+            break;
+        }
+        string.remove_prefix(1);
+    }
+
+    while (!string.empty())
+    {
+        char c=string.back();
+        if (c!=' ' && c!=0x09 && c!=0x0a && c!=0x0d)
+        {
+            break;
+        }
+        string.remove_suffix(1);
+    }
+}
+
+/************************************************************************/
+
 bool SteamBot::HTML::isWhitespace(const HTMLParser::Tree::Node& node)
 {
     if (auto text=dynamic_cast<const HTMLParser::Tree::Text*>(&node))

@@ -20,12 +20,23 @@
 #pragma once
 
 #include "MiscIDs.hpp"
-#include "Printable.hpp"
 
 #include <unordered_map>
-#include <optional>
 #include <string>
 #include <memory>
+#include <chrono>
+
+#include <boost/json/value.hpp>
+
+/************************************************************************/
+
+namespace HTMLParser
+{
+    namespace Tree
+    {
+        class Element;
+    }
+}
 
 /************************************************************************/
 
@@ -33,14 +44,12 @@ namespace SteamBot
 {
     namespace Modules
     {
-        namespace GetPageData
+        namespace BadgeData
         {
             void use();
 
             namespace Whiteboard
             {
-                // The whiteboard gets an BadgeData::Ptr
-
                 class BadgeData
                 {
                 public:
@@ -50,12 +59,16 @@ namespace SteamBot
                     class BadgeInfo
                     {
                     public:
-                        std::optional<unsigned int> level;
-                        std::optional<unsigned int> cardsReceived;
-                        std::optional<unsigned int> cardsRemaining;
+                        std::chrono::system_clock::time_point when{std::chrono::system_clock::now()};
+
+                        unsigned int cardsEarned;		// how many cards are we entitled to?
+                        unsigned int cardsReceived;		// how many have we received already?
 
                     public:
-                        virtual ~BadgeInfo();
+                        BadgeInfo();
+                        ~BadgeInfo();
+
+                        SteamBot::AppID init(const HTMLParser::Tree::Element&);
 
                         boost::json::value toJson() const;
                     };
@@ -68,6 +81,35 @@ namespace SteamBot
                     ~BadgeData();
 
                     boost::json::value toJson() const;
+                };
+            }
+        }
+    }
+}
+
+/************************************************************************/
+
+namespace SteamBot
+{
+    namespace Modules
+    {
+        namespace BadgeData
+        {
+            namespace Messageboard
+            {
+                class UpdateBadge
+                {
+                public:
+                    AppID appId;
+
+                public:
+                    UpdateBadge(AppID appId_)
+                        : appId(appId_)
+                    {
+                    }
+
+                public:
+                    static void update(AppID);
                 };
             }
         }
