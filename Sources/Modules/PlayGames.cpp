@@ -109,15 +109,7 @@ void PlayGamesModule::reportGames() const
         {
             output << separator;
             separator=", ";
-
-            output << toInteger(appId);
-            if (ownedGames)
-            {
-                if (auto info=ownedGames->getInfo(appId))
-                {
-                    output << " (" << info->name << ")";
-                }
-            }
+            output << appId;
         }
     }
 }

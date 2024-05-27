@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <type_traits>
 #include <cassert>
+#include <ostream>
 
 /************************************************************************/
 
@@ -87,4 +88,14 @@ namespace SteamBot
         assert(value>=0);
         return std::make_unsigned_t<std::underlying_type_t<T>>(value);
     }
+}
+
+/************************************************************************/
+/*
+ * Output an AppID as "number (name)"
+ */
+
+namespace SteamBot
+{
+    std::ostream& operator<<(std::ostream&, AppID);
 }

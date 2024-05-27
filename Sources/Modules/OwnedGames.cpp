@@ -297,6 +297,18 @@ std::shared_ptr<const OwnedGames::GameInfo> SteamBot::Modules::OwnedGames::getIn
 
 /************************************************************************/
 
+std::ostream& SteamBot::operator<<(std::ostream& stream, SteamBot::AppID appId)
+{
+    stream << SteamBot::toInteger(appId);
+    if (auto gameInfo=SteamBot::Modules::OwnedGames::getInfo(appId))
+    {
+        stream << " (" << gameInfo->name << ")";
+    }
+    return stream;
+}
+
+/************************************************************************/
+
 void SteamBot::Modules::OwnedGames::use()
 {
 }
