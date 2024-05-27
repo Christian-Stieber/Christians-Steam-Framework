@@ -196,6 +196,9 @@ public:
 
 template <typename T> unsigned int SteamBot::Messageboard::send(const std::shared_ptr<T> message)
 {
+    // ToDo: add handling of std::shared_ptr<const T>, instead of just rejecting it
+    static_assert(!std::is_const_v<T>, "message parameter must not be const, for now. We don't change it, promise.");
+
     unsigned int count=0;
     std::type_index key(typeid(T));
     action(key, [&count, &message](std::shared_ptr<WaiterBase> item) {
