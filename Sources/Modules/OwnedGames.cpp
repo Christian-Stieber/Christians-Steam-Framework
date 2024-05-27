@@ -32,6 +32,7 @@
 
 typedef SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames OwnedGames;
 typedef SteamBot::Modules::OwnedGames::Messageboard::UpdateGames UpdateGames;
+typedef SteamBot::Modules::OwnedGames::Messageboard::GameChanged GameChanged;
 
 typedef SteamBot::Modules::LicenseList::Whiteboard::Licenses Licenses;
 
@@ -46,7 +47,7 @@ namespace
         SteamBot::Messageboard::WaiterType<UpdateGames> updateGames;
 
     private:
-        void reportChanged(const std::vector<SteamBot::AppID>&) const;
+        void reportChanged(OwnedGames::ChangeList&) const;
         void getOwnedGames();
 
     public:
@@ -134,7 +135,7 @@ std::shared_ptr<const OwnedGames::GameInfo> OwnedGames::getInfo(AppID appId) con
  * actually changed (including newly added ones).
  */
 
-std::vector<SteamBot::AppID> OwnedGames::getGames_(const std::vector<SteamBot::AppID>* appIds)
+OwnedGames::ChangeList OwnedGames::getGames_(const std::vector<SteamBot::AppID>* appIds)
 {
     typedef SteamBot::Modules::UnifiedMessageClient::ProtobufService::Info<decltype(&::Player::GetOwnedGames)> GetOwnedGamesInfo;
     std::shared_ptr<GetOwnedGamesInfo::ResultType> response;
@@ -161,7 +162,7 @@ std::vector<SteamBot::AppID> OwnedGames::getGames_(const std::vector<SteamBot::A
     }
 
     auto existingGames=SteamBot::Client::getClient().whiteboard.get<OwnedGames::Ptr>(OwnedGames::Ptr()).get();
-    std::vector<SteamBot::AppID> changed;
+    OwnedGames::ChangeList changed;
 
     for (int index=0; index<response->games_size(); index++)
     {
@@ -191,7 +192,7 @@ std::vector<SteamBot::AppID> OwnedGames::getGames_(const std::vector<SteamBot::A
                 }
                 if (existingGame==nullptr || *existingGame!=*game)
                 {
-                    changed.push_back(game->appId);
+                    changed.push_back(std::make_shared<GameChanged>(game->appId, existingGame==nullptr));
                     if (appIds!=nullptr)
                     {
                         BOOST_LOG_TRIVIAL(info) << "game data changed: " << game->toJson();
@@ -208,14 +209,14 @@ std::vector<SteamBot::AppID> OwnedGames::getGames_(const std::vector<SteamBot::A
 
 /************************************************************************/
 
-void OwnedGamesModule::reportChanged(const std::vector<SteamBot::AppID>& appIds) const
+void OwnedGamesModule::reportChanged(OwnedGames::ChangeList& messages) const
 {
     auto& messageboard=getClient().messageboard;
-    for (SteamBot::AppID appId : appIds)
+    for (auto& message : messages)
     {
-        auto message=std::make_shared<SteamBot::Modules::OwnedGames::Messageboard::GameChanged>(appId);
         messageboard.send(std::move(message));
     }
+    messages.clear();
 }
 
 /************************************************************************/

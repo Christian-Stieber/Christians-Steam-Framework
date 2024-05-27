@@ -41,6 +41,40 @@
  */
 
 /************************************************************************/
+/*
+ * This is sent when data for a game changed. For now(?), this happens
+ * only in response to update requests, or new license data coming in.
+ *
+ * Note that (last time I checked), Steam only updates playtime data
+ * every 30 minutes for an active game, or when the game is stopped.
+ */
+
+namespace SteamBot
+{
+    namespace Modules
+    {
+        namespace OwnedGames
+        {
+            namespace Messageboard
+            {
+                class GameChanged
+                {
+                public:
+                    SteamBot::AppID appId;
+                    bool newGame=false;
+
+                public:
+                    GameChanged(SteamBot::AppID appId_, bool newGame_)
+                        : appId(appId_), newGame(newGame_)
+                    {
+                    }
+                };
+            }
+        }
+    }
+}
+
+/************************************************************************/
 
 namespace SteamBot
 {
@@ -80,8 +114,8 @@ namespace SteamBot
                     };
 
                 public:
-                    // Internal
-                    std::vector<SteamBot::AppID> getGames_(const std::vector<SteamBot::AppID>* appIds=nullptr);
+                    typedef std::vector<std::shared_ptr<const SteamBot::Modules::OwnedGames::Messageboard::GameChanged>> ChangeList;
+                    ChangeList getGames_(const std::vector<SteamBot::AppID>* appIds=nullptr);
 
                 public:
                     std::unordered_map<AppID, std::shared_ptr<const GameInfo>> games;
@@ -122,39 +156,6 @@ namespace SteamBot
                 public:
                     UpdateGames(std::vector<SteamBot::AppID> _={});
                     ~UpdateGames();
-                };
-            }
-        }
-    }
-}
-
-/************************************************************************/
-/*
- * This is sent when data for a game changed. For now(?), this happens
- * only in response to update requests, or new license data coming in.
- *
- * Note that (last time I checked), Steam only updates playtime data
- * every 30 minutes for an active game, or when the game is stopped.
- */
-
-namespace SteamBot
-{
-    namespace Modules
-    {
-        namespace OwnedGames
-        {
-            namespace Messageboard
-            {
-                class GameChanged
-                {
-                public:
-                    SteamBot::AppID appId;
-
-                public:
-                    GameChanged(SteamBot::AppID appId_)
-                        : appId(appId_)
-                    {
-                    }
                 };
             }
         }
