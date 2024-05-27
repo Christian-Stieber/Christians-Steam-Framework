@@ -22,11 +22,13 @@
 #include "Modules/OwnedGames.hpp"
 #include "Modules/BadgeData.hpp"
 #include "Helpers/URLs.hpp"
+#include "Helpers/HTML.hpp"
+#include "Helpers/NumberString.hpp"
 #include "UI/UI.hpp"
 
-#include "./Header.hpp"
+#include "HTMLParser/Parser.hpp"
 
-#include <charconv>
+#include <boost/log/trivial.hpp>
 
 /************************************************************************/
 
@@ -47,6 +49,67 @@ BadgeData::~BadgeData() =default;
 
 namespace
 {
+    class BadgePageParser : public HTMLParser::Parser
+    {
+    public:
+        BadgeData& data;
+        bool hasNextPage=false;		// true, if we found a next-page button
+
+    public:
+        BadgePageParser(std::string_view html, BadgeData& data_)
+            : Parser(html), data(data_)
+        {
+        }
+
+        virtual ~BadgePageParser() =default;
+
+    private:
+        bool handle_data(const HTMLParser::Tree::Element& element)
+        {
+            BadgeData::BadgeInfo info;
+            auto appId=info.init(element);
+            if (appId!=SteamBot::AppID::None)
+            {
+                auto result=data.badges.insert({appId, info}).second;
+                assert(result);
+                return true;
+            }
+            return false;
+        }
+
+    private:
+        bool handle_pagebtn(const HTMLParser::Tree::Element& element)
+        {
+            // <a class='pagebtn' href="?p=2">&gt;</a>
+            // <span class="pagebtn disabled">&lt;</span>
+
+            if (element.name=="a" && SteamBot::HTML::checkClass(element, "pagebtn"))
+            {
+                if (SteamBot::HTML::getCleanText(element)==">")
+                {
+                    if (auto href=element.getAttribute("href"))
+                    {
+                        assert(href->find("?p=")!=std::string::npos || href->find("&p=")!=std::string::npos);
+                        hasNextPage=true;
+                    }
+                }
+                return true;
+            }
+            return false;
+        }
+
+    private:
+        virtual void endElement(HTMLParser::Tree::Element& element) override
+        {
+            handle_data(element) || handle_pagebtn(element);
+        }
+    };
+}
+
+/************************************************************************/
+
+namespace
+{
     class GetBadgeDataModule : public SteamBot::Client::Module
     {
     private:
@@ -54,8 +117,10 @@ namespace
         SteamBot::Messageboard::WaiterType<UpdateBadge> updateBadgeWaiter;
 
     private:
-        bool getAll();
+        void getOverviewPages();
         void updateBadges();
+
+        static bool getURL(boost::urls::url, BadgeData&);
 
     public:
         void handle(std::shared_ptr<const UpdateBadge>);
@@ -81,44 +146,64 @@ void GetBadgeDataModule::init(SteamBot::Client& client)
 
 /************************************************************************/
 /*
- * Load all pages at https://steamcommunity.com/.../badges/
+ * The HTML between the badge overview page and the pages for
+ + specific games are so similar (at least concerning the information
+ * that we want), we can use the same parser.
+ *
+ * So, this loads either URL and returns the badget information
+ * found on the page.
+ *
+ * Returns "true" if the page had a "netx page" button.
+ *
+ * For now, we don't really communicate errors. So, we either have
+ * data, or we don't.
  */
 
-bool GetBadgeDataModule::getAll()
+bool GetBadgeDataModule::getURL(boost::urls::url url, BadgeData& badgeData)
+{
+    auto request=std::make_shared<Request>();
+    request->queryMaker=[&url]() {
+        return std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, std::move(url));
+    };
+
+    auto response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
+    if (response->query->response.result()!=boost::beast::http::status::ok)
+    {
+        return false;
+    }
+
+    auto html=SteamBot::HTTPClient::parseString(*(response->query));
+    BadgePageParser parser(html, badgeData);
+    parser.parse();
+    return parser.hasNextPage;
+}
+
+/************************************************************************/
+/*
+ * This loeads all the badge overview pages
+ */
+
+void GetBadgeDataModule::getOverviewPages()
 {
     auto badgeData=std::make_shared<BadgeData>();
     unsigned int page=1;
 
     while (true)
     {
-        SteamBot::UI::OutputText() << "loading badge page " << page;
-        auto request=std::make_shared<Request>();
-        request->queryMaker=[page](){
-            auto url=SteamBot::URLs::getClientCommunityURL();
-            url.segments().push_back("badges");
-            if (page>1)
-            {
-                char string[16];
-                auto result=std::to_chars(string, string+sizeof(string), page);
-                assert(result.ec==std::errc());
-                url.params().set("p", std::string_view(string, result.ptr));
-            }
-            return std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, url);
-        };
+        SteamBot::UI::OutputText() << "loading badge overview page " << page;
 
-        auto response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
-        if (response->query->response.result()!=boost::beast::http::status::ok)
+        auto url=SteamBot::URLs::getClientCommunityURL();
+        url.segments().push_back("badges");
+        if (page>1)
         {
-            return false;
+            url.params().set("p", SteamBot::toString(page));
         }
 
-        auto html=SteamBot::HTTPClient::parseString(*(response->query));
-
-        if (!SteamBot::GetPageData::parseBadgePage(html, *badgeData))
+        if (!getURL(std::move(url), *badgeData))
         {
             SteamBot::UI::OutputText() << "got badge data for " << badgeData->badges.size() << " games";
             getClient().whiteboard.set<BadgeData::Ptr>(std::move(badgeData));
-            return true;
+            break;
         }
 
         page++;
@@ -133,7 +218,7 @@ void GetBadgeDataModule::updateBadges()
 
     if (!getClient().whiteboard.has<BadgeData::Ptr>())
     {
-        getAll();
+        getOverviewPages();
     }
 }
 
