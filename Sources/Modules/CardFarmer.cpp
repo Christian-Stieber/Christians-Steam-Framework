@@ -44,84 +44,62 @@ typedef SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames OwnedGames;
 
 namespace
 {
-    class CardFarmerModule : public SteamBot::Client::Module
+    class FarmInfo
     {
-    private:
-        class FarmInfo
-        {
-        public:
-            const SteamBot::AppID appId=SteamBot::AppID::None;
-            unsigned int cardsRemaining;
-            unsigned int cardsReceived;
+    public:
+        const SteamBot::AppID appId=SteamBot::AppID::None;
 
-        public:
-            FarmInfo(SteamBot::AppID appId_, unsigned int cardsRemaining_, unsigned int cardsReceived_)
-                : appId(appId_), cardsRemaining(cardsRemaining_), cardsReceived(cardsReceived_)
-            {
-            }
+        unsigned int cardsRemaining;
+        unsigned int cardsReceived;
 
-        public:
-            std::shared_ptr<const OwnedGames::GameInfo> getInfo() const
-            {
-                return SteamBot::Modules::OwnedGames::getInfo(appId);
-            }
-
-        public:
-            void print(SteamBot::UI::OutputText&) const;
-            bool isRefundable() const;
-
-        public:
-#if 0
-            class Less
-            {
-            public:
-                bool operator()(const std::unique_ptr<FarmInfo>& left, const std::unique_ptr<FarmInfo>& right) const
-                {
-                    return SteamBot::toInteger(left->appId)<SteamBot::toInteger(right->appid);
-                }
-            };
-#else
-            class Hash
-            {
-            public:
-                std::size_t operator()(const std::unique_ptr<FarmInfo>& key) const
-                {
-                    return std::hash<decltype(key->appId)>{}(key->appId);
-                }
-            };
-
-            class Equal
-            {
-            public:
-                bool operator()(const std::unique_ptr<FarmInfo>& left, const std::unique_ptr<FarmInfo>& right) const
-                {
-                    return SteamBot::toInteger(left->appId)==SteamBot::toInteger(right->appId);
-                }
-            };
-#endif
-        };
-
-    private:
-        std::unordered_set<std::unique_ptr<FarmInfo>, FarmInfo::Hash, FarmInfo::Equal> games;	// all the games we want to farm
-        std::vector<SteamBot::AppID> playing;
-
-    private:
-        std::vector<SteamBot::AppID> selectMultipleGames() const;
-        FarmInfo* selectSingleGame(bool(*condition)(const FarmInfo&)) const;
-        FarmInfo* selectSingleGame() const;
-
-    private:
-        void farmGames();
-        void processBadgeData(const BadgeData&);
+        std::chrono::system_clock::time_point lastUpdate{std::chrono::system_clock::now()};
 
     public:
-        CardFarmerModule() =default;
-        virtual ~CardFarmerModule() =default;
+        FarmInfo(SteamBot::AppID appId_, unsigned int cardsRemaining_, unsigned int cardsReceived_)
+            : appId(appId_), cardsRemaining(cardsRemaining_), cardsReceived(cardsReceived_)
+        {
+        }
 
-        virtual void run(SteamBot::Client&) override;
+    public:
+        std::shared_ptr<const OwnedGames::GameInfo> getInfo() const
+        {
+            return SteamBot::Modules::OwnedGames::getInfo(appId);
+        }
+
+    public:
+        void print(SteamBot::UI::OutputText&) const;
+        bool isRefundable() const;
+
+    public:
+#if 0
+        class Less
+        {
+        public:
+            bool operator()(const std::unique_ptr<FarmInfo>& left, const std::unique_ptr<FarmInfo>& right) const
+            {
+                return SteamBot::toInteger(left->appId)<SteamBot::toInteger(right->appid);
+            }
+        };
+#endif
+
+        class Hash
+        {
+        public:
+            std::size_t operator()(const std::unique_ptr<FarmInfo>& key) const
+            {
+                return std::hash<decltype(key->appId)>{}(key->appId);
+            }
+        };
+
+        class Equal
+        {
+        public:
+            bool operator()(const std::unique_ptr<FarmInfo>& left, const std::unique_ptr<FarmInfo>& right) const
+            {
+                return SteamBot::toInteger(left->appId)==SteamBot::toInteger(right->appId);
+            }
+        };
     };
-
-    CardFarmerModule::Init<CardFarmerModule> init;
 }
 
 /************************************************************************/
@@ -138,7 +116,7 @@ namespace
  * Also, in case of missing data, we assume it's refundable.
  */
 
-bool CardFarmerModule::FarmInfo::isRefundable() const
+bool FarmInfo::isRefundable() const
 {
     if (const auto gameInfo=getInfo())
     {
@@ -168,9 +146,9 @@ bool CardFarmerModule::FarmInfo::isRefundable() const
 
 /************************************************************************/
 
-void CardFarmerModule::FarmInfo::print(SteamBot::UI::OutputText& output) const
+void FarmInfo::print(SteamBot::UI::OutputText& output) const
 {
-    output << SteamBot::toInteger(appId);
+    output << "CardFarmer: " << SteamBot::toInteger(appId);
     if (auto gameInfo=getInfo())
     {
         output << " (" << gameInfo->name << ") with "
@@ -185,38 +163,76 @@ void CardFarmerModule::FarmInfo::print(SteamBot::UI::OutputText& output) const
 
 /************************************************************************/
 
-void CardFarmerModule::processBadgeData(const BadgeData& badgeData)
+namespace
 {
-    decltype(games) myGames;
-
-    unsigned int total=0;
-    for (const auto& item : badgeData.badges)
+    class CardFarmerModule : public SteamBot::Client::Module
     {
-        const auto cardsReceived=item.second.cardsReceived;
-        const auto cardsRemaining=item.second.cardsEarned-item.second.cardsReceived;
-        if (cardsRemaining>0)
+    private:
+        SteamBot::Whiteboard::WaiterType<BadgeData::Ptr> badgeDataWaiter;
+
+    private:
+        std::unordered_set<std::unique_ptr<FarmInfo>, FarmInfo::Hash, FarmInfo::Equal> games;	// all the games we want to farm
+        std::vector<SteamBot::AppID> playing;
+
+    private:
+        std::vector<SteamBot::AppID> selectMultipleGames() const;
+        FarmInfo* selectSingleGame(bool(*condition)(const FarmInfo&)) const;
+        FarmInfo* selectSingleGame() const;
+
+    private:
+        void farmGames();
+        void handleBadgeData();
+
+    public:
+        CardFarmerModule() =default;
+        virtual ~CardFarmerModule() =default;
+
+        virtual void init(SteamBot::Client&) override;
+        virtual void run(SteamBot::Client&) override;
+    };
+
+    CardFarmerModule::Init<CardFarmerModule> init;
+}
+
+/************************************************************************/
+
+void CardFarmerModule::handleBadgeData()
+{
+    if (auto badgeData=badgeDataWaiter->has())
+    {
+        decltype(games) myGames;
+
+        unsigned int total=0;
+        for (const auto& item : (*badgeData)->badges)
         {
-            auto game=std::make_unique<FarmInfo>(item.first, cardsRemaining, cardsReceived);
-
-            SteamBot::UI::OutputText output;
-            game->print(output);
-
-            if (game->isRefundable())
+            const auto cardsReceived=item.second.cardsReceived;
+            const auto cardsRemaining=item.second.cardsEarned-item.second.cardsReceived;
+            if (cardsRemaining>0)
             {
-                output << " (might still be refundable; ignoring)";
-            }
-            else
-            {
-                auto result=myGames.insert(std::move(game)).second;
-                assert(result);
+                auto game=std::make_unique<FarmInfo>(item.first, cardsRemaining, cardsReceived);
 
-                total+=cardsRemaining;
+                SteamBot::UI::OutputText output;
+                game->print(output);
+
+                if (game->isRefundable())
+                {
+                    output << " (might still be refundable; ignoring)";
+                }
+                else
+                {
+                    auto result=myGames.insert(std::move(game)).second;
+                    assert(result);
+
+                    total+=cardsRemaining;
+                }
             }
         }
-    }
-    SteamBot::UI::OutputText() << "you have " << total << " cards to farm across " << myGames.size() << " games";
+        SteamBot::UI::OutputText() << "CardFarmer: you have " << total << " cards to farm across " << myGames.size() << " games";
 
-    games=std::move(myGames);
+        games=std::move(myGames);
+    }
+
+    farmGames();
 }
 
 /************************************************************************/
@@ -225,7 +241,7 @@ void CardFarmerModule::processBadgeData(const BadgeData& badgeData)
  * least remaining cards.
  */
 
-CardFarmerModule::FarmInfo* CardFarmerModule::selectSingleGame(bool(*condition)(const CardFarmerModule::FarmInfo&)) const
+FarmInfo* CardFarmerModule::selectSingleGame(bool(*condition)(const FarmInfo&)) const
 {
     FarmInfo* candidate=nullptr;
     for (const auto& game : games)
@@ -251,7 +267,7 @@ CardFarmerModule::FarmInfo* CardFarmerModule::selectSingleGame(bool(*condition)(
  *     nullptr
  */
 
-CardFarmerModule::FarmInfo* CardFarmerModule::selectSingleGame() const
+FarmInfo* CardFarmerModule::selectSingleGame() const
 {
     FarmInfo* game=nullptr;
 
@@ -381,24 +397,22 @@ void CardFarmerModule::farmGames()
 
 /************************************************************************/
 
-void CardFarmerModule::run(SteamBot::Client& client)
+void CardFarmerModule::init(SteamBot::Client& client)
 {
-    BadgeData::Ptr currentBadgeData;
+    badgeDataWaiter=client.whiteboard.createWaiter<BadgeData::Ptr>(*waiter);
+}
 
-    auto badgeData=client.whiteboard.createWaiter<BadgeData::Ptr>(*waiter);
+/************************************************************************/
 
+void CardFarmerModule::run(SteamBot::Client&)
+{
     while (true)
     {
         waiter->wait();
 
-        if (auto newBadgeData=badgeData->has())
+        if (badgeDataWaiter->isWoken())
         {
-            if (*newBadgeData!=currentBadgeData)
-            {
-                currentBadgeData=*newBadgeData;
-                processBadgeData(*currentBadgeData);
-                farmGames();
-            }
+            handleBadgeData();
         }
     }
 }
