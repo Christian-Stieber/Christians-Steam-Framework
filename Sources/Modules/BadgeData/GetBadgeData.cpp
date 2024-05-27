@@ -21,6 +21,7 @@
 #include "Modules/WebSession.hpp"
 #include "Modules/OwnedGames.hpp"
 #include "Modules/BadgeData.hpp"
+#include "Modules/InventoryNotification.hpp"
 #include "Helpers/URLs.hpp"
 #include "Helpers/HTML.hpp"
 #include "Helpers/NumberString.hpp"
@@ -35,7 +36,10 @@
 typedef SteamBot::Modules::BadgeData::Whiteboard::BadgeData BadgeData;
 typedef SteamBot::Modules::BadgeData::Messageboard::UpdateBadge UpdateBadge;
 
+typedef SteamBot::Modules::InventoryNotification::Messageboard::InventoryNotification InventoryNotification;
+
 typedef SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames OwnedGames;
+typedef SteamBot::Modules::OwnedGames::Messageboard::GameChanged GameChanged;
 
 typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
 typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
@@ -115,15 +119,19 @@ namespace
     private:
         SteamBot::Whiteboard::WaiterType<OwnedGames::Ptr> ownedGamesWaiter;
         SteamBot::Messageboard::WaiterType<UpdateBadge> updateBadgeWaiter;
+        SteamBot::Messageboard::WaiterType<InventoryNotification> inventoryNotificationWaiter;
+        SteamBot::Messageboard::WaiterType<GameChanged> gameChangedWaiter;
 
     private:
+        void updateBadge(SteamBot::AppID);
         void getOverviewPages();
-        void updateBadges();
 
-        static bool getURL(boost::urls::url, BadgeData&);
+        static bool getURL(boost::urls::url, BadgeData&, bool);
 
     public:
         void handle(std::shared_ptr<const UpdateBadge>);
+        void handle(std::shared_ptr<const InventoryNotification>);
+        void handle(std::shared_ptr<const GameChanged>);
 
     public:
         GetBadgeDataModule() =default;
@@ -142,6 +150,8 @@ void GetBadgeDataModule::init(SteamBot::Client& client)
 {
     ownedGamesWaiter=client.whiteboard.createWaiter<OwnedGames::Ptr>(*waiter);
     updateBadgeWaiter=client.messageboard.createWaiter<UpdateBadge>(*waiter);
+    inventoryNotificationWaiter=client.messageboard.createWaiter<InventoryNotification>(*waiter);
+    gameChangedWaiter=client.messageboard.createWaiter<GameChanged>(*waiter);
 }
 
 /************************************************************************/
@@ -159,7 +169,7 @@ void GetBadgeDataModule::init(SteamBot::Client& client)
  * data, or we don't.
  */
 
-bool GetBadgeDataModule::getURL(boost::urls::url url, BadgeData& badgeData)
+bool GetBadgeDataModule::getURL(boost::urls::url url, BadgeData& badgeData, bool detailPage)
 {
     auto request=std::make_shared<Request>();
     request->queryMaker=[&url]() {
@@ -174,7 +184,15 @@ bool GetBadgeDataModule::getURL(boost::urls::url url, BadgeData& badgeData)
 
     auto html=SteamBot::HTTPClient::parseString(*(response->query));
     BadgePageParser parser(html, badgeData);
-    parser.parse();
+    try
+    {
+        parser.parse();
+    }
+    catch(const HTMLParser::SyntaxException&)
+    {
+        // Unfortunately, the detail page has an unclosed element on it...
+        if (!detailPage) throw;
+    }
     return parser.hasNextPage;
 }
 
@@ -190,7 +208,7 @@ void GetBadgeDataModule::getOverviewPages()
 
     while (true)
     {
-        SteamBot::UI::OutputText() << "loading badge overview page " << page;
+        SteamBot::UI::OutputText() << "BadgeData: loading overview page " << page;
 
         auto url=SteamBot::URLs::getClientCommunityURL();
         url.segments().push_back("badges");
@@ -199,9 +217,9 @@ void GetBadgeDataModule::getOverviewPages()
             url.params().set("p", SteamBot::toString(page));
         }
 
-        if (!getURL(std::move(url), *badgeData))
+        if (!getURL(std::move(url), *badgeData, false))
         {
-            SteamBot::UI::OutputText() << "got badge data for " << badgeData->badges.size() << " games";
+            SteamBot::UI::OutputText() << "BadgeData: got data for " << badgeData->badges.size() << " games";
             getClient().whiteboard.set<BadgeData::Ptr>(std::move(badgeData));
             break;
         }
@@ -211,36 +229,113 @@ void GetBadgeDataModule::getOverviewPages()
 }
 
 /************************************************************************/
+/*
+ * ToDo: the organization of the badge data is... unfortunate.
+ *
+ * We need to copy the entire thing to make updates, and we can't even
+ * skip this if the "updated" item is still the same because of the
+ * timestamp.
+ *
+ * ToDo: also, we might want to think about delaying update for a
+ * short while, in case we get more requests (like from receiving a
+ * bunch of cards in one go).
+ */
 
-void GetBadgeDataModule::updateBadges()
+void GetBadgeDataModule::updateBadge(SteamBot::AppID appId)
 {
-    ownedGamesWaiter->has();
+    BadgeData badgeData;
 
-    if (!getClient().whiteboard.has<BadgeData::Ptr>())
+    auto url=SteamBot::URLs::getClientCommunityURL();
+    url.segments().push_back("gamecards");
+    url.segments().push_back(SteamBot::toString(SteamBot::toInteger(appId)));
+
+    SteamBot::UI::OutputText() << "BadgeData: loading page for app " << appId;
+
+    getURL(std::move(url), badgeData, true);
+    if (badgeData.badges.size()==1)
     {
-        getOverviewPages();
+        const auto& existing=*(getClient().whiteboard.get<BadgeData::Ptr>());
+        auto newData=std::make_shared<BadgeData>(existing);
+
+        auto newItemIterator=badgeData.badges.cbegin();
+        SteamBot::UI::OutputText() << "BadgeData: "
+                                   << newItemIterator->first << " has "
+                                   << newItemIterator->second.cardsEarned << " cards earned, "
+                                   << newItemIterator->second.cardsReceived << " received";
+        newData->badges.insert_or_assign(newItemIterator->first, newItemIterator->second);
+        getClient().whiteboard.set<BadgeData::Ptr>(std::move(newData));
+    }
+    else
+    {
+        SteamBot::UI::OutputText() << "BadgeData: no data found for " << appId;
     }
 }
 
 /************************************************************************/
 
-void GetBadgeDataModule::handle(std::shared_ptr<const UpdateBadge>)
+void GetBadgeDataModule::handle(std::shared_ptr<const InventoryNotification> message)
 {
+    BOOST_LOG_TRIVIAL(info) << "BadgeData: received an inventory notification: " << message->toJson();
+
+    if (message->assetInfo->itemType==SteamBot::AssetData::AssetInfo::ItemType::TradingCard)
+    {
+        if (auto badgeData=getClient().whiteboard.has<BadgeData::Ptr>())
+        {
+            const auto& badges=(*badgeData)->badges;
+            auto badgeInfo=badges.find(message->assetInfo->marketFeeApp);
+            if (badgeInfo!=badges.cend())
+            {
+                if (badgeInfo->second.cardsEarned>badgeInfo->second.cardsReceived)
+                {
+                    updateBadge(message->assetInfo->marketFeeApp);
+                }
+            }
+        }
+    }
+}
+
+/************************************************************************/
+
+void GetBadgeDataModule::handle(std::shared_ptr<const UpdateBadge> message)
+{
+    updateBadge(message->appId);
+}
+
+/************************************************************************/
+
+void GetBadgeDataModule::handle(std::shared_ptr<const GameChanged> message)
+{
+    if (message->newGame)
+    {
+        updateBadge(message->appId);
+    }
 }
 
 /************************************************************************/
 
 void GetBadgeDataModule::run(SteamBot::Client&)
 {
+    bool fullyLoaded=false;
+
     while (true)
     {
         waiter->wait();
         if (ownedGamesWaiter->isWoken())
         {
-            updateBadges();
+            // Note: for now, I'm trying to stick to GameChanged
+            // messages for game additions, instead of reading the
+            // whole thing again.
+            ownedGamesWaiter->has();
+            if (!fullyLoaded)
+            {
+                getOverviewPages();
+                fullyLoaded=true;
+            }
         }
 
         updateBadgeWaiter->handle(this);
+        inventoryNotificationWaiter->handle(this);
+        gameChangedWaiter->handle(this);
     }
 }
 
