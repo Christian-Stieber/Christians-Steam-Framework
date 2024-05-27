@@ -1,0 +1,11 @@
+ * So, far, this is the ONLY source I've found on how to get
+ * package information...
+ *   https://stackoverflow.com/a/43249019
+ *
+ * Ok, there's this too:
+ *   https://wiki.teamfortress.com/wiki/User:RJackson/StorefrontAPI
+ *
+ * Example link:
+ *    https://store.steampowered.com/api/packagedetails?packageids=1020633
+ *
+ * Still, this API doesn't seem to have info for all packages, just some.
