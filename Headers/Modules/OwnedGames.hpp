@@ -43,7 +43,11 @@
 /************************************************************************/
 /*
  * This is sent when data for a game changed. For now(?), this happens
- * only in response to update requests, or new license data coming in.
+ * only in response to update requests, or when new license data
+ * comes in that has new games.
+ *
+ * Changes are NOT sent for the initial constructtion of the OwnedGames
+ * data.
  *
  * Note that (last time I checked), Steam only updates playtime data
  * every 30 minutes for an active game, or when the game is stopped.
@@ -114,7 +118,7 @@ namespace SteamBot
                     };
 
                 public:
-                    typedef std::vector<std::shared_ptr<const SteamBot::Modules::OwnedGames::Messageboard::GameChanged>> ChangeList;
+                    typedef std::vector<std::shared_ptr<SteamBot::Modules::OwnedGames::Messageboard::GameChanged>> ChangeList;
                     ChangeList getGames_(const std::vector<SteamBot::AppID>* appIds=nullptr);
 
                 public:

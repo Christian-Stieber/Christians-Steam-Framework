@@ -161,7 +161,9 @@ OwnedGames::ChangeList OwnedGames::getGames_(const std::vector<SteamBot::AppID>*
         response=SteamBot::Modules::UnifiedMessageClient::execute<GetOwnedGamesInfo::ResultType>("Player.GetOwnedGames#1", std::move(request));
     }
 
-    auto existingGames=SteamBot::Client::getClient().whiteboard.get<OwnedGames::Ptr>(OwnedGames::Ptr()).get();
+    // we don't need to keep the shared_ptr, but just in case something happens later...
+    auto existingGames=SteamBot::Client::getClient().whiteboard.get<OwnedGames::Ptr>(OwnedGames::Ptr());
+
     OwnedGames::ChangeList changed;
 
     for (int index=0; index<response->games_size(); index++)
@@ -184,12 +186,9 @@ OwnedGames::ChangeList OwnedGames::getGames_(const std::vector<SteamBot::AppID>*
                 game->playtimeForever=std::chrono::minutes(gameData.playtime_forever());
             }
 
+            if (existingGames!=nullptr)
             {
-                const OwnedGames::GameInfo* existingGame=nullptr;
-                if (existingGames)
-                {
-                    existingGame=existingGames->getInfo(game->appId).get();
-                }
+                const OwnedGames::GameInfo* existingGame=existingGames->getInfo(game->appId).get();
                 if (existingGame==nullptr || *existingGame!=*game)
                 {
                     changed.push_back(std::make_shared<GameChanged>(game->appId, existingGame==nullptr));
