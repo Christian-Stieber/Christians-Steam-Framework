@@ -233,7 +233,7 @@ AssetInfoPtr AssetData::store(const boost::json::value& json)
         auto info=std::make_shared<AssetInfo>(json);
         BOOST_LOG_TRIVIAL(debug) << info->toJson();
 
-        return data.insert(std::move(info)).second ? info : nullptr;
+        return data.insert(info).second ? info : nullptr;
     }
     catch(...)
     {
