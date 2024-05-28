@@ -785,30 +785,47 @@ void LoginModule::run(SteamBot::Client& client)
 
     while (true)
     {
-        waiter->wait();
-
-        while (cmsgClientLoggedOffMessage->fetch())
-            ;
-
-        cmsgClientLogonResponse->handle(this);
-
-        handleGuardCodeEntry();
-        handlePasswordEntry();
-
-        if (connectionStatus->get(ConnectionStatus::Disconnected)==ConnectionStatus::Connected)
+        try
         {
-            if (client.whiteboard.get(LoginStatus::LoggedOut)==LoginStatus::LoggedOut)
+            waiter->wait();
+
+            while (cmsgClientLoggedOffMessage->fetch())
+                ;
+
+            cmsgClientLogonResponse->handle(this);
+
+            handleGuardCodeEntry();
+            handlePasswordEntry();
+
+            if (connectionStatus->get(ConnectionStatus::Disconnected)==ConnectionStatus::Connected)
             {
-                setStatus(LoginStatus::LoggingIn);
-                sendHello();
-                if (refreshToken.empty())
+                if (client.whiteboard.get(LoginStatus::LoggedOut)==LoginStatus::LoggedOut)
                 {
-                    startAuthSession();
+                    setStatus(LoginStatus::LoggingIn);
+                    sendHello();
+                    if (refreshToken.empty())
+                    {
+                        startAuthSession();
+                    }
+                    else
+                    {
+                        doLogon();
+                    }
                 }
-                else
-                {
-                    doLogon();
-                }
+            }
+        }
+        catch(const SteamBot::Modules::UnifiedMessageClient::Error& error)
+        {
+            switch(static_cast<SteamBot::ResultCode>(error))
+            {
+            case SteamBot::ResultCode::TryAnotherCM:
+            case SteamBot::ResultCode::ServiceUnavailable:
+                SteamBot::UI::Thread::outputText("login unavailable");
+                getClient().quit(true);
+                break;
+
+            default:
+                throw;
             }
         }
     }
