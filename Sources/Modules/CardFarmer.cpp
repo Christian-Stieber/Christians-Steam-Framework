@@ -44,12 +44,13 @@
 static constexpr unsigned int maxGames=10;
 
 /************************************************************************/
-/*
- * This is pretty much a Steam constant, but I'm putting it
- * here for some testing
- */
 
+// Max playtime for us to play games concurrently
 static constinit std::chrono::minutes multipleGamesTime=std::chrono::hours(2);
+
+// Refund limits, with some safety margin
+static constinit std::chrono::minutes steamRefundPlayTime=std::chrono::minutes(2*60+30);
+static constinit std::chrono::minutes steamRefundPurchaseTime=std::chrono::days(15);
 
 /************************************************************************/
 
@@ -136,9 +137,9 @@ bool FarmInfo::isRefundable() const
 {
     if (const auto gameInfo=getInfo())
     {
-        if (gameInfo->playtimeForever<=std::chrono::minutes(60+60+30))
+        if (gameInfo->playtimeForever<=steamRefundPlayTime)
         {
-            const auto purchaseLimit=std::chrono::system_clock::now()-std::chrono::days(15);
+            const auto purchaseLimit=std::chrono::system_clock::now()-steamRefundPurchaseTime;
             const auto packages=SteamBot::Modules::PackageData::getPackageInfo(appId);
             for (const auto& package : packages)
             {
