@@ -33,8 +33,8 @@
  * Debugging: do we actually want to play games, or not
  */
 
-#undef CHRISTIAN_PLAY_GAMES
-// #define CHRISTIAN_PLAY_GAMES
+// #undef CHRISTIAN_PLAY_GAMES
+#define CHRISTIAN_PLAY_GAMES
 
 /************************************************************************/
 /*
@@ -392,59 +392,56 @@ std::vector<SteamBot::AppID> CardFarmerModule::selectMultipleGames(std::chrono::
 
 void CardFarmerModule::farmGames()
 {
-    if (!games.empty())
+    std::vector<SteamBot::AppID> myGames;
+    auto playDuration=std::chrono::minutes::max();
+
+    twoHourMark=decltype(twoHourMark)();
+    if (auto game=selectSingleGame())
     {
-        std::vector<SteamBot::AppID> myGames;
-        auto playDuration=std::chrono::minutes::max();
+        myGames.push_back(game->appId);
+    }
+    else
+    {
+        std::chrono::minutes maxPlaytime;
+        myGames=selectMultipleGames(maxPlaytime);
+        assert(maxPlaytime<multipleGamesTime);
 
-        twoHourMark=decltype(twoHourMark)();
-        if (auto game=selectSingleGame())
+        if (myGames.size()>1)
         {
-            myGames.push_back(game->appId);
+            playDuration=multipleGamesTime+std::chrono::minutes(1)-maxPlaytime;
+            twoHourMark=decltype(twoHourMark)::clock::now()+playDuration;
         }
-        else
+    }
+
+    // Stop the games that we are no longer farming
+    for (SteamBot::AppID appId : playing)
+    {
+        auto iterator=std::find(myGames.begin(), myGames.end(), appId);
+        if (iterator==myGames.end())
         {
-            std::chrono::minutes maxPlaytime;
-            myGames=selectMultipleGames(maxPlaytime);
-            assert(maxPlaytime<multipleGamesTime);
-
-            if (myGames.size()>1)
-            {
-                playDuration=multipleGamesTime+std::chrono::minutes(1)-maxPlaytime;
-                twoHourMark=decltype(twoHourMark)::clock::now()+playDuration;
-            }
+            SteamBot::Modules::PlayGames::Messageboard::PlayGame::play(appId, false);
         }
+    }
 
-        // Stop the games that we are no longer farming
+    // And launch everything else. PlayGames will prevent duplicates.
+    playing=std::move(myGames);
+
+    if (!playing.empty())
+    {
+        SteamBot::UI::OutputText output;
+        output << "CardFarmer: playing ";
+        const char* separator="";
         for (SteamBot::AppID appId : playing)
         {
-            auto iterator=std::find(myGames.begin(), myGames.end(), appId);
-            if (iterator==myGames.end())
-            {
-                SteamBot::Modules::PlayGames::Messageboard::PlayGame::play(appId, false);
-            }
-        }
-
-        // And launch everything else. PlayGames will prevent duplicates.
-        playing=std::move(myGames);
-
-        {
-            SteamBot::UI::OutputText output;
-            output << "CardFarmer: playing";
-            const char* separator=" ";
-            for (SteamBot::AppID appId : playing)
-            {
 #ifdef CHRISTIAN_PLAY_GAMES
-                xxx;
-                SteamBot::Modules::PlayGames::Messageboard::PlayGame::play(appId, true);
+            SteamBot::Modules::PlayGames::Messageboard::PlayGame::play(appId, true);
 #endif
-                output << separator << appId;
-                separator=", ";
-            }
-            if (playDuration!=decltype(playDuration)::max())
-            {
-                output << " for " << SteamBot::Time::toString(playDuration);
-            }
+            output << separator << appId;
+            separator=", ";
+        }
+        if (playDuration!=decltype(playDuration)::max())
+        {
+            output << " for " << SteamBot::Time::toString(playDuration);
         }
     }
 }
