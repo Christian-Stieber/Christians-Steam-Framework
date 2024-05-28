@@ -110,11 +110,11 @@ void InventoryNotificationModule::handle(std::shared_ptr<const ClientNotificatio
             response=SteamBot::Modules::UnifiedMessageClient::execute<GetInventoryItemsWithDescriptionsInfo::ResultType>("Econ.GetInventoryItemsWithDescriptions#1", std::move(request));
         }
 
-        assert(response->assets_size()==1);
-        assert(response->descriptions_size()==1);
-
         std::shared_ptr<const SteamBot::AssetData::AssetInfo> info;
+        if (response->assets_size()==1)
         {
+            assert(response->descriptions_size()==1);
+
             auto json=SteamBot::toJson(dynamic_cast<const google::protobuf::Message&>(response->descriptions(0)));
             auto assetKey=std::make_shared<SteamBot::AssetKey>(json);
             info=SteamBot::AssetData::query(assetKey);
@@ -126,6 +126,15 @@ void InventoryNotificationModule::handle(std::shared_ptr<const ClientNotificatio
                     info=SteamBot::AssetData::query(assetKey);
                 }
             }
+        }
+        else if (response->missing_assets_size()==1)
+        {
+            // ToDo: unfortunately, I don't know how to get more detailed data for "missing_assets".
+            SteamBot::UI::OutputText() << "ignoring an inventory notification because the item is missing";
+        }
+        else
+        {
+            assert(false);
         }
 
         if (info)
