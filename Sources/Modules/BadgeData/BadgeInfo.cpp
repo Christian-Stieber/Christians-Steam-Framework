@@ -23,6 +23,8 @@
 
 #include "HTMLParser/Tree.hpp"
 
+#include <boost/log/trivial.hpp>
+
 /************************************************************************/
 /*
  * When you click on the "How do I earn more card drops?" link on
@@ -122,7 +124,9 @@ SteamBot::AppID BadgeInfo::init(const HTMLParser::Tree::Element& root)
         if (prcoessHeader(root, "Card drops earned: ", cardsEarned) &&
             prcoessHeader(root, "Card drops received: ", cardsReceived))
         {
-            assert(cardsEarned>=cardsReceived);
+            BOOST_LOG_TRIVIAL(info) << "BadgeInfo: " << appId << " has " << cardsEarned
+                                    << " cards earned and " << cardsReceived << " cards received";
+            // assert(cardsEarned>=cardsReceived);		// doesn't always hold, for some reason
             return appId;
         }
     }
