@@ -30,6 +30,14 @@
 
 /************************************************************************/
 /*
+ * Debugging: do we actually want to play games, or not
+ */
+
+#undef CHRISTIAN_PLAY_GAMES
+// #define CHRISTIAN_PLAY_GAMES
+
+/************************************************************************/
+/*
  * Max number of games to run in parallel
  */
 
@@ -385,12 +393,20 @@ void CardFarmerModule::farmGames()
 
     // And launch everything else. PlayGames will prevent duplicates.
     playing=std::move(myGames);
+
+#ifndef CHRISTIAN_PLAY_GAMES
+    SteamBot::UI::OutputText output;
+    output << "CardFarmer: I would play these games:";
+    const char* separator=" ";
+#endif
     for (SteamBot::AppID appId : playing)
     {
-#if 0
+#ifdef CHRISTIAN_PLAY_GAMES
+        xxx;
         SteamBot::Modules::PlayGames::Messageboard::PlayGame::play(appId, true);
 #else
-        (void)appId;
+        output << separator << appId;
+        separator=", ";
 #endif
     }
 }
