@@ -44,6 +44,14 @@
 static constexpr unsigned int maxGames=10;
 
 /************************************************************************/
+/*
+ * This is pretty much a Steam constant, but I'm putting it
+ * here for some testing
+ */
+
+static constinit std::chrono::minutes multipleGamesTime=std::chrono::hours(2);
+
+/************************************************************************/
 
 typedef SteamBot::Modules::BadgeData::Whiteboard::BadgeData BadgeData;
 typedef SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames OwnedGames;
@@ -217,9 +225,12 @@ void CardFarmerModule::handleBadgeData()
         for (const auto& item : (*badgeData)->badges)
         {
             const auto cardsReceived=item.second.cardsReceived;
-            const auto cardsRemaining=item.second.cardsEarned-item.second.cardsReceived;
-            if (cardsRemaining>0)
+            const auto cardsEarned=item.second.cardsEarned;
+            if (cardsReceived<cardsEarned)
             {
+                const auto cardsRemaining=cardsEarned-cardsReceived;
+                assert(cardsRemaining>0);
+
                 auto game=std::make_unique<FarmInfo>(item.first, cardsRemaining, cardsReceived);
 
                 SteamBot::UI::OutputText output;
@@ -292,7 +303,7 @@ FarmInfo* CardFarmerModule::selectSingleGame() const
         game=selectSingleGame([](const FarmInfo& farmInfo) {
             if (auto gameInfo=farmInfo.getInfo())
             {
-                if (gameInfo->playtimeForever>=std::chrono::hours(2))
+                if (gameInfo->playtimeForever>=multipleGamesTime)
                 {
                     return true;
                 }
@@ -329,7 +340,7 @@ std::vector<SteamBot::AppID> CardFarmerModule::selectMultipleGames(std::chrono::
             }
             assert(farmInfo->cardsRemaining>0);
             assert(farmInfo->cardsReceived==0);
-            assert(playtime<std::chrono::hours(2));
+            assert(playtime<multipleGamesTime);
         }
 
     public:
@@ -383,6 +394,7 @@ void CardFarmerModule::farmGames()
     if (!games.empty())
     {
         std::vector<SteamBot::AppID> myGames;
+        auto playDuration=std::chrono::minutes::max();
 
         twoHourMark=decltype(twoHourMark)();
         if (auto game=selectSingleGame())
@@ -393,14 +405,12 @@ void CardFarmerModule::farmGames()
         {
             std::chrono::minutes maxPlaytime;
             myGames=selectMultipleGames(maxPlaytime);
-            assert(maxPlaytime<=std::chrono::hours(2));
+            assert(maxPlaytime<multipleGamesTime);
 
             if (myGames.size()>1)
             {
-                auto duration=std::chrono::minutes(2*60+1)-maxPlaytime;
-                BOOST_LOG_TRIVIAL(info) << "CardFarmer: running multiple games until "
-                                        << SteamBot::Time::toString(std::chrono::system_clock::now()+duration);
-                twoHourMark=decltype(twoHourMark)::clock::now()+duration;
+                playDuration=multipleGamesTime+std::chrono::minutes(1)-maxPlaytime;
+                twoHourMark=decltype(twoHourMark)::clock::now()+playDuration;
             }
         }
 
@@ -417,20 +427,23 @@ void CardFarmerModule::farmGames()
         // And launch everything else. PlayGames will prevent duplicates.
         playing=std::move(myGames);
 
-#ifndef CHRISTIAN_PLAY_GAMES
-        SteamBot::UI::OutputText output;
-        output << "CardFarmer: I would play these games:";
-        const char* separator=" ";
-#endif
-        for (SteamBot::AppID appId : playing)
         {
+            SteamBot::UI::OutputText output;
+            output << "CardFarmer: playing";
+            const char* separator=" ";
+            for (SteamBot::AppID appId : playing)
+            {
 #ifdef CHRISTIAN_PLAY_GAMES
-            xxx;
-            SteamBot::Modules::PlayGames::Messageboard::PlayGame::play(appId, true);
-#else
-            output << separator << appId;
-            separator=", ";
+                xxx;
+                SteamBot::Modules::PlayGames::Messageboard::PlayGame::play(appId, true);
 #endif
+                output << separator << appId;
+                separator=", ";
+            }
+            if (playDuration!=decltype(playDuration)::max())
+            {
+                output << " for " << SteamBot::Time::toString(playDuration);
+            }
         }
     }
 }
