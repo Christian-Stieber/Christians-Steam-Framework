@@ -61,7 +61,7 @@ addSource("Modules"
   InventoryNotification BadgeData/GetBadgeData BadgeData/BadgeInfo)
 
 addSource("."
-  Main Logging WorkingDir Universe Random Base64 DestructMonitor JobID DataFile Settings AssetKey
+  Main Logging WorkingDir Universe Random Base64 DestructMonitor JobID DataFile AssetKey
   RateLimit Exception AssetData SendTrade SendInventory PostWithSession AcceptTrade DeclineTrade
   CancelTrade ExecuteFibers MaintainBPE CacheFile AppInfo Boost ParseToken)
 
