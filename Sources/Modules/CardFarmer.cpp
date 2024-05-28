@@ -60,7 +60,7 @@ namespace
         unsigned int cardsRemaining;
         unsigned int cardsReceived;
 
-        std::chrono::system_clock::time_point lastUpdate{std::chrono::system_clock::now()};
+        std::chrono::steady_clock::time_point lastUpdate{std::chrono::steady_clock::now()};
 
     public:
         FarmInfo(SteamBot::AppID appId_, unsigned int cardsRemaining_, unsigned int cardsReceived_)
@@ -182,8 +182,11 @@ namespace
         std::unordered_set<std::unique_ptr<FarmInfo>, FarmInfo::Hash, FarmInfo::Equal> games;	// all the games we want to farm
         std::vector<SteamBot::AppID> playing;
 
+        // When playing multiple games, this when the first game should hit the 2 hour mark
+        std::chrono::steady_clock::time_point twoHourMark;
+
     private:
-        std::vector<SteamBot::AppID> selectMultipleGames() const;
+        std::vector<SteamBot::AppID> selectMultipleGames(std::chrono::minutes&) const;
         FarmInfo* selectSingleGame(bool(*condition)(const FarmInfo&)) const;
         FarmInfo* selectSingleGame() const;
 
@@ -239,8 +242,6 @@ void CardFarmerModule::handleBadgeData()
 
         games=std::move(myGames);
     }
-
-    farmGames();
 }
 
 /************************************************************************/
@@ -306,9 +307,11 @@ FarmInfo* CardFarmerModule::selectSingleGame() const
 /************************************************************************/
 /*
  * Select maxGames games with most playtime and least cards
+ *
+ * Returns the max playtime from these games.
  */
 
-std::vector<SteamBot::AppID> CardFarmerModule::selectMultipleGames() const
+std::vector<SteamBot::AppID> CardFarmerModule::selectMultipleGames(std::chrono::minutes& playtime) const
 {
     class Item
     {
@@ -347,9 +350,14 @@ std::vector<SteamBot::AppID> CardFarmerModule::selectMultipleGames() const
 
     std::vector<SteamBot::AppID> result;
     result.reserve(maxGames);
+    playtime=std::chrono::minutes::zero();
     for (unsigned int i=0; i<maxGames && i<candidates.size(); i++)
     {
         result.push_back(candidates[i].farmInfo->appId);
+        if (candidates[i].playtime>playtime)
+        {
+            playtime=candidates[i].playtime;
+        }
     }
     return result;
 }
@@ -366,48 +374,64 @@ std::vector<SteamBot::AppID> CardFarmerModule::selectMultipleGames() const
  *     Select one with least cards remaining
  *   Else
  *     Select maxGames games with most playtime and least cards
+ *
+ * Also sets the twoHourMark, if necessary.
  */
 
 void CardFarmerModule::farmGames()
 {
-    std::vector<SteamBot::AppID> myGames;
+    if (!games.empty())
+    {
+        std::vector<SteamBot::AppID> myGames;
 
-    if (auto game=selectSingleGame())
-    {
-        myGames.push_back(game->appId);
-    }
-    else
-    {
-        myGames=selectMultipleGames();
-    }
-
-    // Stop the games that we are no longer farming
-    for (SteamBot::AppID appId : playing)
-    {
-        auto iterator=std::find(myGames.begin(), myGames.end(), appId);
-        if (iterator==myGames.end())
+        twoHourMark=decltype(twoHourMark)();
+        if (auto game=selectSingleGame())
         {
-            SteamBot::Modules::PlayGames::Messageboard::PlayGame::play(appId, false);
+            myGames.push_back(game->appId);
         }
-    }
+        else
+        {
+            std::chrono::minutes maxPlaytime;
+            myGames=selectMultipleGames(maxPlaytime);
+            assert(maxPlaytime<=std::chrono::hours(2));
 
-    // And launch everything else. PlayGames will prevent duplicates.
-    playing=std::move(myGames);
+            if (myGames.size()>1)
+            {
+                auto duration=std::chrono::minutes(2*60+1)-maxPlaytime;
+                BOOST_LOG_TRIVIAL(info) << "CardFarmer: running multiple games until "
+                                        << SteamBot::Time::toString(std::chrono::system_clock::now()+duration);
+                twoHourMark=decltype(twoHourMark)::clock::now()+duration;
+            }
+        }
+
+        // Stop the games that we are no longer farming
+        for (SteamBot::AppID appId : playing)
+        {
+            auto iterator=std::find(myGames.begin(), myGames.end(), appId);
+            if (iterator==myGames.end())
+            {
+                SteamBot::Modules::PlayGames::Messageboard::PlayGame::play(appId, false);
+            }
+        }
+
+        // And launch everything else. PlayGames will prevent duplicates.
+        playing=std::move(myGames);
 
 #ifndef CHRISTIAN_PLAY_GAMES
-    SteamBot::UI::OutputText output;
-    output << "CardFarmer: I would play these games:";
-    const char* separator=" ";
+        SteamBot::UI::OutputText output;
+        output << "CardFarmer: I would play these games:";
+        const char* separator=" ";
 #endif
-    for (SteamBot::AppID appId : playing)
-    {
+        for (SteamBot::AppID appId : playing)
+        {
 #ifdef CHRISTIAN_PLAY_GAMES
-        xxx;
-        SteamBot::Modules::PlayGames::Messageboard::PlayGame::play(appId, true);
+            xxx;
+            SteamBot::Modules::PlayGames::Messageboard::PlayGame::play(appId, true);
 #else
-        output << separator << appId;
-        separator=", ";
+            output << separator << appId;
+            separator=", ";
 #endif
+        }
     }
 }
 
@@ -424,12 +448,21 @@ void CardFarmerModule::run(SteamBot::Client&)
 {
     while (true)
     {
-        waiter->wait();
+        if (twoHourMark==decltype(twoHourMark)())
+        {
+            waiter->wait();
+        }
+        else
+        {
+            waiter->wait<decltype(twoHourMark)::clock>(twoHourMark);
+        }
 
         if (badgeDataWaiter->isWoken())
         {
             handleBadgeData();
         }
+
+        farmGames();
     }
 }
 
