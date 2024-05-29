@@ -60,6 +60,9 @@ addSource("Modules"
   SaleSticker ClientNotification TradeOffers TradeOffersParser Inventory TradeToken LoginTracking
   InventoryNotification BadgeData/GetBadgeData BadgeData/BadgeInfo)
 
+addSource("Settings"
+    Settings SettingBool)
+
 addSource("."
   Main Logging WorkingDir Universe Random Base64 DestructMonitor JobID DataFile AssetKey
   RateLimit Exception AssetData SendTrade SendInventory PostWithSession AcceptTrade DeclineTrade
