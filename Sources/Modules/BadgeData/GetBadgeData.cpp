@@ -354,6 +354,9 @@ void GetBadgeDataModule::run(SteamBot::Client& client)
         }
         else
         {
+            // ToDo: add a function to just clear a waiter?
+
+            ownedGamesWaiter->has();
             updateBadgeWaiter->discardMessages();
             inventoryNotificationWaiter->discardMessages();
             gameChangedWaiter->discardMessages();
