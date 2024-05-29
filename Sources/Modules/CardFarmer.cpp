@@ -59,6 +59,26 @@ typedef SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames OwnedGames;
 
 /************************************************************************/
 
+typedef SteamBot::Modules::CardFarmer::Settings::Enable Enable;
+SteamBot::Settings::Init<Enable> init_enable;
+
+/************************************************************************/
+
+void Enable::storeWhiteboard(Enable::Ptr<> setting) const
+{
+    SteamBot::Settings::Internal::storeWhiteboard<Enable>(std::move(setting));
+}
+
+/************************************************************************/
+
+const std::string_view& Enable::name() const
+{
+    static const std::string_view string="card-farmer-enable";
+    return string;
+}
+
+/************************************************************************/
+
 namespace
 {
     class FarmInfo
@@ -186,6 +206,7 @@ namespace
     {
     private:
         SteamBot::Whiteboard::WaiterType<BadgeData::Ptr> badgeDataWaiter;
+        SteamBot::Whiteboard::WaiterType<Enable::Ptr<Enable>> enableWaiter;
 
     private:
         std::unordered_set<std::unique_ptr<FarmInfo>, FarmInfo::Hash, FarmInfo::Equal> games;	// all the games we want to farm
@@ -200,6 +221,11 @@ namespace
         FarmInfo* selectSingleGame() const;
 
     private:
+        bool isEnabled()
+        {
+            return SteamBot::Settings::getValue<Enable>(enableWaiter);
+        }
+
         void farmGames();
         void handleBadgeData();
 
@@ -211,7 +237,7 @@ namespace
         virtual void run(SteamBot::Client&) override;
     };
 
-    CardFarmerModule::Init<CardFarmerModule> init;
+    CardFarmerModule::Init<CardFarmerModule> init_module;
 }
 
 /************************************************************************/
@@ -250,6 +276,7 @@ void CardFarmerModule::handleBadgeData()
                 }
             }
         }
+
         SteamBot::UI::OutputText() << "CardFarmer: you have " << total << " cards to farm across " << myGames.size() << " games";
 
         games=std::move(myGames);
@@ -393,38 +420,42 @@ std::vector<SteamBot::AppID> CardFarmerModule::selectMultipleGames(std::chrono::
 void CardFarmerModule::farmGames()
 {
     std::vector<SteamBot::AppID> myGames;
+
     auto playDuration=std::chrono::minutes::max();
-
     twoHourMark=decltype(twoHourMark)();
-    if (auto game=selectSingleGame())
-    {
-        myGames.push_back(game->appId);
-    }
-    else
-    {
-        std::chrono::minutes maxPlaytime;
-        myGames=selectMultipleGames(maxPlaytime);
-        assert(maxPlaytime<multipleGamesTime);
 
-        if (myGames.size()>1)
+    if (isEnabled())
+    {
+        if (auto game=selectSingleGame())
         {
-            playDuration=multipleGamesTime+std::chrono::minutes(1)-maxPlaytime;
-            twoHourMark=decltype(twoHourMark)::clock::now()+playDuration;
+            myGames.push_back(game->appId);
         }
-    }
-
-    // Stop the games that we are no longer farming
-    for (SteamBot::AppID appId : playing)
-    {
-        auto iterator=std::find(myGames.begin(), myGames.end(), appId);
-        if (iterator==myGames.end())
+        else
         {
-            SteamBot::Modules::PlayGames::Messageboard::PlayGame::play(appId, false);
-        }
-    }
+            std::chrono::minutes maxPlaytime;
+            myGames=selectMultipleGames(maxPlaytime);
+            assert(maxPlaytime<multipleGamesTime);
 
-    // And launch everything else. PlayGames will prevent duplicates.
-    playing=std::move(myGames);
+            if (myGames.size()>1)
+            {
+                playDuration=multipleGamesTime+std::chrono::minutes(1)-maxPlaytime;
+                twoHourMark=decltype(twoHourMark)::clock::now()+playDuration;
+            }
+        }
+
+        // Stop the games that we are no longer farming
+        for (SteamBot::AppID appId : playing)
+        {
+            auto iterator=std::find(myGames.begin(), myGames.end(), appId);
+            if (iterator==myGames.end())
+            {
+                SteamBot::Modules::PlayGames::Messageboard::PlayGame::play(appId, false);
+            }
+        }
+
+        // And launch everything else. PlayGames will prevent duplicates.
+        playing=std::move(myGames);
+    }
 
     if (!playing.empty())
     {
@@ -451,12 +482,15 @@ void CardFarmerModule::farmGames()
 void CardFarmerModule::init(SteamBot::Client& client)
 {
     badgeDataWaiter=client.whiteboard.createWaiter<BadgeData::Ptr>(*waiter);
+    enableWaiter=client.whiteboard.createWaiter<Enable::Ptr<Enable>>(*waiter);
 }
 
 /************************************************************************/
 
 void CardFarmerModule::run(SteamBot::Client&)
 {
+    waitForLogin();
+
     while (true)
     {
         if (twoHourMark==decltype(twoHourMark)())

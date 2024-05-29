@@ -29,6 +29,17 @@
 #include <boost/json/value.hpp>
 
 /************************************************************************/
+/*
+ * Note: for now, BadgeData is enabled/disabled through the CardFarmer
+ * enable/disable setting. This is because I'm too lazy to add a
+ * system where multiple clients can indicate that they want BadgeData
+ * -- so we would automatically supply the date while at least one
+ * client still wants it.
+ *
+ * Rright now, CardFarmer is the only client anyway.
+ */
+
+/************************************************************************/
 
 namespace HTMLParser
 {

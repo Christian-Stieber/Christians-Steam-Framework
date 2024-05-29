@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "Settings.hpp"
+
 /************************************************************************/
 
 namespace SteamBot
@@ -28,6 +30,27 @@ namespace SteamBot
         namespace CardFarmer
         {
             void use();
+        }
+    }
+}
+
+/************************************************************************/
+
+namespace SteamBot
+{
+    namespace Modules
+    {
+        namespace CardFarmer
+        {
+            namespace Settings
+            {
+                class Enable : public SteamBot::Settings::SettingBool
+                {
+                private:
+                    virtual const std::string_view& name() const override;
+                    virtual void storeWhiteboard(Ptr<>) const override;
+                };
+            }
         }
     }
 }
