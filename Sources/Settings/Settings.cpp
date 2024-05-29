@@ -45,6 +45,7 @@ namespace
     {
     private:
         SteamBot::DataFile& dataFile;
+        std::vector<std::shared_ptr<Setting>> settings;
 
     private:
         static SteamBot::DataFile& getDataFile();
@@ -53,11 +54,12 @@ namespace
         void loadSettings();
 
     public:
+        std::map<std::string_view, std::string> getValues() const;
+        bool changeValue(std::string_view, std::string_view);
+
+    public:
         SettingsModule();
         virtual ~SettingsModule() =default;
-
-    private:
-        SteamBot::DataFile& getFile() const;
     };
 
     SettingsModule::Init<SettingsModule> init;
@@ -104,10 +106,12 @@ void SettingsModule::loadItem(Setting& setting)
 
 void SettingsModule::loadSettings()
 {
-    SteamBot::Startup::InitBase<Setting>::create([this](std::unique_ptr<Setting> settingPtr) {
-        auto& setting=*settingPtr;
-        loadItem(setting);
-        setting.storeWhiteboard(std::move(settingPtr));
+    SteamBot::Startup::InitBase<Setting>::create([this](std::unique_ptr<Setting> created) {
+        loadItem(*created);
+
+        std::shared_ptr<Setting> setting{std::move(created)};
+        setting->storeWhiteboard(setting);
+        settings.push_back(std::move(setting));
     });
 }
 
@@ -117,4 +121,45 @@ SettingsModule::SettingsModule()
     : dataFile(getDataFile())
 {
     loadSettings();
+}
+
+/************************************************************************/
+
+std::map<std::string_view, std::string> SettingsModule::getValues() const
+{
+    std::map<std::string_view, std::string> result;
+    for (const auto& setting: settings)
+    {
+        auto success=result.emplace(setting->name(), setting->getString()).second;
+        assert(success);
+    }
+    return result;
+}
+
+/************************************************************************/
+
+bool SettingsModule::changeValue(std::string_view name, std::string_view value)
+{
+    for (const auto& setting: settings)
+    {
+        if (setting->name()==name)
+        {
+            return setting->setString(value);
+        }
+    }
+    return false;
+}
+
+/************************************************************************/
+
+std::map<std::string_view, std::string> SteamBot::Settings::getValues()
+{
+    return SteamBot::Client::getClient().getModule<SettingsModule>()->getValues();
+}
+
+/************************************************************************/
+
+bool SteamBot::Settings::changeValue(std::string_view name, std::string_view value)
+{
+    return SteamBot::Client::getClient().getModule<SettingsModule>()->changeValue(name, value);
 }

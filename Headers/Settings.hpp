@@ -24,6 +24,7 @@
 
 #include <string>
 #include <string_view>
+#include <map>
 
 /************************************************************************/
 /*
@@ -34,7 +35,7 @@
  * also provide some intermediate bases for specific types such as
  * "bool".
  *
- * Settings are stored in the whiteboard, as unique_ptr<const T>.
+ * Settings are stored in the whiteboard, as shared_ptr<const T>.
  *
  * Settings are stored in your account data, in the Settings/Name key.
  *
@@ -50,7 +51,7 @@ namespace SteamBot
         class Setting
         {
         public:
-            template <typename T=Setting> using Ptr=std::unique_ptr<const T>;
+            template <typename T=Setting> using Ptr=std::shared_ptr<const T>;
 
         public:
             Setting();
@@ -89,6 +90,9 @@ namespace SteamBot
 }
 
 /************************************************************************/
+/*
+ * This base class should help with creating boolean settings.
+ */
 
 namespace SteamBot
 {
@@ -111,12 +115,31 @@ namespace SteamBot
 }
 
 /************************************************************************/
+/*
+ * Create a global instance of this to register the class.
+ */
 
 namespace SteamBot
 {
     namespace Settings
     {
         template <typename T> using Init=SteamBot::Startup::Init<Setting, T>;
+    }
+}
+
+/************************************************************************/
+/*
+ * This is mostly an interface to the UI.
+ *
+ * Note that this STILL needs to be called from the correct thread.
+ */
+
+namespace SteamBot
+{
+    namespace Settings
+    {
+        std::map<std::string_view, std::string> getValues();
+        bool changeValue(std::string_view, std::string_view);
     }
 }
 
@@ -130,11 +153,9 @@ namespace SteamBot
         {
             template <typename T> void storeWhiteboard(Setting::Ptr<> baseSetting)
             {
-                if (auto setting=dynamic_cast<const T*>(baseSetting.get()))
+                if (Setting::Ptr<T> setting=std::dynamic_pointer_cast<const T>(std::move(baseSetting)))
                 {
-                    auto& whiteboard=SteamBot::Client::getClient().whiteboard;
-                    baseSetting.release();
-                    whiteboard.set<Setting::Ptr<T>>(setting);
+                    SteamBot::Client::getClient().whiteboard.set(std::move(setting));
                 }
                 else
                 {
