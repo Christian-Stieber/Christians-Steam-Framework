@@ -36,17 +36,6 @@ Module::Module()
 Module::~Module() =default;
 
 /************************************************************************/
-/*
- * Loops over all Init modules, creates the module, and passes it to
- * your callback.
- */
-
-void Module::createAll(std::function<void(std::shared_ptr<SteamBot::Client::Module>)> callback)
-{
-    SteamBot::Startup::InitBase<Module>::initAll(std::move(callback));
-}
-
-/************************************************************************/
 
 void Module::init(Client&)
 {

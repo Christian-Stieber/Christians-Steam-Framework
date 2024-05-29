@@ -103,7 +103,7 @@ void SteamBot::Client::initModules()
     SteamBot::Modules::Login::use();
 
     // construct modules
-    Module::createAll([this](std::shared_ptr<Client::Module> module){
+    SteamBot::Startup::InitBase<Module>::create([this](std::unique_ptr<Client::Module> module) {
         std::lock_guard<decltype(modulesMutex)> lock(modulesMutex);
         bool success=modules.try_emplace(std::type_index(typeid(*module)), std::move(module)).second;
         assert(success);	// only one module per type

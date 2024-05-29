@@ -19,65 +19,65 @@
 
 #pragma once
 
-#include <utility>
+#include "TypeName.hpp"
+
 #include <memory>
 #include <type_traits>
 
+#include <boost/intrusive/slist.hpp>
 #include <boost/log/trivial.hpp>
 
 /************************************************************************/
 /*
- * This is crapton of template for very little code... not sure
- * whether it makes sense.
+ * This is a wrapper for the global-constructor-init scheme, whereby
+ * classes are registered through a global static object that's put
+ * into a list, so you can process that list later.
  *
- * It's an attempt to make a wrapper for the global-constructor-init
- * scheme.
+ * To use this, make a global SteamBot::Startup::Init<BASE,T> object.
+ * BASE must be a base class for all your T classes; it creates
+ * different lists for each BASE, and object creation returns a BASE
+ * pointer.
+ *
+ * When your program is running, use InitBase<T>::create(callback)
+ * to construct an instance of your classes in unspecified order,
+ * passing them to the callback.
  */
 
 /************************************************************************/
-/*
- * Create a global object Init<Base, Class, Args...>.
- *
- * "Base" is the virtual baseclass for the stuff you're creating,
- * while Class is the actual class.
- *
- * InitBase::initAll(callback, args...) will create an instance of all
- * Classes, with args as constructor parameters. It will call
- * callback(std::unique_ptr<Base>) with each object.
- */
 
 namespace SteamBot
 {
     namespace Startup
     {
-        template <typename T, typename... ARGS> class InitBase
+        template <typename BASE> class InitBase :
+            public boost::intrusive::slist_base_hook<boost::intrusive::link_mode<boost::intrusive::normal_link>>
         {
         private:
-            static inline const InitBase* list=nullptr;
-            const InitBase* const next;
+            typedef boost::intrusive::slist<InitBase, boost::intrusive::constant_time_size<false>> ListType;
 
-        protected:
-            InitBase()
-                : next(list)
+            static ListType& getList()
             {
-                list=this;
+                static ListType list;
+                return list;
             }
 
         public:
+            InitBase()
+            {
+                getList().push_front(*this);
+            }
+
             virtual ~InitBase() =default;
 
-        public:
-            virtual std::unique_ptr<T> init(ARGS...) const =0;
+        private:
+            virtual std::unique_ptr<BASE> createInstance() const =0;
 
         public:
-            template <typename FUNC, typename... MYARGS> static void initAll(FUNC callback, MYARGS&&... args)
+            template <typename CALLBACK> static void create(CALLBACK callback)
             {
-                for (auto item=list; item!=nullptr; item=item->next)
+                for (const auto& item: getList())
                 {
-                    auto module=item->init(std::forward<MYARGS>(args)...);
-                    BOOST_LOG_TRIVIAL(debug) << "created " << boost::typeindex::type_id<T>().pretty_name()
-                                             << " module " << boost::typeindex::type_id_runtime(*module).pretty_name();
-                    callback(std::move(module));
+                    callback(item.createInstance());
                 }
             }
         };
@@ -90,15 +90,16 @@ namespace SteamBot
 {
     namespace Startup
     {
-        template <typename T, typename U, typename... ARGS> requires std::is_base_of_v<T, U> class Init : public InitBase<T, ARGS...>
+        template <typename BASE, typename T> requires std::is_base_of_v<BASE, T> class Init : public InitBase<BASE>
         {
         public:
-            Init() =default;
             virtual ~Init() =default;
 
-            virtual std::unique_ptr<T> init(ARGS... args) const override
+        private:
+            virtual std::unique_ptr<BASE> createInstance() const override
             {
-                return std::make_unique<U>(args...);
+                BOOST_LOG_TRIVIAL(debug) << "creating " << typeName<T>();
+                return std::make_unique<T>();
             }
         };
     }

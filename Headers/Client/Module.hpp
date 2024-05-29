@@ -64,7 +64,6 @@ namespace SteamBot
 
     public:
         virtual ~Module();
-        static void createAll(std::function<void(std::shared_ptr<Client::Module>)>);
 
     public:
         static SteamBot::Client& getClient() { return SteamBot::Client::getClient(); }
