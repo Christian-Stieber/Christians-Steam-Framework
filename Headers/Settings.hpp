@@ -63,11 +63,11 @@ namespace SteamBot
 
             virtual const std::string_view& name() const =0;
 
-            virtual const std::string_view& getString() const =0;
-
         public:
             // Internal use
             virtual bool setString(std::string_view) =0;
+            virtual std::string_view getString() const =0;
+
             virtual void storeWhiteboard(Ptr<>) const =0;
         };
     }
@@ -93,7 +93,7 @@ namespace SteamBot
 
         private:
             virtual bool setString(std::string_view) override;
-            virtual const std::string_view& getString() const override;
+            virtual std::string_view getString() const override;
         };
     }
 }

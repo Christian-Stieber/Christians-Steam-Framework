@@ -80,7 +80,7 @@ bool SettingBool::setString(std::string_view string)
 
 /************************************************************************/
 
-const std::string_view& SettingBool::getString() const
+std::string_view SettingBool::getString() const
 {
     const auto& item=boolStrings[value ? 0 : 1];
     assert(item.value==value);
