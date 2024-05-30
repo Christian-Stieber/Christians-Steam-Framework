@@ -7,15 +7,30 @@ This IS heavily work-in-progress. Chances are there's nothing to see for you her
 This project, more or less, started with me having some gripes with a much more
 famous idling bot based on SteamKit, so I figured I'd just make my own.
 
-Currently, the main goals are:
+Currently, the main goals are to make a framework to "deal with Steam" in various
+way, particularly stuff that I want to automate for myself. Currently, higher
+level features include (this list might not be up to date):
 
-* making a C++ framework to write Steam bots, similar to projects such as SteamKit
-* making a bot to idle cards
-* making the bot create trades for cards
+* card farming
+* stream "viewing" (to get drops; but it doesn't stop automatically)
+* sale queues
+* daily sale stickers
+* trading the entire (tradable) inventory to another account
+* accepting trades
+* listing owned games
+* listing inventory
 
-As for the time beyond, I don't know yet. This is a one-man spare-time project, so I'm trying to stick to a reasonably realistic plan.
+There's low level stuff, of course:
 
-Note that the bot is in a separate repository: https://github.com/Christian-Stieber/Christians-Steam-Bot
+* making and using a client connection (i.e. protobufs)
+* logins
+* making authenticated https queries
+
+so in theory you can make your own features if you wanted to.
+
+This is a one-man spare-time project, so progress is slow and mostly based on what I want to do.
+
+Note that a bot is in a separate repository: https://github.com/Christian-Stieber/Christians-Steam-Bot
 
 # PLATFORMS
 
@@ -45,40 +60,6 @@ I'm now maintaining a project for Visual Studio 2022 -- the free edition, whatev
 Currently, it uses boch nuget and vcpkg package manegers; make sure you install vcpkg from the Visual Studio tool selection, and run `vcpkg integrate install` in the Visual Studio command prompt.
 
 I think this should do it.
-
-# FEATURES
-
-Again, this list might not be complete/current. But, some things that are there include:
-* multiple clients running concurrently, clients are based around internal asynchronicity as well
-* modular setup
-* for now, only TCP connections are supported.\
-  I guessed it might the easiest of the three, and wanted to get other things done
-* Login:
-    * password-based
-    * Steamguard EMail, Steamguard Device, Device confirmation.\
-      Note that you can't select this; it will prefer device confirmations if they are offered
-* sending/receiving Steam client messages.\
-  Many of those do not have specific support, though.\
-  Protobuf messages in particular (and I've rarely encountered any that aren't) are very easy to work with.
-* some higher level support for Steam client functionality, such as
-     * getting lists of licenses or owned games
-     * registering a free license
-     * "playing" games
-* builtin HTTP support:
-     * an HTTP client (light wrapper around `boost::beast` and integration with the framework)
-     * support for "authenticated" webpage-queries to Steam
-     * a simple HTML parser (can parse the Steam badge page, chokes on the Amazon homepage)
-* module to get badge data
-     * there's also a "fake" farming module that merely lists games that have card drops remaining.\
-       I'm calling that a starting point, as the thing is still work-in-progress
-* support for UnifiedSteamMessages:
-     * client-initiated\
-       Only a "blocking" API right now -- but note that this only blocks the fiber making the call, nothing else.
-     * server-initiated (notifications in particular) are high up on my ToDo-list
-* can deal with some sale/event-related stuff:
-  * clear discoverey queues as required by a major sale (auto-detected)
-  * obtain an event-sticker (auto-detected)
-  * "view" a video stream (no autodetection of either the page or whether items have been received)
 
 # DATA FILES
 
