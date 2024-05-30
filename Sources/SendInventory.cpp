@@ -22,7 +22,9 @@
 #include "SendInventory.hpp"
 #include "SendTrade.hpp"
 #include "AssetData.hpp"
+#include "Settings.hpp"
 #include "Modules/Inventory.hpp"
+#include "UI/UI.hpp"
 
 /************************************************************************/
 
@@ -32,6 +34,31 @@ typedef SteamBot::SendTrade SendTrade;
 /************************************************************************/
 
 static const uint32_t itemsPerTrade=100;
+
+/************************************************************************/
+
+namespace
+{
+    class SendInventoryPartner : public SteamBot::Settings::SettingBotName
+    {
+    public:
+        using SettingBotName::SettingBotName;
+
+    private:
+        virtual const std::string_view& name() const override
+        {
+            static const std::string_view string{"send-inventory-recipient"};
+            return string;
+        }
+
+        virtual void storeWhiteboard(Ptr<> setting) const override
+        {
+            SteamBot::Settings::Internal::storeWhiteboard<SendInventoryPartner>(std::move(setting));
+        }
+    };
+
+    SteamBot::Settings::Init<SendInventoryPartner> init;
+}
 
 /************************************************************************/
 /*
@@ -60,15 +87,26 @@ static std::vector<SendTrade::Item> collectItems(const Inventory& inventory)
 
 /************************************************************************/
 
-bool SteamBot::sendInventory(SteamBot::ClientInfo* partner)
+bool SteamBot::sendInventory(const SteamBot::ClientInfo* partner)
 {
     bool result=false;
-    if (auto inventory=SteamBot::Inventory::get())
+
+    if (partner==nullptr)
     {
-        SendTrade sendTrade;
-        sendTrade.partner=partner;
-        sendTrade.myItems=collectItems(*inventory);
-        result=sendTrade.send();
+        partner=SteamBot::Client::getClient().whiteboard.get<SendInventoryPartner::Ptr<SendInventoryPartner>>()->clientInfo;
     }
+
+    if (partner!=nullptr)
+    {
+        SteamBot::UI::OutputText() << "sending inventory to " << partner->accountName;
+        if (auto inventory=SteamBot::Inventory::get())
+        {
+            SendTrade sendTrade;
+            sendTrade.partner=partner;
+            sendTrade.myItems=collectItems(*inventory);
+            result=sendTrade.send();
+        }
+    }
+
     return result;
 }

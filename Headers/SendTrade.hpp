@@ -50,7 +50,7 @@ namespace SteamBot
         ~SendTrade();
 
     public:
-        ClientInfo* partner;
+        const ClientInfo* partner;
         std::vector<Item> myItems;
         std::vector<Item> theirItems;
 

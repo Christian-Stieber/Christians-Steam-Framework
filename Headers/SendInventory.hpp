@@ -30,5 +30,5 @@ namespace SteamBot
 
 namespace SteamBot
 {
-    bool sendInventory(SteamBot::ClientInfo* partner);
+    bool sendInventory(const SteamBot::ClientInfo* partner);
 }
