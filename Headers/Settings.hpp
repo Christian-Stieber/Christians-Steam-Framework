@@ -71,26 +71,6 @@ namespace SteamBot
 
 /************************************************************************/
 /*
- * Get whatever value is currently stored in the whiteboard.
- *
- * Since this returns a reference, whiteboard rules apply for the
- * lifetime.
- */
-
-namespace SteamBot
-{
-    namespace Settings
-    {
-        template <typename T> const auto& getValue(SteamBot::Whiteboard::WaiterType<Setting::Ptr<T>>& waiter)
-        {
-            const auto& setting=waiter->get();
-            return setting->value;
-        }
-    }
-}
-
-/************************************************************************/
-/*
  * This base class should help with creating boolean settings.
  */
 

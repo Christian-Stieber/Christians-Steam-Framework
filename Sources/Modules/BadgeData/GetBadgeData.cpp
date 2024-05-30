@@ -329,7 +329,7 @@ void GetBadgeDataModule::run(SteamBot::Client& client)
     {
         waiter->wait();
 
-        if (SteamBot::Settings::getValue<Enable>(enableWaiter))
+        if (enableWaiter->get()->value)
         {
             // Note: for now, I'm trying to stick to GameChanged
             // messages for game additions, instead of reading the

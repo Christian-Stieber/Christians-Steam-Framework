@@ -221,11 +221,6 @@ namespace
         FarmInfo* selectSingleGame() const;
 
     private:
-        bool isEnabled()
-        {
-            return SteamBot::Settings::getValue<Enable>(enableWaiter);
-        }
-
         void farmGames();
         void handleBadgeData();
 
@@ -424,7 +419,7 @@ void CardFarmerModule::farmGames()
     auto playDuration=std::chrono::minutes::max();
     twoHourMark=decltype(twoHourMark)();
 
-    if (isEnabled())
+    if (getClient().whiteboard.get<Enable::Ptr<Enable>>()->value)
     {
         if (auto game=selectSingleGame())
         {
@@ -506,6 +501,8 @@ void CardFarmerModule::run(SteamBot::Client&)
         {
             handleBadgeData();
         }
+
+        enableWaiter->has();
 
         farmGames();
     }
