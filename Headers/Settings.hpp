@@ -52,9 +52,13 @@ namespace SteamBot
         {
         public:
             template <typename T=Setting> using Ptr=std::shared_ptr<const T>;
+            typedef const SteamBot::Startup::InitBase<Setting> InitBase;
 
         public:
-            Setting();
+            const InitBase& init;
+
+        public:
+            Setting(const InitBase&);
             virtual ~Setting();
 
             virtual const std::string_view& name() const =0;
@@ -84,7 +88,7 @@ namespace SteamBot
             bool value;
 
         public:
-            SettingBool(bool value_=false);
+            SettingBool(const InitBase&, bool value_=false);
             virtual ~SettingBool();
 
         private:

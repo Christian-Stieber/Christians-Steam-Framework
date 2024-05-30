@@ -46,6 +46,9 @@ namespace SteamBot
             {
                 class Enable : public SteamBot::Settings::SettingBool
                 {
+                public:
+                    using SettingBool::SettingBool;
+
                 private:
                     virtual const std::string_view& name() const override;
                     virtual void storeWhiteboard(Ptr<>) const override;

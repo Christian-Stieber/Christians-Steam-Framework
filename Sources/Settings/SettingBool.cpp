@@ -28,8 +28,8 @@ typedef SteamBot::Settings::SettingBool SettingBool;
 
 /************************************************************************/
 
-SettingBool::SettingBool(bool value_)
-    : value(value_)
+SettingBool::SettingBool(const SettingBool::InitBase& init_, bool value_)
+    : Setting(init_), value(value_)
 {
 }
 

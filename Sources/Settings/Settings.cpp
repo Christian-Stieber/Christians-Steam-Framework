@@ -31,7 +31,11 @@ static const std::string_view settingsKey="Settings";
 
 /************************************************************************/
 
-Setting::Setting() =default;
+Setting::Setting(const Setting::InitBase& init_)
+    : init(init_)
+{
+}
+
 Setting::~Setting() =default;
 
 /************************************************************************/
@@ -50,7 +54,8 @@ namespace
     private:
         static SteamBot::DataFile& getDataFile();
 
-        void loadItem(Setting&);
+        void loadItem(Setting&) const;
+        void storeItem(const Setting&);
         void loadSettings();
 
     public:
@@ -75,7 +80,20 @@ SteamBot::DataFile& SettingsModule::getDataFile()
 
 /************************************************************************/
 
-void SettingsModule::loadItem(Setting& setting)
+void SettingsModule::storeItem(const Setting& setting)
+{
+    dataFile.update([&setting](boost::json::value& json) -> bool {
+        auto& value=SteamBot::JSON::createItem(json, settingsKey, setting.name());
+        auto string=setting.getString();
+        BOOST_LOG_TRIVIAL(info) << "Storing new value \"" << string << "\" into setting \"" << setting.name() << "\"";
+        value.emplace_string()=std::move(setting.getString());
+        return true;
+    });
+}
+
+/************************************************************************/
+
+void SettingsModule::loadItem(Setting& setting) const
 {
     dataFile.examine([&setting](const boost::json::value& json) {
         if (auto item=SteamBot::JSON::getItem(json, settingsKey, setting.name()))
@@ -140,13 +158,30 @@ std::map<std::string_view, std::string> SettingsModule::getValues() const
 
 bool SettingsModule::changeValue(std::string_view name, std::string_view value)
 {
-    for (const auto& setting: settings)
+    for (auto& setting: settings)
     {
         if (setting->name()==name)
         {
-            return setting->setString(value);
+            if (setting->getString()==value)
+            {
+                // new value is the same as old
+                return true;
+            }
+
+            auto newSetting=setting->init.createInstance();
+            if (!newSetting->setString(value))
+            {
+                // invalid value
+                return false;
+            }
+
+            storeItem(*newSetting);
+            setting=std::move(newSetting);
+            setting->storeWhiteboard(setting);
+            return true;
         }
     }
+    // invalid name
     return false;
 }
 
