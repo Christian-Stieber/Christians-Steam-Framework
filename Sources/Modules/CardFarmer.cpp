@@ -276,6 +276,10 @@ void CardFarmerModule::handleBadgeData()
 
         games=std::move(myGames);
     }
+    else
+    {
+        games.clear();
+    }
 }
 
 /************************************************************************/
@@ -437,20 +441,20 @@ void CardFarmerModule::farmGames()
                 twoHourMark=decltype(twoHourMark)::clock::now()+playDuration;
             }
         }
-
-        // Stop the games that we are no longer farming
-        for (SteamBot::AppID appId : playing)
-        {
-            auto iterator=std::find(myGames.begin(), myGames.end(), appId);
-            if (iterator==myGames.end())
-            {
-                SteamBot::Modules::PlayGames::Messageboard::PlayGame::play(appId, false);
-            }
-        }
-
-        // And launch everything else. PlayGames will prevent duplicates.
-        playing=std::move(myGames);
     }
+
+    // Stop the games that we are no longer farming
+    for (SteamBot::AppID appId : playing)
+    {
+        auto iterator=std::find(myGames.begin(), myGames.end(), appId);
+        if (iterator==myGames.end())
+        {
+            SteamBot::Modules::PlayGames::Messageboard::PlayGame::play(appId, false);
+        }
+    }
+
+    // And launch everything else. PlayGames will prevent duplicates.
+    playing=std::move(myGames);
 
     if (!playing.empty())
     {
