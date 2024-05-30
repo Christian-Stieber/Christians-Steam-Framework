@@ -169,10 +169,13 @@ bool SettingsModule::changeValue(std::string_view name, std::string_view value)
             }
 
             auto newSetting=setting->init.createInstance();
-            if (!newSetting->setString(value))
+            if (!value.empty())
             {
-                // invalid value
-                return false;
+                if (!newSetting->setString(value))
+                {
+                    // invalid value
+                    return false;
+                }
             }
 
             storeItem(*newSetting);

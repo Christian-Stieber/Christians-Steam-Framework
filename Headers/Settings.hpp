@@ -123,6 +123,8 @@ namespace SteamBot
     namespace Settings
     {
         std::map<std::string_view, std::string> getValues();
+
+        // pass an empty value to reset to default
         bool changeValue(std::string_view, std::string_view);
     }
 }
