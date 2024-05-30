@@ -85,11 +85,35 @@ namespace SteamBot
         class SettingBool : public Setting
         {
         public:
-            bool value;
+            bool value=false;
 
         public:
-            SettingBool(const InitBase&, bool value_=false);
-            virtual ~SettingBool();
+            using Setting::Setting;
+
+        private:
+            virtual bool setString(std::string_view) override;
+            virtual std::string_view getString() const override;
+        };
+    }
+}
+
+/************************************************************************/
+/*
+ * This base class should help with creating settings to target
+ * another bot
+ */
+
+namespace SteamBot
+{
+    namespace Settings
+    {
+        class SettingBotName : public Setting
+        {
+        public:
+            const SteamBot::ClientInfo* clientInfo=nullptr;
+
+        public:
+            using Setting::Setting;
 
         private:
             virtual bool setString(std::string_view) override;
