@@ -38,9 +38,14 @@
  * different lists for each BASE, and object creation returns a BASE
  * pointer.
  *
- * When your program is running, use InitBase<T>::create(callback)
- * to construct an instance of your classes in unspecified order,
- * passing them to the callback.
+ * When your program is running, use InitBase<T>::create(callback) to
+ * construct an instance of your classes in unspecified order, passing
+ * them to the callback.
+ *
+ * Your class constuctor can have these signaturs:
+ *   T()
+ *   T(const InitBase<BASE>&)
+ *   T(const Init<BASE,T>&)
  */
 
 /************************************************************************/
@@ -69,10 +74,9 @@ namespace SteamBot
 
             virtual ~InitBase() =default;
 
-        private:
+        public:
             virtual std::unique_ptr<BASE> createInstance() const =0;
 
-        public:
             template <typename CALLBACK> static void create(CALLBACK callback)
             {
                 for (const auto& item: getList())
@@ -90,16 +94,43 @@ namespace SteamBot
 {
     namespace Startup
     {
+        template <typename BASE, typename T> requires std::is_base_of_v<BASE, T> class Init;
+
+        namespace Internal
+        {
+            template <typename BASE, typename T> concept UsesInitParam =
+                requires(const Init<BASE,T>& init)
+                {
+                    T(init);
+                };
+        }
+    }
+}
+
+/************************************************************************/
+
+namespace SteamBot
+{
+    namespace Startup
+    {
         template <typename BASE, typename T> requires std::is_base_of_v<BASE, T> class Init : public InitBase<BASE>
         {
         public:
             virtual ~Init() =default;
 
-        private:
+        public:
             virtual std::unique_ptr<BASE> createInstance() const override
             {
                 BOOST_LOG_TRIVIAL(debug) << "creating " << typeName<T>();
-                return std::make_unique<T>();
+
+                if constexpr (Internal::UsesInitParam<BASE, T>)
+                {
+                    return std::make_unique<T>(*this);
+                }
+                else
+                {
+                    return std::make_unique<T>();
+                }
             }
         };
     }
