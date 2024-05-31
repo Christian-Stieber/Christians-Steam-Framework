@@ -213,6 +213,7 @@ void OwnedGamesModule::reportChanged(OwnedGames::ChangeList& messages) const
     auto& messageboard=getClient().messageboard;
     for (auto& message : messages)
     {
+        BOOST_LOG_TRIVIAL(info) << "OwnedGanes: " << message->appId << " has changed data";
         messageboard.send(std::move(message));
     }
     messages.clear();

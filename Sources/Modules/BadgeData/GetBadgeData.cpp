@@ -296,7 +296,11 @@ void GetBadgeDataModule::handle(std::shared_ptr<const InventoryNotification> mes
             {
                 if (badgeInfo->second.cardsEarned>badgeInfo->second.cardsReceived)
                 {
-                    updateBadge(message->assetInfo->marketFeeApp);
+                    // ToDo: should we add some leeway to account for clock differences? How?
+                    if (message->clientNotification->timestamp>badgeInfo->second.when)
+                    {
+                        updateBadge(message->assetInfo->marketFeeApp);
+                    }
                 }
             }
         }
