@@ -128,7 +128,7 @@ namespace
 
     private:
         void updateBadge(SteamBot::AppID);
-        void getOverviewPages();
+        bool getOverviewPages();
 
         static bool getURL(boost::urls::url, BadgeData&, bool);
 
@@ -206,12 +206,12 @@ bool GetBadgeDataModule::getURL(boost::urls::url url, BadgeData& badgeData, bool
  * This loeads all the badge overview pages
  */
 
-void GetBadgeDataModule::getOverviewPages()
+bool GetBadgeDataModule::getOverviewPages()
 {
     auto badgeData=std::make_shared<BadgeData>();
     unsigned int page=1;
 
-    while (true)
+    while (getClient().whiteboard.get<Enable::Ptr<Enable>>()->value)
     {
         SteamBot::UI::OutputText() << "BadgeData: loading overview page " << page;
 
@@ -226,11 +226,12 @@ void GetBadgeDataModule::getOverviewPages()
         {
             SteamBot::UI::OutputText() << "BadgeData: got data for " << badgeData->badges.size() << " games";
             getClient().whiteboard.set<BadgeData::Ptr>(std::move(badgeData));
-            break;
+            return true;
         }
 
         page++;
     }
+    return false;
 }
 
 /************************************************************************/
@@ -339,8 +340,7 @@ void GetBadgeDataModule::run(SteamBot::Client& client)
             {
                 if (ownedGamesWaiter->has())
                 {
-                    getOverviewPages();
-                    fullyLoaded=true;
+                    fullyLoaded=getOverviewPages();
                 }
             }
             else
