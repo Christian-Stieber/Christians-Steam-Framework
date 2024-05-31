@@ -30,20 +30,27 @@
 
 /************************************************************************/
 
-typedef SteamBot::Modules::PlayGames::Messageboard::PlayGame PlayGame;
+typedef SteamBot::Modules::PlayGames::Messageboard::PlayGames PlayGames;
 typedef SteamBot::Modules::PlayGames::Whiteboard::PlayingGames PlayingGames;
 
 /************************************************************************/
 
-PlayGame::PlayGame() =default;
-PlayGame::~PlayGame() =default;
+PlayGames::PlayGames() =default;
+PlayGames::~PlayGames() =default;
 
 /************************************************************************/
 
-boost::json::value PlayGame::toJson() const
+boost::json::value PlayGames::toJson() const
 {
     boost::json::object json;
-    SteamBot::enumToJson(json, "appId", appId);
+    {
+        boost::json::array array;
+        for (SteamBot::AppID appId : appIds)
+        {
+            array.emplace_back(toInteger(appId));
+        }
+        json["appIds"]=std::move(array);
+    }
     json["action"]=start ? "start" : "stop";
     return json;
 }
@@ -55,7 +62,7 @@ namespace
     class PlayGamesModule : public SteamBot::Client::Module
     {
     private:
-        SteamBot::Messageboard::WaiterType<PlayGame> playGame;
+        SteamBot::Messageboard::WaiterType<PlayGames> playGamesWaiter;
 
         std::vector<SteamBot::AppID> games;
 
@@ -76,7 +83,7 @@ namespace
         void sendGames() const;
 
     public:
-        void handle(std::shared_ptr<const PlayGame>);
+        void handle(std::shared_ptr<const PlayGames>);
 
     public:
         PlayGamesModule() =default;
@@ -94,7 +101,7 @@ namespace
 void PlayGamesModule::reportGames() const
 {
     SteamBot::UI::OutputText output;
-    output << "(presumably) playing ";
+    output << "PlayGames: (presumably) playing ";
 
     if (games.size()==0)
     {
@@ -160,39 +167,61 @@ void PlayGamesModule::sendGames() const
 
 /************************************************************************/
 
-void PlayGamesModule::handle(std::shared_ptr<const PlayGame> message)
+void PlayGamesModule::handle(std::shared_ptr<const PlayGames> message)
 {
-    BOOST_LOG_TRIVIAL(debug) << "received PlayGame request: " << message->toJson();
+    BOOST_LOG_TRIVIAL(debug) << "received PlayGames request: " << message->toJson();
+
+    std::vector<SteamBot::AppID> stopped;
+    bool somethingChanged=false;
 
     if (message->start)
     {
-        for (const auto appId : games)
+        for (const SteamBot::AppID playAppId: message->appIds)
         {
-            if (appId==message->appId)
+            bool alreadyPlaying=false;
             {
-                return;
+                for (const SteamBot::AppID playingAppId: games)
+                {
+                    if (playAppId==playingAppId)
+                    {
+                        alreadyPlaying=true;
+                        break;
+                    }
+                }
+            }
+            if (!alreadyPlaying)
+            {
+                games.push_back(playAppId);
+                somethingChanged=true;
             }
         }
-        games.push_back(message->appId);
     }
     else
     {
-        auto count=SteamBot::erase(games, [message](SteamBot::AppID other) {
-            return other==message->appId;
+        auto count=SteamBot::erase(games, [message,&stopped](const SteamBot::AppID playingAppId) {
+            for (const SteamBot::AppID stopAppId: message->appIds)
+            {
+                if (playingAppId==stopAppId)
+                {
+                    stopped.push_back(stopAppId);
+                    return true;
+                }
+            }
+            return false;
         });
 
-        assert(count==0 || count==1);
-        if (count==0)
-        {
-            return;
-        }
+        assert(count==stopped.size());
+        somethingChanged=(count>0);
     }
 
-    sendGames();
+    if (somethingChanged)
+    {
+        sendGames();
+    }
 
     if (!message->start)
     {
-        auto updateMessage=std::make_shared<SteamBot::Modules::OwnedGames::Messageboard::UpdateGames>(std::vector<SteamBot::AppID>{message->appId});
+        auto updateMessage=std::make_shared<SteamBot::Modules::OwnedGames::Messageboard::UpdateGames>(std::move(stopped));
         getClient().messageboard.send(std::move(updateMessage));
     }
 }
@@ -218,7 +247,7 @@ void PlayGamesModule::performUpdate()
 
 void PlayGamesModule::init(SteamBot::Client& client)
 {
-    playGame=client.messageboard.createWaiter<PlayGame>(*waiter);
+    playGamesWaiter=client.messageboard.createWaiter<PlayGames>(*waiter);
 }
 
 /************************************************************************/
@@ -229,7 +258,7 @@ void PlayGamesModule::run(SteamBot::Client&)
 
     while (true)
     {
-        playGame->handle(this);
+        playGamesWaiter->handle(this);
         if (games.empty())
         {
             waiter->wait();
@@ -246,10 +275,10 @@ void PlayGamesModule::run(SteamBot::Client&)
 
 /************************************************************************/
 
-void PlayGame::play(SteamBot::AppID appId, bool start)
+void PlayGames::play(std::vector<SteamBot::AppID> appIds, bool start)
 {
-    auto message=std::make_shared<PlayGame>();
-    message->appId=appId;
+    auto message=std::make_shared<PlayGames>();
+    message->appIds=std::move(appIds);
     message->start=start;
     SteamBot::Client::getClient().messageboard.send(std::move(message));
 }

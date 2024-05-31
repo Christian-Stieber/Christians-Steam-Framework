@@ -56,19 +56,24 @@ namespace SteamBot
         {
             namespace Messageboard
             {
-                class PlayGame
+                class PlayGames
                 {
                 public:
-                    AppID appId=AppID::None;
+                    std::vector<AppID> appIds;
                     bool start=true;
 
                 public:
-                    PlayGame();
-                    ~PlayGame();
+                    PlayGames();
+                    ~PlayGames();
                     boost::json::value toJson() const;
 
                 public:
-                    static void play(AppID, bool);
+                    static void play(std::vector<AppID>, bool);
+
+                    inline static void play(AppID appId, bool start)
+                    {
+                        play(std::vector<AppID>{appId}, start);
+                    }
                 };
             }
         }
