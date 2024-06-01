@@ -32,20 +32,11 @@
 /*
  * Our farming strategy is as follows.
  *
- * As a main rule, we only run a game for at most "farmIntervalTime"
- * (currently 10 minutes). We then stop it, and give it a pause of
- * up to "pauseTime", or until Steam gives us a playtime update.
+ * In all selection steps below, if we find more suitable games than
+ * we need, we prefer low remaining cards and high playtime.
  *
- * For now, that "pauseTime" will block all farming; it seems that
- * I generally get the update right away, so playing something else
- * for a split second seems like an annoyance towards Steam, but
- * won't add any useful playtime.
- *
- * Also, in all selection steps below, if we find more suitable games
- * than we need, we prefer low remaining cards and high playtime.
- *
- * Among the games that are farmable (i.e. not paused), we first try
- * to select a single game to farm:
+ * Among the games that are farmable we first try to select a single
+ * game to farm:
  *   1) find a game that already has received cards
  *   2) find a game with more than "multipleGamesTimeMax" playtime
  *   3) find a game with less than "multipleGamesTimeMin" playtime
@@ -61,15 +52,10 @@
  */
 
 #undef CHRISTIAN_PLAY_GAMES
-// #define CHRISTIAN_PLAY_GAMES
+#define CHRISTIAN_PLAY_GAMES
 
 /************************************************************************/
-/*
- * Some clock-related types
- */
 
-typedef std::chrono::steady_clock Clock;
-typedef Clock::time_point TimePoint;
 typedef std::chrono::minutes Duration;
 
 /************************************************************************/
@@ -87,16 +73,6 @@ static constexpr unsigned int maxGames=2;
 
 static constinit Duration multipleGamesTimeMin=std::chrono::minutes(30);
 static constinit Duration multipleGamesTimeMax=std::chrono::hours(2);
-
-/************************************************************************/
-
-#ifdef CHRISTIAN_PLAY_GAMES
-static constinit Duration farmIntervalTime=std::chrono::minutes(10);
-#else
-static constinit Duration farmIntervalTime=std::chrono::minutes(2);
-#endif
-
-static constinit Duration pauseTime=std::chrono::minutes(1);
 
 /************************************************************************/
 /*
@@ -145,28 +121,10 @@ namespace
         unsigned int cardsReceived=0;
         Duration playtime{0};
 
-        bool isPaused=false;
-        TimePoint nextStatusCheck{TimePoint::max()};
-
     public:
         std::shared_ptr<const OwnedGames::GameInfo> getInfo() const
         {
             return SteamBot::Modules::OwnedGames::getInfo(appId);
-        }
-
-        void gotUpdate();
-
-    public:
-        bool isFarmable() const
-        {
-            return cardsRemaining>0 && !isPaused;
-        }
-
-    public:
-        void clearFarmTiming()
-        {
-            isPaused=false;
-            nextStatusCheck=TimePoint::max();
         }
 
     public:
@@ -248,8 +206,6 @@ namespace
         FarmInfo* selectSingleGame(bool(*)(const FarmInfo&)) const;
         std::vector<SteamBot::AppID> selectMultipleGames() const;
         std::vector<SteamBot::AppID> selectFarmGames() const;
-        TimePoint findNextStatusCheck() const;
-        bool handleFarmTimings() const;
         void playGames(std::vector<SteamBot::AppID>);
         void farmGames();
         void handleBadgeData();
@@ -313,15 +269,9 @@ void CardFarmerModule::handleBadgeData()
                 }
                 if (auto info=game->getInfo())
                 {
-                    if (game->playtime!=info->playtimeForever ||
-                        game->cardsRemaining!=cardsRemaining ||
-                        game->cardsReceived!=cardsReceived)
-                    {
-                        game->playtime=info->playtimeForever;
-                        game->cardsRemaining=cardsRemaining;
-                        game->cardsReceived=cardsReceived;
-                        game->clearFarmTiming();
-                    }
+                    game->playtime=info->playtimeForever;
+                    game->cardsRemaining=cardsRemaining;
+                    game->cardsReceived=cardsReceived;
 
                     SteamBot::UI::OutputText output;
                     game->print(output);
@@ -357,7 +307,7 @@ FarmInfo* CardFarmerModule::selectSingleGame(bool(*condition)(const FarmInfo&)) 
     for (const auto& item : games)
     {
         FarmInfo* game=item.second.get();
-        if (game->isFarmable() && condition(*game))
+        if (game->cardsRemaining>0 && condition(*game))
         {
             if (candidate==nullptr || *game<*candidate)
             {
@@ -381,7 +331,7 @@ std::vector<SteamBot::AppID> CardFarmerModule::selectMultipleGames() const
     for (const auto& item : games)
     {
         FarmInfo* game=item.second.get();
-        if (game->isFarmable() && game->playtime>=multipleGamesTimeMin && game->playtime<multipleGamesTimeMax)
+        if (game->cardsRemaining>0 && game->playtime>=multipleGamesTimeMin && game->playtime<multipleGamesTimeMax)
         {
             candidates.push_back(game);
         }
@@ -406,38 +356,6 @@ std::vector<SteamBot::AppID> CardFarmerModule::selectMultipleGames() const
 
 /************************************************************************/
 /*
- * This will unpause the games where the timeout has been reached,
- * and pause games that have reached their farmIntervalTime.
- *
- * Returns true if something is paused.
- */
-
-bool CardFarmerModule::handleFarmTimings() const
-{
-    bool isPaused=false;
-    auto now=Clock::now();
-    for (const auto& item: games)
-    {
-        auto& game=*(item.second);
-        if (game.nextStatusCheck<=now)
-        {
-            if (game.isPaused)
-            {
-                game.clearFarmTiming();
-            }
-            else
-            {
-                game.isPaused=true;
-                game.nextStatusCheck=now+pauseTime;
-            }
-        }
-        isPaused|=game.isPaused;
-    }
-    return isPaused;
-}
-
-/************************************************************************/
-/*
  * Select which games we want to farm
  */
 
@@ -445,72 +363,24 @@ std::vector<SteamBot::AppID> CardFarmerModule::selectFarmGames() const
 {
     std::vector<SteamBot::AppID> myGames;
 
-    if (handleFarmTimings())
+    if (auto game=selectSingleGame([](const FarmInfo& candidate) { return candidate.cardsReceived>0; }))
     {
-        // Don't choose new games while we have games paused, even if
-        // it means we aren't playing anything. Shouldn't take too
-        // long, and it prevents use from just "flashing" a game for a
-        // split second.
-        for (SteamBot::AppID appId: playing)
-        {
-            if (const FarmInfo* game=findGame(appId))
-            {
-                if (!game->isPaused)
-                {
-                    myGames.push_back(appId);
-                }
-            }
-        }
+        myGames.push_back(game->appId);
+    }
+    else if ((game=selectSingleGame([](const FarmInfo& candidate) { return candidate.playtime>=multipleGamesTimeMax; })))
+    {
+        myGames.push_back(game->appId);
+    }
+    else if ((game=selectSingleGame([](const FarmInfo& candidate) { return candidate.playtime<multipleGamesTimeMin; })))
+    {
+        myGames.push_back(game->appId);
     }
     else
     {
-        if (auto game=selectSingleGame([](const FarmInfo& candidate) { return candidate.cardsReceived>0; }))
-        {
-            myGames.push_back(game->appId);
-        }
-        else if ((game=selectSingleGame([](const FarmInfo& candidate) { return candidate.playtime>=multipleGamesTimeMax; })))
-        {
-            myGames.push_back(game->appId);
-        }
-        else if ((game=selectSingleGame([](const FarmInfo& candidate) { return candidate.playtime<multipleGamesTimeMin; })))
-        {
-            myGames.push_back(game->appId);
-        }
-        else
-        {
-            myGames=selectMultipleGames();
-        }
+        myGames=selectMultipleGames();
     }
 
     return myGames;
-}
-
-/************************************************************************/
-/*
- * Among our games, find the next time to perform a status check.
- * Status cehcks are:
- *   - a pause timeout
- *   - a game having been farmed for farmInterval minutes
- */
-
-TimePoint CardFarmerModule::findNextStatusCheck() const
-{
-    TimePoint result{TimePoint::max()};
-    for (const auto& item: games)
-    {
-        const FarmInfo& game=*(item.second);
-#if 0
-        if (game.nextStatusCheck!=TimePoint::max())
-        {
-            SteamBot::UI::OutputText() << game.appId << " wakeup in " << std::chrono::duration_cast<std::chrono::seconds>(game.nextStatusCheck-Clock::now()).count();
-        }
-#endif
-        if (game.nextStatusCheck<result)
-        {
-            result=game.nextStatusCheck;
-        }
-    }
-    return result;
 }
 
 /************************************************************************/
@@ -528,13 +398,6 @@ void CardFarmerModule::playGames(std::vector<SteamBot::AppID> myGames)
             auto iterator=std::find(myGames.begin(), myGames.end(), appId);
             if (iterator==myGames.end())
             {
-                if (FarmInfo* game=findGame(appId))
-                {
-                    if (!game->isPaused)
-                    {
-                        game->clearFarmTiming();
-                    }
-                }
                 stop.push_back(appId);
             }
         }
@@ -542,37 +405,33 @@ void CardFarmerModule::playGames(std::vector<SteamBot::AppID> myGames)
     }
 
     // And launch everything else. PlayGames will prevent duplicates.
-    playing=std::move(myGames);
-
-    if (!playing.empty())
+    std::sort(myGames.begin(), myGames.end());
+    if (myGames!=playing)
     {
+        playing=std::move(myGames);
+
         {
             SteamBot::UI::OutputText output;
-            output << "CardFarmer: playing ";
-            const char* separator="";
-            for (SteamBot::AppID appId : playing)
+            output << "CardFarmer: ";
+            if (playing.empty())
             {
-                output << separator << appId;
-                separator=", ";
+                output << "nothing to farm";
+            }
+            else
+            {
+                output << "playing ";
+                const char* separator="";
+                for (SteamBot::AppID appId : playing)
+                {
+                    output << separator << appId;
+                    separator=", ";
+                }
             }
         }
 
 #ifdef CHRISTIAN_PLAY_GAMES
         SteamBot::Modules::PlayGames::Messageboard::PlayGames::play(playing, true);
 #endif
-
-        auto now=Clock::now();
-        for (SteamBot::AppID appId : playing)
-        {
-            if (auto game=findGame(appId))
-            {
-                assert(!game->isPaused);
-                if (game->nextStatusCheck==TimePoint::max())
-                {
-                    game->nextStatusCheck=now+farmIntervalTime;
-                }
-            }
-        }
     }
 }
 
@@ -593,27 +452,16 @@ void CardFarmerModule::farmGames()
 
 /************************************************************************/
 
-void FarmInfo::gotUpdate()
-{
-    if (auto info=getInfo())
-    {
-        if (playtime!=info->playtimeForever)
-        {
-            playtime=info->playtimeForever;
-            clearFarmTiming();
-        }
-    }
-}
-
-/************************************************************************/
-
 void CardFarmerModule::handle(std::shared_ptr<const GameChanged> message)
 {
     if (!message->newGame)
     {
         if (auto game=findGame(message->appId))
         {
-            game->gotUpdate();
+            if (auto info=game->getInfo())
+            {
+                game->playtime=info->playtimeForever;
+            }
         }
     }
 }
@@ -635,7 +483,7 @@ void CardFarmerModule::run(SteamBot::Client&)
 
     while (true)
     {
-        waiter->wait<Clock>(findNextStatusCheck());
+        waiter->wait();
 
         if (badgeDataWaiter->isWoken())
         {

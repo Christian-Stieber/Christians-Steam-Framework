@@ -316,13 +316,13 @@ void PlayGamesModule::handleUpdates()
             {
                 if (game.paused)
                 {
-                    SteamBot::UI::OutputText() << "unpausing" << game.appId;
+                    // SteamBot::UI::OutputText() << "unpausing " << game.appId;
                     game.paused=false;
                     game.nextUpdate=now+updateInterval;
                 }
                 else
                 {
-                    SteamBot::UI::OutputText() << "pausing" << game.appId;
+                    // SteamBot::UI::OutputText() << "pausing " << game.appId;
                     updates.push_back(game.appId);
                     game.paused=true;
                     game.nextUpdate=now+updateDuration;
