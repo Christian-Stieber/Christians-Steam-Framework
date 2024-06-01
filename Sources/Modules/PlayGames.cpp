@@ -29,9 +29,22 @@
 #include "Steam/ProtoBuf/steammessages_clientserver.hpp"
 
 /************************************************************************/
+/*
+ * When playing games, we make a short interruption every
+ * "updateInterval" and request a playtime update from Steam.
+ */
+
+static constinit std::chrono::minutes updateInterval(10);
+static constinit std::chrono::seconds updateDuration{5};
+
+/************************************************************************/
 
 typedef SteamBot::Modules::PlayGames::Messageboard::PlayGames PlayGames;
 typedef SteamBot::Modules::PlayGames::Whiteboard::PlayingGames PlayingGames;
+
+/************************************************************************/
+
+typedef std::chrono::steady_clock Clock;
 
 /************************************************************************/
 
@@ -62,23 +75,34 @@ namespace
     class PlayGamesModule : public SteamBot::Client::Module
     {
     private:
+        class GameInfo
+        {
+        public:
+            SteamBot::AppID appId;
+            Clock::time_point nextUpdate;
+            bool paused=false;
+
+        public:
+            GameInfo(SteamBot::AppID appId_, Clock::time_point now)
+                : appId(appId_), nextUpdate(now+updateInterval)
+            {
+            }
+        };
+
+    private:
         SteamBot::Messageboard::WaiterType<PlayGames> playGamesWaiter;
 
-        std::vector<SteamBot::AppID> games;
+        std::vector<GameInfo> games;
 
     private:
-        std::chrono::steady_clock::time_point lastUpdate;	// used for the attempt to update the playtime
+        Clock::time_point getNextUpdate() const;
 
     private:
-        typedef decltype(lastUpdate)::clock UpdateClock;
+        static void requestUpdates(std::vector<SteamBot::AppID>&&);
 
-        UpdateClock::time_point getNextUpdate() const
-        {
-            return lastUpdate+std::chrono::minutes(5);
-        }
-
-    private:
-        void performUpdate();
+        void handleUpdates();
+        void startGames(const std::vector<SteamBot::AppID>&);
+        void stopGames(const std::vector<SteamBot::AppID>&);
         void reportGames() const;
         void sendGames() const;
 
@@ -98,8 +122,26 @@ namespace
 
 /************************************************************************/
 
+Clock::time_point PlayGamesModule::getNextUpdate() const
+{
+    Clock::time_point result{Clock::time_point::max()};
+    for (const auto& game: games)
+    {
+        if (game.nextUpdate<result)
+        {
+            result=game.nextUpdate;
+        }
+    }
+    return result;
+}
+
+/************************************************************************/
+
 void PlayGamesModule::reportGames() const
 {
+    std::vector<SteamBot::AppID> appIds;
+    appIds.reserve(games.size());
+
     SteamBot::UI::OutputText output;
     output << "PlayGames: (presumably) playing ";
 
@@ -112,12 +154,23 @@ void PlayGamesModule::reportGames() const
         typedef SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames OwnedGames;
         auto ownedGames=getClient().whiteboard.get<OwnedGames::Ptr>(nullptr);
         const char* separator="";
-        for (SteamBot::AppID appId : games)
+        for (const auto& game : games)
         {
             output << separator;
             separator=", ";
-            output << appId;
+            output << game.appId;
+
+            appIds.push_back(game.appId);
         }
+    }
+
+    if (appIds.empty())
+    {
+        getClient().whiteboard.clear<PlayingGames>();
+    }
+    else
+    {
+        getClient().whiteboard.set<PlayingGames>(std::move(appIds));
     }
 }
 
@@ -139,30 +192,95 @@ void PlayGamesModule::sendGames() const
     // ToDo: should we use a different OS type?
     message->content.set_client_os_type(static_cast<uint32_t>(SteamBot::toInteger(Steam::getOSType())));
 
-    for (const auto& appId : games)
+    for (const auto& game : games)
     {
-        auto gameMessage=message->content.add_games_played();
-
+        if (!game.paused)
         {
-            SteamBot::GameID gameId;
-            gameId.setAppType(SteamBot::GameID::AppType::App);
-            gameId.setAppId(appId);
-            gameMessage->set_game_id(gameId.getValue());
+            auto gameMessage=message->content.add_games_played();
+            {
+                SteamBot::GameID gameId;
+                gameId.setAppType(SteamBot::GameID::AppType::App);
+                gameId.setAppId(game.appId);
+                gameMessage->set_game_id(gameId.getValue());
+            }
         }
     }
 
     SteamBot::Modules::Connection::Messageboard::SendSteamMessage::send(std::move(message));
+}
 
-    if (games.empty())
+/************************************************************************/
+
+void PlayGamesModule::startGames(const std::vector<SteamBot::AppID>& appIds)
+{
+    auto now=Clock::now();
+    
+    bool didChange=false;
+    for (auto appId: appIds)
     {
-        getClient().whiteboard.clear<PlayingGames>();
-    }
-    else
-    {
-        getClient().whiteboard.set<PlayingGames>(games);
+        bool alreadyPlaying=false;
+        {
+            for (const auto& game: games)
+            {
+                if (appId==game.appId)
+                {
+                    alreadyPlaying=true;
+                    break;
+                }
+            }
+        }
+        if (!alreadyPlaying)
+        {
+            games.emplace_back(appId, now);
+            didChange=true;
+        }
     }
 
-    reportGames();
+    if (didChange)
+    {
+        sendGames();
+        reportGames();
+    }
+}
+
+/************************************************************************/
+
+void PlayGamesModule::requestUpdates(std::vector<SteamBot::AppID>&& appIds)
+{
+    if (!appIds.empty())
+    {
+        auto updateMessage=std::make_shared<SteamBot::Modules::OwnedGames::Messageboard::UpdateGames>(std::move(appIds));
+        getClient().messageboard.send(std::move(updateMessage));
+    }
+}
+
+/************************************************************************/
+
+void PlayGamesModule::stopGames(const std::vector<SteamBot::AppID>& appIds)
+{
+    std::vector<SteamBot::AppID> updates;
+    SteamBot::erase(games, [&appIds, &updates](const GameInfo& game) {
+        for (auto appId: appIds)
+        {
+            if (appId==game.appId)
+            {
+                // if a game is paused, we've already requested an update
+                if (!game.paused)
+                {
+                    updates.push_back(appId);
+                }
+                return true;
+            }
+        }
+        return false;
+    });
+
+    if (!updates.empty())
+    {
+        sendGames();
+        reportGames();
+        requestUpdates(std::move(updates));
+    }
 }
 
 /************************************************************************/
@@ -171,76 +289,55 @@ void PlayGamesModule::handle(std::shared_ptr<const PlayGames> message)
 {
     BOOST_LOG_TRIVIAL(debug) << "received PlayGames request: " << message->toJson();
 
-    std::vector<SteamBot::AppID> stopped;
-    bool somethingChanged=false;
-
     if (message->start)
     {
-        for (const SteamBot::AppID playAppId: message->appIds)
-        {
-            bool alreadyPlaying=false;
-            {
-                for (const SteamBot::AppID playingAppId: games)
-                {
-                    if (playAppId==playingAppId)
-                    {
-                        alreadyPlaying=true;
-                        break;
-                    }
-                }
-            }
-            if (!alreadyPlaying)
-            {
-                games.push_back(playAppId);
-                somethingChanged=true;
-            }
-        }
+        startGames(message->appIds);
     }
     else
     {
-        auto count=SteamBot::erase(games, [message,&stopped](const SteamBot::AppID playingAppId) {
-            for (const SteamBot::AppID stopAppId: message->appIds)
-            {
-                if (playingAppId==stopAppId)
-                {
-                    stopped.push_back(stopAppId);
-                    return true;
-                }
-            }
-            return false;
-        });
-
-        assert(count==stopped.size());
-        somethingChanged=(count>0);
-    }
-
-    if (somethingChanged)
-    {
-        sendGames();
-    }
-
-    if (!message->start)
-    {
-        auto updateMessage=std::make_shared<SteamBot::Modules::OwnedGames::Messageboard::UpdateGames>(std::move(stopped));
-        getClient().messageboard.send(std::move(updateMessage));
+        stopGames(message->appIds);
     }
 }
 
 /************************************************************************/
 
-void PlayGamesModule::performUpdate()
+void PlayGamesModule::handleUpdates()
 {
     if (!games.empty())
     {
-        if (UpdateClock::now()>=getNextUpdate())
+        auto now=Clock::now();
+
+        std::vector<SteamBot::AppID> updates;
+
+        bool didChange=false;
+        for (auto& game: games)
         {
-            auto updateMessage=std::make_shared<SteamBot::Modules::OwnedGames::Messageboard::UpdateGames>(games);
-            getClient().messageboard.send(std::move(updateMessage));
-            lastUpdate=UpdateClock::now();
-            return;
+            if (game.nextUpdate<=now)
+            {
+                if (game.paused)
+                {
+                    SteamBot::UI::OutputText() << "unpausing" << game.appId;
+                    game.paused=false;
+                    game.nextUpdate=now+updateInterval;
+                }
+                else
+                {
+                    SteamBot::UI::OutputText() << "pausing" << game.appId;
+                    updates.push_back(game.appId);
+                    game.paused=true;
+                    game.nextUpdate=now+updateDuration;
+                }
+                didChange=true;
+            }
         }
+
+        if (didChange)
+        {
+            sendGames();
+        }
+
+        requestUpdates(std::move(updates));
     }
-    assert(false);
 }
 
 /************************************************************************/
@@ -258,18 +355,9 @@ void PlayGamesModule::run(SteamBot::Client&)
 
     while (true)
     {
+        waiter->wait<Clock>(getNextUpdate());
         playGamesWaiter->handle(this);
-        if (games.empty())
-        {
-            waiter->wait();
-        }
-        else
-        {
-            if (!waiter->wait<UpdateClock>(getNextUpdate()))
-            {
-                performUpdate();
-            }
-        }
+        handleUpdates();
     }
 }
 
