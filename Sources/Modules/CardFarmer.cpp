@@ -36,6 +36,11 @@
  * (currently 10 minutes). We then stop it, and give it a pause of
  * up to "pauseTime", or until Steam gives us a playtime update.
  *
+ * For now, that "pauseTime" will block all farming; it seems that
+ * I generally get the update right away, so playing something else
+ * for a split second seems like an annoyance towards Steam, but
+ * won't add any useful playtime.
+ *
  * Also, in all selection steps below, if we find more suitable games
  * than we need, we prefer low remaining cards and high playtime.
  *
@@ -244,7 +249,7 @@ namespace
         std::vector<SteamBot::AppID> selectMultipleGames() const;
         std::vector<SteamBot::AppID> selectFarmGames() const;
         TimePoint findNextStatusCheck() const;
-        void handleFarmTimings() const;
+        bool handleFarmTimings() const;
         void playGames(std::vector<SteamBot::AppID>);
         void farmGames();
         void handleBadgeData();
@@ -403,10 +408,13 @@ std::vector<SteamBot::AppID> CardFarmerModule::selectMultipleGames() const
 /*
  * This will unpause the games where the timeout has been reached,
  * and pause games that have reached their farmIntervalTime.
+ *
+ * Returns true if something is paused.
  */
 
-void CardFarmerModule::handleFarmTimings() const
+bool CardFarmerModule::handleFarmTimings() const
 {
+    bool isPaused=false;
     auto now=Clock::now();
     for (const auto& item: games)
     {
@@ -423,7 +431,9 @@ void CardFarmerModule::handleFarmTimings() const
                 game.nextStatusCheck=now+pauseTime;
             }
         }
+        isPaused|=game.isPaused;
     }
+    return isPaused;
 }
 
 /************************************************************************/
@@ -435,23 +445,41 @@ std::vector<SteamBot::AppID> CardFarmerModule::selectFarmGames() const
 {
     std::vector<SteamBot::AppID> myGames;
 
-    handleFarmTimings();
-
-    if (auto game=selectSingleGame([](const FarmInfo& candidate) { return candidate.cardsReceived>0; }))
+    if (handleFarmTimings())
     {
-        myGames.push_back(game->appId);
-    }
-    else if ((game=selectSingleGame([](const FarmInfo& candidate) { return candidate.playtime>=multipleGamesTimeMax; })))
-    {
-        myGames.push_back(game->appId);
-    }
-    else if ((game=selectSingleGame([](const FarmInfo& candidate) { return candidate.playtime<multipleGamesTimeMin; })))
-    {
-        myGames.push_back(game->appId);
+        // Don't choose new games while we have games paused, even if
+        // it means we aren't playing anything. Shouldn't take too
+        // long, and it prevents use from just "flashing" a game for a
+        // split second.
+        for (SteamBot::AppID appId: playing)
+        {
+            if (const FarmInfo* game=findGame(appId))
+            {
+                if (!game->isPaused)
+                {
+                    myGames.push_back(appId);
+                }
+            }
+        }
     }
     else
     {
-        myGames=selectMultipleGames();
+        if (auto game=selectSingleGame([](const FarmInfo& candidate) { return candidate.cardsReceived>0; }))
+        {
+            myGames.push_back(game->appId);
+        }
+        else if ((game=selectSingleGame([](const FarmInfo& candidate) { return candidate.playtime>=multipleGamesTimeMax; })))
+        {
+            myGames.push_back(game->appId);
+        }
+        else if ((game=selectSingleGame([](const FarmInfo& candidate) { return candidate.playtime<multipleGamesTimeMin; })))
+        {
+            myGames.push_back(game->appId);
+        }
+        else
+        {
+            myGames=selectMultipleGames();
+        }
     }
 
     return myGames;
@@ -530,7 +558,6 @@ void CardFarmerModule::playGames(std::vector<SteamBot::AppID> myGames)
         }
 
 #ifdef CHRISTIAN_PLAY_GAMES
-        xxx;
         SteamBot::Modules::PlayGames::Messageboard::PlayGames::play(playing, true);
 #endif
 
