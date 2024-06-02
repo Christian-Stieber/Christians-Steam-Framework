@@ -25,4 +25,9 @@ function(setCompileOptions target)
       -Wlogical-op -Wmissing-declarations -Wno-psabi
     )
   endif()
+
+  if (MSVC)
+    target_compile_options(${target} PRIVATE "/EHsc -D_WIN32_WINNT=0x0601")
+  endif (MSVC)
+
 endfunction()

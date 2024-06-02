@@ -1,9 +1,0 @@
-{
-  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
-  "name": "christians-steam-framework",
-  "version": "0.0.1",
-  "dependencies": [
-    "openssl", "protobuf"
-  ],
-  "builtin-baseline": "8be970aaeaf19fd2663aaf5888478483f9742e55"
-}

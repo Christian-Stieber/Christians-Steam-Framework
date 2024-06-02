@@ -15,3 +15,10 @@ cmake --build build/Debug
 
 cmake -S . -B build/Release -D CMAKE_BUILD_TYPE=Release
 cmake --build build/Release
+
+======================================================================
+vcpkg and static libraries
+
+https://stackoverflow.com/questions/74158371/vcpkg-and-cmake-not-using-static-libraries-when-compiling-a-exe
+
+https://stackoverflow.com/questions/59103137/cmake-vs-vcpkg-triplet-selection

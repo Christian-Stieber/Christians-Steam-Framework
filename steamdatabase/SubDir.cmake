@@ -13,7 +13,9 @@ list(TRANSFORM protoFiles PREPEND "../../protofiles/${myDir}/")
 list(TRANSFORM protoFiles APPEND ".proto")
 
 # https://github.com/protocolbuffers/protobuf/issues/14576
-set_target_properties(protobuf::protoc PROPERTIES IMPORTED_LOCATION "${CMAKE_CURRENT_LIST_DIR}/protoc.sh" )
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  set_target_properties(protobuf::protoc PROPERTIES IMPORTED_LOCATION "${CMAKE_CURRENT_LIST_DIR}/protoc.sh" )
+endif()
 
 ######################################################################
 

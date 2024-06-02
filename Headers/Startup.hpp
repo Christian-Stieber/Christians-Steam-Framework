@@ -77,7 +77,7 @@ namespace SteamBot
         public:
             virtual std::unique_ptr<BASE> createInstance() const =0;
 
-            template <typename CALLBACK> static void create(CALLBACK callback)
+            template <typename FUNC> static void create(FUNC callback)
             {
                 for (const auto& item: getList())
                 {
