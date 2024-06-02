@@ -1,4 +1,14 @@
+Make gdb ignore the signal we use the the console stuff
+
+   handle SIGUSR1 noprint nostop
+
+======================================================================
+Setup the build types
+
 https://stackoverflow.com/questions/7724569/debug-vs-release-in-cmake
+https://stackoverflow.com/questions/48754619/what-are-cmake-build-type-debug-release-relwithdebinfo-and-minsizerel
+
+======================================================================
 
 cmake -S . -B build/Debug -D CMAKE_BUILD_TYPE=Debug
 cmake --build build/Debug
