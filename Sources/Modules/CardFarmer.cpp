@@ -179,6 +179,7 @@ bool FarmInfo::isRefundable() const
 
 /************************************************************************/
 
+#if 0
 void FarmInfo::print(SteamBot::UI::OutputText& output) const
 {
     output << "CardFarmer: " << appId << ": "
@@ -186,6 +187,7 @@ void FarmInfo::print(SteamBot::UI::OutputText& output) const
            << cardsReceived << " cards received, "
            << cardsRemaining << " remaining";
 }
+#endif
 
 /************************************************************************/
 
@@ -273,14 +275,20 @@ void CardFarmerModule::handleBadgeData()
                     game->cardsRemaining=cardsRemaining;
                     game->cardsReceived=cardsReceived;
 
-                    SteamBot::UI::OutputText output;
-                    game->print(output);
+                    bool refundable=game->isRefundable();
 
-                    if (game->isRefundable())
+#if 0
                     {
-                        output << " (might still be refundable; ignoring)";
+                        SteamBot::UI::OutputText output;
+                        game->print(output);
+                        if (refundable)
+                        {
+                            output << " (might still be refundable; ignoring)";
+                        }
                     }
-                    else
+#endif
+
+                    if (!refundable)
                     {
                         auto result=myGames.emplace(item.first, std::move(game)).second;
                         assert(result);
@@ -410,6 +418,7 @@ void CardFarmerModule::playGames(std::vector<SteamBot::AppID> myGames)
     {
         playing=std::move(myGames);
 
+#if 0
         {
             SteamBot::UI::OutputText output;
             output << "CardFarmer: ";
@@ -428,6 +437,7 @@ void CardFarmerModule::playGames(std::vector<SteamBot::AppID> myGames)
                 }
             }
         }
+#endif
 
 #ifdef CHRISTIAN_PLAY_GAMES
         SteamBot::Modules::PlayGames::Messageboard::PlayGames::play(playing, true);
