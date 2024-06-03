@@ -30,18 +30,23 @@ target_link_libraries(${PROJECT_NAME} PUBLIC steamdatabase-protobufs)
 
 set(OPENSSL_USE_STATIC_LIBS TRUE)
 find_package(OpenSSL 3 REQUIRED)
-target_link_libraries(${PROJECT_NAME} PUBLIC ${OPENSSL_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PUBLIC OpenSSL::SSL OpenSSL::Crypto)
 
 ######################################################################
 
 set(Boost_USE_STATIC_LIBS ON)
-find_package(Boost 1.81.0 REQUIRED COMPONENTS context coroutine system log log_setup iostreams fiber program_options)
+list(APPEND BoostComponents asio context system coroutine system log log_setup iostreams fiber
+  program_options url beast uuid type_index json callable_traits crc)
+find_package(Boost 1.81.0 REQUIRED COMPONENTS ${BoostComponents})
 target_include_directories(${PROJECT_NAME} PUBLIC ${Boost_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
+list(TRANSFORM BoostComponents PREPEND "Boost::" OUTPUT_VARIABLE BoostComponentsLibraries)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${BoostComponentsLibraries})
 
 ######################################################################
 
-target_link_libraries(${PROJECT_NAME} PUBLIC pthread systemd atomic)
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_link_libraries(${PROJECT_NAME} PUBLIC pthread systemd atomic)
+endif()
 
 ######################################################################
 

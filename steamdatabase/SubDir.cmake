@@ -23,5 +23,5 @@ protobuf_generate_cpp(ProtoSources ProtoHeaders ${protoFiles})
 
 set(targetName "steamdatabase-protobufs-${myDir}")
 add_library("${targetName}" STATIC ${ProtoSources} ${ProtoHeaders})
-target_link_libraries("${targetName}" INTERFACE "${Protobuf_LIBRARIES}")
+target_link_libraries("${targetName}" INTERFACE ${Protobuf_LIBRARIES})
 target_include_directories("${targetName}" PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
