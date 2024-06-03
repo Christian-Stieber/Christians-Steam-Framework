@@ -27,7 +27,7 @@ function(setCompileOptions target)
   endif()
 
   if (MSVC)
-    target_compile_options(${target} PRIVATE "/EHsc" "-D_WIN32_WINNT=0x0601" "/Zc:__cplusplus")
+    target_compile_options(${target} PRIVATE "/EHsc" "-D_WIN32_WINNT=0x0601" "/Zc:__cplusplus" "-DBOOST_USE_WINAPI_VERSION=BOOST_WINAPI_VERSION_WIN7")
   endif (MSVC)
 
 endfunction()

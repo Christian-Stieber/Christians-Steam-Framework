@@ -22,3 +22,7 @@ vcpkg and static libraries
 https://stackoverflow.com/questions/74158371/vcpkg-and-cmake-not-using-static-libraries-when-compiling-a-exe
 
 https://stackoverflow.com/questions/59103137/cmake-vs-vcpkg-triplet-selection
+
+https://github.com/microsoft/vcpkg/issues/22495
+
+https://stackoverflow.com/questions/77556548/using-custom-triplets-with-vcpkg-and-cmake-in-manifest-mode
