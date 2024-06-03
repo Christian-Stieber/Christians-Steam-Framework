@@ -83,4 +83,4 @@ addSource("UI" UI)
 
 addSource("Steam"
   OSType KeyValue KeyValue_Serialize KeyValue_Deserialize KeyValue_Deserialize_Text MachineInfo
-  MachineInfo/Linux)
+  MachineInfo/Linux MachineInfo/Windows)
