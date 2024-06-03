@@ -27,7 +27,7 @@ function(setCompileOptions target)
   endif()
 
   if (MSVC)
-    target_compile_options(${target} PRIVATE "/EHsc -D_WIN32_WINNT=0x0601")
+    target_compile_options(${target} PRIVATE "/EHsc" "-D_WIN32_WINNT=0x0601" "/Zc:__cplusplus")
   endif (MSVC)
 
 endfunction()
