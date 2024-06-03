@@ -17,12 +17,12 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#include "Asio/Asio.hpp"
 #include "MaintainBPE.hpp"
 #include "Client/Client.hpp"
 #include "Modules/LoginTracking.hpp"
 #include "Modules/Executor.hpp"
 #include "Helpers/Time.hpp"
-#include "Asio/Asio.hpp"
 
 #include <boost/asio/system_timer.hpp>
 
