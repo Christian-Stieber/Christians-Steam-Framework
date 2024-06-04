@@ -33,9 +33,15 @@ find_package(OpenSSL 3 REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC OpenSSL::SSL OpenSSL::Crypto)
 
 ######################################################################
+#
+# Debian only has 1.81, so we have to deal with the boost::url stuff
+# until we get an update there
 
 set(Boost_USE_STATIC_LIBS ON)
 list(APPEND BoostComponents system system log log_setup iostreams fiber program_options)
+if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+  list(APPEND BoostComponents url)
+endif()
 find_package(Boost 1.81.0 REQUIRED COMPONENTS ${BoostComponents})
 target_include_directories(${PROJECT_NAME} PUBLIC ${Boost_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
