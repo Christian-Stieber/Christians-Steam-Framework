@@ -35,12 +35,10 @@ target_link_libraries(${PROJECT_NAME} PUBLIC OpenSSL::SSL OpenSSL::Crypto)
 ######################################################################
 
 set(Boost_USE_STATIC_LIBS ON)
-list(APPEND BoostComponents asio context system coroutine system log log_setup iostreams fiber
-  program_options url beast uuid type_index json callable_traits crc)
+list(APPEND BoostComponents system system log log_setup iostreams fiber program_options)
 find_package(Boost 1.81.0 REQUIRED COMPONENTS ${BoostComponents})
 target_include_directories(${PROJECT_NAME} PUBLIC ${Boost_INCLUDE_DIRS})
-list(TRANSFORM BoostComponents PREPEND "Boost::" OUTPUT_VARIABLE BoostComponentsLibraries)
-target_link_libraries(${PROJECT_NAME} PUBLIC ${BoostComponentsLibraries})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
 
 ######################################################################
 
