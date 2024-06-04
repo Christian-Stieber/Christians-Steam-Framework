@@ -39,10 +39,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC OpenSSL::SSL OpenSSL::Crypto)
 
 set(Boost_USE_STATIC_LIBS ON)
 list(APPEND BoostComponents system system log log_setup iostreams fiber program_options)
-if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-  list(APPEND BoostComponents url)
-endif()
-find_package(Boost 1.81.0 REQUIRED COMPONENTS ${BoostComponents})
+list(APPEND BoostOptionalComponents url)
+find_package(Boost 1.81.0 REQUIRED COMPONENTS ${BoostComponents} OPTIONAL_COMPONENTS ${BoostOptionalComponents})
 target_include_directories(${PROJECT_NAME} PUBLIC ${Boost_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
 
