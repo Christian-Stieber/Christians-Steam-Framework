@@ -22,6 +22,7 @@
 #include <string>
 #include <span>
 #include <cstddef>
+#include <cstdint>
 
 /************************************************************************/
 
