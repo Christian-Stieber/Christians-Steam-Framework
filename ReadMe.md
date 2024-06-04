@@ -55,11 +55,11 @@ This list of required packages might be incomplete:
 
 ## Windows
 
-I'm now maintaining a project for Visual Studio 2022 -- the free edition, whatever it might be called today. It might be a bit behind, but I generally try to update it regularly.
+Visual Studio 2022 Community Edition should be able to build things out of the box.
 
-Currently, it uses boch nuget and vcpkg package manegers; make sure you install vcpkg from the Visual Studio tool selection, and run `vcpkg integrate install` in the Visual Studio command prompt.
+# Building
 
-I think this should do it.
+I'm not actively supporting standalone builds of just the framework; please refer to [Christians-Steam-Bot](https://github.com/Christian-Stieber/Christians-Steam-Bot).
 
 # DATA FILES
 
