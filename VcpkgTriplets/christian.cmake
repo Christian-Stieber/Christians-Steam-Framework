@@ -1,6 +1,9 @@
 set(VCPKG_TARGET_ARCHITECTURE x64)
-# set(VCPKG_BUILD_TYPE debug)	# a lot of packages break
 set(VCPKG_CRT_LINKAGE static)
 set(VCPKG_LIBRARY_LINKAGE static)
 set(VCPKG_CXX_FLAGS "-D_WIN32_WINNT=0x0601 -DBOOST_USE_WINAPI_VERSION=BOOST_WINAPI_VERSION_WIN7")
 set(VCPKG_C_FLAGS "-D_WIN32_WINNT=0x0601 -DBOOST_USE_WINAPI_VERSION=BOOST_WINAPI_VERSION_WIN7")
+
+# Note: I tried making separate debug/release triplets with
+#   set(VCPKG_BUILD_TYPE release|debug)
+# but that didn't work out at all
