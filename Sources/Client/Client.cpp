@@ -37,7 +37,7 @@
 
 /************************************************************************/
 
-static thread_local std::shared_ptr<SteamBot::Client> currentClient;;
+static thread_local std::shared_ptr<SteamBot::Client> currentClient;
 
 /************************************************************************/
 
@@ -174,7 +174,6 @@ void SteamBot::Client::launch(SteamBot::ClientInfo& clientInfo)
                         SteamBot::UI::Thread::outputText(std::string("running client ")+clientInfo.accountName);
                         currentClient->initModules();
 
-                        // Note: not sure whether I need the mutex, but it doesn't hurt
                         {
                             std::lock_guard<decltype(currentClient->statusMutex)> lock(currentClient->statusMutex);
                             currentClient->status=Status::Ready;
@@ -191,6 +190,7 @@ void SteamBot::Client::launch(SteamBot::ClientInfo& clientInfo)
                     {
                     case QuitMode::None:
                     case QuitMode::Quit:
+                        clientInfo.setActive(false);
                         break;
 
                     case QuitMode::Restart:
@@ -202,7 +202,6 @@ void SteamBot::Client::launch(SteamBot::ClientInfo& clientInfo)
                     default:
                         assert(false);
                     }
-                    clientInfo.setActive(false);
                 }).detach();
             }
         };
