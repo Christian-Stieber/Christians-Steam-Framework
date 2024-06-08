@@ -127,6 +127,35 @@ std::shared_ptr<const OwnedGames::GameInfo> OwnedGames::getInfo(AppID appId) con
 }
 
 /************************************************************************/
+
+std::string OwnedGames::getName(AppID appId) const
+{
+    switch(appId)
+    {
+    case AppID::SteamClient:
+        return "Steam Client";
+
+    case AppID::SteamBackpack:
+        return "Steam Backpack";
+
+    case AppID::SteamScreenshots:
+        return "Steam Cloud - Screenshots";
+
+    case AppID::SteamWorkshop:
+        return "Steam Workshop";
+
+    default:
+        if (auto info=getInfo(appId))
+        {
+            return info->name;
+        }
+        break;
+    }
+
+    return std::string{};
+}
+
+/************************************************************************/
 /*
  * Retrieve game info from Steam. If an "appIds" list is provided,
  * only retrieve these games. Pass nullptr for all games.
@@ -294,6 +323,18 @@ std::shared_ptr<const OwnedGames::GameInfo> SteamBot::Modules::OwnedGames::getIn
         return (*games)->getInfo(appId);
     }
     return nullptr;
+}
+
+/************************************************************************/
+
+std::string SteamBot::Modules::OwnedGames::getName(AppID appId)
+{
+    std::string name;
+    if (auto games=SteamBot::Client::getClient().whiteboard.has<::OwnedGames::Ptr>())
+    {
+        name=(*games)->getName(appId);
+    }
+    return name;
 }
 
 /************************************************************************/

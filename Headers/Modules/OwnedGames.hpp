@@ -126,6 +126,7 @@ namespace SteamBot
 
                 public:
                     std::shared_ptr<const GameInfo> getInfo(AppID) const;
+                    std::string getName(AppID) const;		// also understands some special AppIDs
 
                 public:
                     OwnedGames();
@@ -135,6 +136,7 @@ namespace SteamBot
             }
 
             std::shared_ptr<const Whiteboard::OwnedGames::GameInfo> getInfo(AppID);
+            std::string getName(AppID);
         }
     }
 }

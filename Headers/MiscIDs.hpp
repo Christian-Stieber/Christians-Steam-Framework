@@ -28,9 +28,13 @@
 
 namespace SteamBot
 {
+    // Names for the special IDs are returned from OwnedGames::getName()
     enum class AppID : int32_t {
         None=-1,
-        Steam=753
+        SteamClient=7,
+        SteamBackpack=753,
+        SteamScreenshots=760,
+        SteamWorkshop=766
     };
 
     enum class PackageID : uint32_t {

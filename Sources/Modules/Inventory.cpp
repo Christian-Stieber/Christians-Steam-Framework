@@ -303,7 +303,7 @@ std::shared_ptr<const Response> InventoryModule::makeInventoryQuery(const boost:
 
 void InventoryModule::load()
 {
-    static const auto appId=SteamBot::AppID::Steam;
+    static const auto appId=SteamBot::AppID::SteamBackpack;
     static const auto contextId=static_cast<SteamBot::ContextID>(6);	// Community Items
 
     try
