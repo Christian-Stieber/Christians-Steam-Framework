@@ -20,6 +20,7 @@
 #include "Cloud.hpp"
 #include "SafeCast.hpp"
 #include "Modules/UnifiedMessageClient.hpp"
+#include "Modules/OwnedGames.hpp"
 
 #include "steamdatabase/protobufs/steam/steammessages_cloud.steamclient.pb.h"
 
@@ -51,9 +52,11 @@ void Apps::load()
         const auto& appData=response->apps(index);
         if (appData.has_appid() && appData.has_totalcount() && appData.has_totalsize())
         {
-            apps.emplace_back(SteamBot::safeCast<SteamBot::AppID>(appData.appid()),
-                              SteamBot::safeCast<uint32_t>(appData.totalcount()),
-                              SteamBot::safeCast<uint64_t>(appData.totalsize()) );
+            auto& app=apps.emplace_back();
+            app.appId=SteamBot::safeCast<SteamBot::AppID>(appData.appid());
+            app.name=SteamBot::Modules::OwnedGames::getName(app.appId);
+            app.totalCount=SteamBot::safeCast<uint32_t>(appData.totalcount());
+            app.totalSize=SteamBot::safeCast<uint64_t>(appData.totalsize());
         }
     }
 }

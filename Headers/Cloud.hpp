@@ -37,6 +37,7 @@ namespace SteamBot
             {
             public:
                 SteamBot::AppID appId;
+                std::string name;
                 uint32_t totalCount;
                 uint64_t totalSize;
 
