@@ -15,6 +15,8 @@ list(APPEND protoFiles
   steammessages_auth.steamclient
   steammessages_player.steamclient
   steammessages_econ.steamclient
+  steammessages_cloud.steamclient
+  steammessages_client_objects
   enums_productinfo
 )
 
