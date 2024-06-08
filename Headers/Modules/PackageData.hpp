@@ -44,10 +44,11 @@ namespace SteamBot
             public:
                 boost::json::object data;	// this is the KeyValue data from "buffer"
 
+                // ToDo: we should probably remove this, as it duplicates data.
                 std::vector<SteamBot::AppID> appIds;	// data->appids
 
-            private:
-                void getAppIds();
+            public:
+                void setData(boost::json::object);
 
             public:
                 PackageInfo(const boost::json::value&);
@@ -67,6 +68,9 @@ namespace SteamBot
 
                 public:
                     PackageData(LicensePtr);
+
+                public:
+                    static bool isCurrent();
                 };
             }
 
