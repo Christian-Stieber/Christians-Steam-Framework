@@ -36,6 +36,7 @@
 /************************************************************************/
 
 typedef SteamBot::Modules::LicenseList::Messageboard::NewLicenses NewLicenses;
+typedef SteamBot::Modules::PackageData::Whiteboard::PackageData PackageData;
 typedef SteamBot::Modules::PackageInfo::Info Info;
 
 /************************************************************************/
@@ -213,9 +214,14 @@ namespace
 
     private:
         SteamBot::Messageboard::WaiterType<NewLicenses> newLicensesWaiter;
+        SteamBot::Whiteboard::WaiterType<PackageData> packageDataWaiter;
+
+        // we collect them here, until PackageData is current
+        std::vector<std::shared_ptr<const NewLicenses>> newLicensesMessages;
 
     private:
         void updateLicenseInfo(const SteamBot::AppID);
+        void updateNewLicenses();
 
     public:
         void handle(std::shared_ptr<const NewLicenses>);
@@ -1130,32 +1136,48 @@ void PackageInfoModule::updateLicenseInfo(const SteamBot::AppID appId)
 
 /************************************************************************/
 
-void PackageInfoModule::handle(std::shared_ptr<const NewLicenses> newLicenses)
+void PackageInfoModule::updateNewLicenses()
 {
-    for (const auto packageId : newLicenses->licenses)
+    if (PackageData::isCurrent())
     {
-        auto cancellation=SteamBot::Client::getClient().cancel.registerObject(mutex);
+        while (!newLicensesMessages.empty())
+        {
+            const auto message=std::move(newLicensesMessages.back());
+            newLicensesMessages.pop_back();
 
-        std::lock_guard<decltype(mutex)> lock(mutex);
-        if (auto info=PackageInfo::get().get(packageId))
-        {
-            BOOST_LOG_TRIVIAL(info) << "package-id " << SteamBot::toInteger(packageId) << " already has known name \"" << info->packageName << "\"";
-        }
-        else
-        {
-            typedef SteamBot::Modules::LicenseList::Whiteboard::LicenseIdentifier LicenseIdentifier;
-            auto packageInfo=SteamBot::Modules::PackageData::getPackageInfo(LicenseIdentifier(packageId));
-            if (packageInfo!=nullptr)
+            for (const auto packageId : message->licenses)
             {
-                for (const auto appId: packageInfo->appIds)
+                auto cancellation=SteamBot::Client::getClient().cancel.registerObject(mutex);
+
+                std::lock_guard<decltype(mutex)> lock(mutex);
+                if (auto info=PackageInfo::get().get(packageId))
                 {
-                    updateLicenseInfo(appId);
+                    BOOST_LOG_TRIVIAL(info) << "package-id " << SteamBot::toInteger(packageId) << " already has known name \"" << info->packageName << "\"";
+                }
+                else
+                {
+                    typedef SteamBot::Modules::LicenseList::Whiteboard::LicenseIdentifier LicenseIdentifier;
+                    auto packageInfo=SteamBot::Modules::PackageData::getPackageInfo(LicenseIdentifier(packageId));
+                    if (packageInfo!=nullptr)
+                    {
+                        for (const auto appId: packageInfo->appIds)
+                        {
+                            updateLicenseInfo(appId);
+                        }
+                    }
+                    PackageInfo::get().save(false);
                 }
             }
-            PackageInfo::get().save(false);
         }
+        PackageInfo::get().save(true);
     }
-    PackageInfo::get().save(true);
+}
+
+/************************************************************************/
+
+void PackageInfoModule::handle(std::shared_ptr<const NewLicenses> message)
+{
+    newLicensesMessages.push_back(std::move(message));
 }
 
 /************************************************************************/
@@ -1163,6 +1185,7 @@ void PackageInfoModule::handle(std::shared_ptr<const NewLicenses> newLicenses)
 void PackageInfoModule::init(SteamBot::Client& client)
 {
     newLicensesWaiter=client.messageboard.createWaiter<NewLicenses>(*waiter);
+    packageDataWaiter=client.whiteboard.createWaiter<PackageData>(*waiter);
 }
 
 /************************************************************************/
@@ -1173,6 +1196,8 @@ void PackageInfoModule::run(SteamBot::Client&)
     {
         waiter->wait();
         newLicensesWaiter->handle(this);
+        packageDataWaiter->has();
+        updateNewLicenses();
     }
 }
 
