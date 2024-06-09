@@ -20,6 +20,7 @@
 #include "Cloud.hpp"
 #include "Modules/UnifiedMessageClient.hpp"
 #include "SafeCast.hpp"
+#include "EnumFlags.hpp"
 #include "Helpers/Time.hpp"
 
 #include "steamdatabase/protobufs/steam/steammessages_cloud.steamclient.pb.h"
@@ -45,9 +46,17 @@ Files::File::File(const CCloud_UserFile& userFile)
         fileSize=userFile.file_size();
         fileName=userFile.filename();
         timestamp=std::chrono::system_clock::from_time_t(SteamBot::safeCast<time_t>(userFile.timestamp()));
+        platforms=Platform::None;
         for (int index=0; index<userFile.platforms_to_sync_size(); index++)
         {
-            platforms.emplace_back(userFile.platforms_to_sync(index));
+            const std::string& name=userFile.platforms_to_sync(index);
+            const Platform platform=getPlatform(name);
+            if (platform==Platform::None)
+            {
+                BOOST_LOG_TRIVIAL(error) << "Invalid platform string: \"" << name << "\"";
+                throw InvalidFileException{};
+            }
+            platforms=SteamBot::addEnumFlags(platforms, platform);
         }
     }
     else
@@ -65,12 +74,15 @@ boost::json::value Files::File::toJson() const
     json["fileName"]=fileName;
     json["fileSize"]=fileSize;
     json["timestamp"]=SteamBot::Time::toString(timestamp);
-    if (!platforms.empty())
+    if (platforms!=Platform::None)
     {
+        auto names=getStrings(platforms);
+        assert(!names.empty());
+
         boost::json::array array;
-        for (const std::string& platform: platforms)
+        for (const auto& name: names)
         {
-            array.emplace_back(platform);
+            array.emplace_back(name);
         }
         json["platforms"]=std::move(array);
     }

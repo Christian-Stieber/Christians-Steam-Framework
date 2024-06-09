@@ -22,11 +22,54 @@
 #include "MiscIDs.hpp"
 
 #include <vector>
+#include <cstdint>
+#include <string_view>
+
 #include <boost/json/value.hpp>
 
 /************************************************************************/
+/*
+ * There is some documentation at
+ *   https://partner.steamgames.com/doc/webapi/icloudservice
+ *
+ * We don't use THAT API, but protobufs look extremely similar...
+ */
 
-class CCloud_UserFile;
+/************************************************************************/
+/*
+ * Forward declare.
+ */
+
+class CCloud_UserFile;	// steammessages_cloud.steamclient.pb.h
+
+/************************************************************************/
+/*
+ * This is used by some of the cloud APIs. Steam actually just uses a
+ * list of strings, but I don't like that.
+ */
+
+namespace SteamBot
+{
+    namespace Cloud
+    {
+        enum class Platform : uint8_t
+        {
+            None=0,
+            All=1<<0,
+            Windows=1<<1,
+            MacOS=1<<2,
+            Linux=1<<3,
+            Android=1<<4,
+            iOS=1<<5,
+            Switch=1<<6
+        };
+
+        // Returns Platform::None if not found
+        Platform getPlatform(std::string_view);
+
+        std::vector<std::string_view> getStrings(Platform);
+    }
+}
 
 /************************************************************************/
 /*
@@ -88,7 +131,7 @@ namespace SteamBot
                 uint32_t fileSize;
                 std::string fileName;
                 std::chrono::system_clock::time_point timestamp;
-                std::vector<std::string> platforms;
+                Platform platforms;
 
             public:
                 class InvalidFileException {};

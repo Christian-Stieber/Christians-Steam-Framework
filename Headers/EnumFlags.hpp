@@ -21,19 +21,39 @@
 
 /************************************************************************/
 /*
- * Takes a "flag"-style enum, and adds first/args into the value.
+ * Some helpers for "flag"-style enums. A "flag"-style enum is an enum
+ * based on an unsigned integer type, with values that are powers of 2.
+ */
+
+/************************************************************************/
+/*
+ * Combine multiple flag values into one (by or-ing them).
  */
 
 namespace SteamBot
 {
-    template <typename ENUM> ENUM addEnumFlags(ENUM value, ENUM first)
+    template <typename ENUM> constexpr ENUM addEnumFlags(ENUM value, ENUM first)
     {
         typedef std::underlying_type_t<ENUM> BaseType;
         return static_cast<ENUM>(static_cast<BaseType>(value) | static_cast<BaseType>(first));
     }
 
-    template <typename ENUM, typename... ARGS> ENUM addEnumFlags(ENUM value, ENUM first, ARGS... args)
+    template <typename ENUM, typename... ARGS> constexpr ENUM addEnumFlags(ENUM value, ENUM first, ARGS... args)
     {
         return addEnumFlags(addEnumFlags(value, first), args...);
+    }
+}
+
+/************************************************************************/
+/*
+ * Tests whether a value contains at least one of the flags set in flag.
+ */
+
+namespace SteamBot
+{
+    template <typename ENUM> constexpr bool testEnumFlag(ENUM value, ENUM flag)
+    {
+        typedef std::underlying_type_t<ENUM> BaseType;
+        return (static_cast<BaseType>(value) & static_cast<BaseType>(flag))!=0;
     }
 }
