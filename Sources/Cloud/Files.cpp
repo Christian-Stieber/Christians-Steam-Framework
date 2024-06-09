@@ -102,37 +102,48 @@ boost::json::value Files::toJson() const
 }
 
 /************************************************************************/
+/*
+ * ToDo: is there anything we can do to handle changes to the cloud
+ * files when iterating over multiple chunks?
+ */
 
 void Files::load(SteamBot::AppID appId)
 {
     typedef SteamBot::Modules::UnifiedMessageClient::ProtobufService::Info<decltype(&::Cloud::EnumerateUserFiles)> EnumerateUserFilesInfo;
 
-    std::shared_ptr<EnumerateUserFilesInfo::ResultType> response;
-    {
-        EnumerateUserFilesInfo::RequestType request;
-        request.set_appid(static_cast<uint32_t>(appId));
-        request.set_extended_details(true);
-        response=SteamBot::Modules::UnifiedMessageClient::execute<EnumerateUserFilesInfo::ResultType>("Cloud.EnumerateUserFiles#1", std::move(request));
-    }
-
-    // ToDo: does it split the response?
-    if (response->has_total_files())
-    {
-        assert(response->total_files()==static_cast<uint32_t>(response->files_size()));
-    }
-
     files.clear();
-    files.reserve(static_cast<size_t>(response->files_size()));
 
-    for (int index=0; index<response->files_size(); index++)
+    uint32_t fileIndex=0;
+    std::shared_ptr<EnumerateUserFilesInfo::ResultType> response;
+
+    do
     {
-        try
+        response.reset();
         {
-            files.emplace_back(response->files(index));
-            assert(files.back().appId==appId);
+            EnumerateUserFilesInfo::RequestType request;
+            request.set_appid(static_cast<uint32_t>(appId));
+            request.set_extended_details(true);
+            request.set_start_index(fileIndex);
+            request.set_count(10000);		// ToDo: this doesn't seem to do anything?
+            response=SteamBot::Modules::UnifiedMessageClient::execute<EnumerateUserFilesInfo::ResultType>("Cloud.EnumerateUserFiles#1", std::move(request));
         }
-        catch(const File::InvalidFileException&)
+
+        files.reserve(response->total_files());
+
+        const auto fileCount=response->files_size();
+        fileIndex+=static_cast<uint32_t>(fileCount);
+
+        for (int index=0; index<fileCount; index++)
         {
+            try
+            {
+                files.emplace_back(response->files(index));
+                assert(files.back().appId==appId);
+            }
+            catch(const File::InvalidFileException&)
+            {
+            }
         }
     }
+    while (fileIndex<response->total_files());
 }
