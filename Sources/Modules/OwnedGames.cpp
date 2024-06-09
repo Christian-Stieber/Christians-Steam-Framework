@@ -342,9 +342,10 @@ std::string SteamBot::Modules::OwnedGames::getName(AppID appId)
 std::ostream& SteamBot::operator<<(std::ostream& stream, SteamBot::AppID appId)
 {
     stream << SteamBot::toInteger(appId);
-    if (auto gameInfo=SteamBot::Modules::OwnedGames::getInfo(appId))
+    std::string name=SteamBot::Modules::OwnedGames::getName(appId);
+    if (!name.empty())
     {
-        stream << " (" << gameInfo->name << ")";
+        stream << " (" << name << ")";
     }
     return stream;
 }
