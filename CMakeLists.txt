@@ -58,7 +58,7 @@ function(addSource directory)
   target_sources(${PROJECT_NAME} PRIVATE ${ARGN})
 endfunction(addSource)
 
-addSource("Helpers" Time NextSteamDay URLs HTML JSON ProtoBuf NumberString StringCompare HexString)
+addSource("Helpers" Time NextSteamDay URLs HTML JSON ProtoBuf NumberString StringCompare HexString PrintSize)
 
 addSource("Modules"
   AutoLoadTradeoffers AutoAccept Executor Connection MultiPacket Heartbeat UnifiedMessageClient

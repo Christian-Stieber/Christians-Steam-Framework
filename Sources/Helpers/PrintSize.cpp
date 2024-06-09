@@ -17,37 +17,54 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include "Helpers/NumberString.hpp"
 
-#include <string>
-#include <concepts>
-
-/************************************************************************/
-
-namespace SteamBot
-{
-    template <std::integral T> std::string toString_(T);
-
-    template <std::integral T> std::string toString(T value)
-    {
-        if constexpr (std::is_signed_v<T>)
-        {
-            return toString_<long long>(value);
-        }
-        else
-        {
-            return toString_<unsigned long long>(value);
-        }
-    }
-}
+#include <cassert>
 
 /************************************************************************/
 /*
- * This is mostly for UI purposes; it turns a byte-size into a nice
- * string.
+ * For now, we output a "xxx bytes", "xxx KiB" or "xxx MiB".
+ *
+ * KiB/MiB will get one decimal digit, which I'm trying to determine
+ * with integer arithmetic.
  */
 
-namespace SteamBot
+std::string SteamBot::printSize(size_t size)
 {
-    std::string printSize(size_t);
+    const char* unit=nullptr;
+
+    if (size>=1024*1024)
+    {
+        size=(size*10)/(1024*1024)+5;
+        unit="MiB";
+    }
+    else if (size>=1024)
+    {
+        size=(size*10)/(1024)+5;
+        unit="KiB";
+    }
+
+    auto result=SteamBot::toString(size);
+
+    if (unit!=nullptr)
+    {
+        // do the "floating point" correction
+        assert(!result.empty());
+        const char decimal=result.back();
+        result.pop_back();
+        if (decimal!='0')
+        {
+            result+='.';
+            result+=decimal;
+        }
+    }
+    else
+    {
+        unit="bytes";
+    }
+
+    result+=' ';
+    result+=unit;
+
+    return result;
 }
