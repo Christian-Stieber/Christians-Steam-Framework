@@ -26,6 +26,14 @@
 
 /************************************************************************/
 
+class CCloud_UserFile;
+
+/************************************************************************/
+/*
+ * Obtain the list of apps with cloud files, along with summary
+ * statistics (file count, total size).
+ */
+
 namespace SteamBot
 {
     namespace Cloud
@@ -54,6 +62,53 @@ namespace SteamBot
 
         public:
             void load();
+
+        public:
+            boost::json::value toJson() const;
+        };
+    }
+}
+
+/************************************************************************/
+/*
+ * Obtain a list of files for a specific app.
+ */
+
+namespace SteamBot
+{
+    namespace Cloud
+    {
+        class Files
+        {
+        public:
+            class File
+            {
+            public:
+                SteamBot::AppID appId;
+                uint32_t fileSize;
+                std::string fileName;
+                std::chrono::system_clock::time_point timestamp;
+                std::vector<std::string> platforms;
+
+            public:
+                class InvalidFileException {};
+
+                File(const CCloud_UserFile&);
+                ~File();
+
+            public:
+                boost::json::value toJson() const;
+            };
+
+        public:
+            std::vector<File> files;
+
+        public:
+            Files();
+            ~Files();
+
+        public:
+            void load(SteamBot::AppID);
 
         public:
             boost::json::value toJson() const;
