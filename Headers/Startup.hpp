@@ -54,6 +54,11 @@ namespace SteamBot
 {
     namespace Startup
     {
+        template <typename BASE> class InitBase;
+
+        template <typename FUNC, typename BASE> concept CreateCallback=requires(FUNC func, std::unique_ptr<BASE>&& item) { func(std::move(item)); };
+        template <typename PRED, typename BASE> concept CreatePredicate=requires(PRED pred, const InitBase<BASE>& item) { pred(item); };
+
         template <typename BASE> class InitBase :
             public boost::intrusive::slist_base_hook<boost::intrusive::link_mode<boost::intrusive::normal_link>>
         {
@@ -74,14 +79,20 @@ namespace SteamBot
 
             virtual ~InitBase() =default;
 
+        private:
+            static constexpr bool alwaysTrue(const InitBase&) { return true; }
+
         public:
             virtual std::unique_ptr<BASE> createInstance() const =0;
 
-            template <typename FUNC> static void create(FUNC callback)
+            template <CreateCallback<BASE> FUNC, CreatePredicate<BASE> PRED=decltype(alwaysTrue)> static void create(FUNC callback, PRED predicate=alwaysTrue)
             {
                 for (const auto& item: getList())
                 {
-                    callback(item.createInstance());
+                    if (predicate(item))
+                    {
+                        callback(item.createInstance());
+                    }
                 }
             }
         };
