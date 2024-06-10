@@ -18,6 +18,7 @@
  */
 
 #include "Client/Module.hpp"
+#include "Client/ClientInfo.hpp"
 #include "Modules/AutoAccept.hpp"
 #include "Modules/TradeOffers.hpp"
 #include "Modules/AutoLoadTradeoffers.hpp"

@@ -17,7 +17,7 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "Client/Client.hpp"
+#include "Client/ClientInfo.hpp"
 #include "UI/UI.hpp"
 
 /************************************************************************/
@@ -177,7 +177,7 @@ Base::ClientInfo::ClientInfo()
 {
     if (auto client=SteamBot::Client::getClientPtr())
     {
-        accountName=client->getClientInfo().accountName;
+        accountName=client->getClientInfo().displayName();
     }
 }
 

@@ -20,7 +20,7 @@
 #include "Asio/Asio.hpp"
 #include "Asio/Signals.hpp"
 #include "UI/UI.hpp"
-#include "Client/Client.hpp"
+#include "Client/ClientInfo.hpp"
 
 #include <boost/asio/signal_set.hpp>
 

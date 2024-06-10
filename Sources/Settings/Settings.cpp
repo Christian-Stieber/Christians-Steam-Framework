@@ -18,6 +18,7 @@
  */
 
 #include "Client/Module.hpp"
+#include "Client/ClientInfo.hpp"
 #include "Helpers/JSON.hpp"
 #include "Settings.hpp"
 

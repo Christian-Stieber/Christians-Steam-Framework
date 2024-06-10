@@ -25,6 +25,7 @@
 /************************************************************************/
 
 #include "SendTrade.hpp"
+#include "Client/ClientInfo.hpp"
 #include "Modules/WebSession.hpp"
 #include "Modules/TradeToken.hpp"
 #include "Modules/Inventory.hpp"

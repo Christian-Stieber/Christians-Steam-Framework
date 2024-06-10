@@ -73,6 +73,9 @@ namespace SteamBot
             return quitMode!=QuitMode::None;
         }
 
+    public:
+        std::string getDisplayName() const;
+
     private:
         mutable boost::fibers::mutex statusMutex;
         mutable boost::fibers::condition_variable statusCondition;
@@ -81,6 +84,13 @@ namespace SteamBot
         Status status=Status::Initializing;
 
         void waitReady() const;
+
+    public:
+        bool isReady() const
+        {
+            assert(getClientPtr()==this);
+            return status!=Status::Initializing;
+        }
 
 	private:
         mutable boost::fibers::mutex modulesMutex;
@@ -114,54 +124,4 @@ namespace SteamBot
             return std::dynamic_pointer_cast<T>(iterator->second);
         }
 	};
-}
-
-/************************************************************************/
-/*
- * ToDo: this is pretty much messed up. It works, as far as I can
- * tell, but it's not nice...
- */
-
-namespace SteamBot
-{
-    class ClientInfo
-    {
-    private:
-        bool active=false;
-        std::shared_ptr<Client> client;
-
-    public:
-        const std::string accountName;
-
-        std::string displayName() const;
-
-    public:
-        ClientInfo(std::string);		// internal use
-        ~ClientInfo();
-
-    public:
-        // internal use
-        bool setActive(bool);
-        void setClient(std::shared_ptr<Client>);
-
-    public:
-        bool isActive() const;
-        std::shared_ptr<Client> getClient() const;
-
-        static void init();
-
-        static ClientInfo* create(std::string);
-        static ClientInfo* find(std::string_view);
-
-        static ClientInfo* find(std::function<bool(const boost::json::value&)>);
-        static ClientInfo* find(SteamBot::AccountID);
-
-        static std::string prettyName(SteamBot::AccountID);
-
-    public:
-        static std::vector<ClientInfo*> getClients();
-        static std::vector<ClientInfo*> getGroup(std::string_view);
-
-        static void quitAll();
-    };
 }

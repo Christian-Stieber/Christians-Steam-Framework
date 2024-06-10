@@ -21,6 +21,7 @@
 #include "Modules/Heartbeat.hpp"
 #include "ResultCode.hpp"
 #include "Client/Module.hpp"
+#include "Client/ClientInfo.hpp"
 #include "Modules/Login.hpp"
 #include "Modules/UnifiedMessageClient.hpp"
 #include "Steam/MsgClientLogon.hpp"

@@ -19,7 +19,7 @@
 
 #include "Asio/Asio.hpp"
 #include "MaintainBPE.hpp"
-#include "Client/Client.hpp"
+#include "Client/ClientInfo.hpp"
 #include "Modules/LoginTracking.hpp"
 #include "Modules/Executor.hpp"
 #include "Helpers/Time.hpp"

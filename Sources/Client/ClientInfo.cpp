@@ -5,6 +5,7 @@
 #include "Vector.hpp"
 #include "Settings.hpp"
 #include "Modules/Executor.hpp"
+#include "Client/ClientInfo.hpp"
 
 #include <filesystem>
 #include <regex>
@@ -258,57 +259,84 @@ void ClientInfo::quitAll()
 
 /************************************************************************/
 
-namespace
+const std::string_view& SteamBot::AccountDisplayName::name() const
 {
-    class AccountDisplayName : public SteamBot::Settings::SettingString
-    {
-    public:
-        using SettingString::SettingString;
-
-    private:
-        virtual const std::string_view& name() const override
-        {
-            static const std::string_view string{"account-display-name"};
-            return string;
-        }
-
-        virtual void storeWhiteboard(Ptr<> setting) const override
-        {
-            SteamBot::Settings::Internal::storeWhiteboard<AccountDisplayName>(std::move(setting));
-        }
-    };
-
-    SteamBot::Settings::Init<AccountDisplayName> accountDisplayNameInit;
+    static const std::string_view string{"account-display-name"};
+    return string;
 }
+
+/************************************************************************/
+
+void SteamBot::AccountDisplayName::storeWhiteboard(SteamBot::Settings::Setting::Ptr<> setting) const
+{
+    SteamBot::Settings::Internal::storeWhiteboard<AccountDisplayName>(std::move(setting));
+}
+
+/************************************************************************/
+
+static SteamBot::Settings::Init<SteamBot::AccountDisplayName> accountDisplayNameInit;
 
 /************************************************************************/
 /*
  * For now(?), we only support a setting to change the name, i.e.  no
  * profile names from Steam.
+ *
+ * This will try to use the whiteboard, if possible.
+ *
+ * ToDo: this whole display-name thing has turned into more of a mess
+ * than I had anticipated...
  */
 
 std::string ClientInfo::displayName() const
 {
-    typedef SteamBot::Settings::Setting Setting;
-    std::unique_ptr<Setting> setting;
-
-    SteamBot::Startup::InitBase<Setting>::create([&setting](std::unique_ptr<Setting> created) {
-        setting=std::move(created);
-    }, [](const SteamBot::Settings::Setting::InitBase& init)
+    /*
+    * First, let's try the whiteboard since that's our official API to
+    * settings.
+    * We can only use it on the thread that owns it, AND if settings
+    * have already been loaded
+    */
     {
-        return &init==&accountDisplayNameInit;
-    });
-
-    if (setting)
-    {
-        SteamBot::DataFile& dataFile=SteamBot::DataFile::get(accountName, SteamBot::DataFile::FileType::Account);
-        setting->load(dataFile);
-
-        const auto& item=dynamic_cast<AccountDisplayName&>(*setting);
-        if (!item.value.empty())
+        auto runningClient=SteamBot::Client::getClientPtr();
+        auto thisClient=getClient();
+        if (runningClient && thisClient.get()==runningClient && runningClient->isReady())
         {
-            return item.value;
+            if (auto displayName=runningClient->whiteboard.has<SteamBot::AccountDisplayName::Ptr>())
+            {
+                const auto& result=(*displayName)->value;
+                if (!result.empty())
+                {
+                    return result;
+                }
+            }
+            return accountName;
         }
     }
+
+    // Ok, lets grab the data from the account file
+    {
+        typedef SteamBot::Settings::Setting Setting;
+        std::unique_ptr<Setting> setting;
+
+        SteamBot::Startup::InitBase<Setting>::create([&setting](std::unique_ptr<Setting> created) {
+            setting=std::move(created);
+        }, [](const SteamBot::Settings::Setting::InitBase& init)
+        {
+            return &init==&accountDisplayNameInit;
+        });
+
+        if (setting)
+        {
+            SteamBot::DataFile& dataFile=SteamBot::DataFile::get(accountName, SteamBot::DataFile::FileType::Account);
+            setting->load(dataFile);
+
+            const auto& item=dynamic_cast<AccountDisplayName&>(*setting);
+            if (!item.value.empty())
+            {
+                return item.value;
+            }
+        }
+    }
+
+    // Still nothing, so it's the accountName
     return accountName;
 }

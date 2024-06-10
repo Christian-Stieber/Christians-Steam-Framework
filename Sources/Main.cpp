@@ -19,7 +19,7 @@
 
 #include "Asio/Signals.hpp"
 #include "WorkingDir.hpp"
-#include "Client/Client.hpp"
+#include "Client/ClientInfo.hpp"
 #include "Logging.hpp"
 #include "Main.hpp"
 

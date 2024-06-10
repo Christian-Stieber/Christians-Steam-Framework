@@ -25,6 +25,7 @@
 #include "Settings.hpp"
 #include "Modules/Inventory.hpp"
 #include "UI/UI.hpp"
+#include "Client/ClientInfo.hpp"
 
 /************************************************************************/
 

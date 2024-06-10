@@ -17,7 +17,7 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "Client/Client.hpp"
+#include "Client/ClientInfo.hpp"
 #include "Client/Module.hpp"
 #include "Universe.hpp"
 #include "Exceptions.hpp"

@@ -21,6 +21,7 @@
 
 #include "Modules/UnifiedMessageClient.hpp"
 #include "Client/Module.hpp"
+#include "Client/ClientInfo.hpp"
 #include "Modules/WebSession.hpp"
 #include "AssetData.hpp"
 #include "Helpers/URLs.hpp"
