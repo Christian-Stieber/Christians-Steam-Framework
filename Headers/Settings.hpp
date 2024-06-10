@@ -78,6 +78,30 @@ namespace SteamBot
 
 /************************************************************************/
 /*
+ * Setting for an arbitrary string
+ */
+
+namespace SteamBot
+{
+    namespace Settings
+    {
+        class SettingString : public Setting
+        {
+        public:
+            std::string value;
+
+        public:
+            using Setting::Setting;
+
+        private:
+            virtual bool setString(std::string_view) override;
+            virtual std::string_view getString() const override;
+        };
+    }
+}
+
+/************************************************************************/
+/*
  * This base class should help with creating boolean settings.
  */
 

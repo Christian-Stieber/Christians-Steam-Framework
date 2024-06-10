@@ -68,7 +68,7 @@ addSource("Modules"
   InventoryNotification BadgeData/GetBadgeData BadgeData/BadgeInfo)
 
 addSource("Settings"
-    Settings SettingBool SettingBotName)
+    Settings SettingBool SettingBotName SettingString)
 
 addSource("."
   Main Logging WorkingDir Universe Random Base64 DestructMonitor JobID DataFile AssetKey
