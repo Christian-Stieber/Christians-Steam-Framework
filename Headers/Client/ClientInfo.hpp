@@ -54,6 +54,9 @@ namespace SteamBot
         bool active=false;
         std::shared_ptr<Client> client;
 
+    private:
+        std::string displayName(const ClientInfo*) const;
+
     public:
         const std::string accountName;
 
@@ -76,6 +79,7 @@ namespace SteamBot
 
         static ClientInfo* create(std::string);
         static ClientInfo* find(std::string_view);
+        static std::vector<ClientInfo*> findDisplay(std::string_view);	// display name
 
         static ClientInfo* find(std::function<bool(const boost::json::value&)>);
         static ClientInfo* find(SteamBot::AccountID);

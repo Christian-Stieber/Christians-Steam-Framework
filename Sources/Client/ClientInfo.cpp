@@ -120,6 +120,22 @@ ClientInfo* ClientInfo::find(std::string_view accountName)
 
 /************************************************************************/
 
+std::vector<ClientInfo*> ClientInfo::findDisplay(std::string_view name)
+{
+    std::vector<ClientInfo*> result;
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    for (auto info : clients)
+    {
+        if (SteamBot::caseInsensitiveStringCompare_equal(info->displayName(info), name))
+        {
+            result.push_back(info);
+        }
+    }
+    return result;
+}
+
+/************************************************************************/
+
 ClientInfo* ClientInfo::find(std::function<bool(const boost::json::value&)> pred)
 {
     std::lock_guard<decltype(mutex)> lock(mutex);
@@ -278,16 +294,17 @@ static SteamBot::Settings::Init<SteamBot::AccountDisplayName> accountDisplayName
 
 /************************************************************************/
 /*
- * For now(?), we only support a setting to change the name, i.e.  no
- * profile names from Steam.
+ * Again, ClientInfo is a mess.
  *
- * This will try to use the whiteboard, if possible.
+ * This function exists because I'm locking the mutex for getClient(),
+ * which is fine for a standalone displayName() call, but won't work
+ * when searching for display names.
  *
- * ToDo: this whole display-name thing has turned into more of a mess
- * than I had anticipated...
+ * Hence, this function does NOT lock the mutex; the caller needs
+ * to do that for us.
  */
 
-std::string ClientInfo::displayName() const
+std::string ClientInfo::displayName(const ClientInfo* thisInfo) const
 {
     /*
     * First, let's try the whiteboard since that's our official API to
@@ -297,8 +314,8 @@ std::string ClientInfo::displayName() const
     */
     {
         auto runningClient=SteamBot::Client::getClientPtr();
-        auto thisClient=getClient();
-        if (runningClient && thisClient.get()==runningClient && runningClient->isReady())
+        auto thisClient=thisInfo->client.get();
+        if (runningClient && thisClient==runningClient && runningClient->isReady())
         {
             if (auto displayName=runningClient->whiteboard.has<SteamBot::AccountDisplayName::Ptr>())
             {
@@ -339,4 +356,21 @@ std::string ClientInfo::displayName() const
 
     // Still nothing, so it's the accountName
     return accountName;
+}
+
+/************************************************************************/
+/*
+ * For now(?), we only support a setting to change the name, i.e.  no
+ * profile names from Steam.
+ *
+ * This will try to use the whiteboard, if possible.
+ *
+ * ToDo: this whole display-name thing has turned into more of a mess
+ * than I had anticipated...
+ */
+
+std::string ClientInfo::displayName() const
+{
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    return displayName(this);
 }
