@@ -171,7 +171,7 @@ void SteamBot::Client::launch(SteamBot::ClientInfo& clientInfo)
 
                     clientInfo.setClient(currentClient);
                     {
-                        SteamBot::UI::Thread::outputText(std::string("running client ")+clientInfo.accountName);
+                        SteamBot::UI::Thread::outputText(std::string("running client ")+clientInfo.displayName());
                         currentClient->initModules();
 
                         {
@@ -181,7 +181,7 @@ void SteamBot::Client::launch(SteamBot::ClientInfo& clientInfo)
                         currentClient->statusCondition.notify_all();
 
                         scheduler->wait();
-                        SteamBot::UI::Thread::outputText(std::string("exiting client ")+clientInfo.accountName);
+                        SteamBot::UI::Thread::outputText(std::string("exiting client ")+clientInfo.displayName());
                     }
                     clientInfo.setClient(nullptr);
 
