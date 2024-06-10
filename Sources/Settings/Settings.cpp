@@ -54,7 +54,6 @@ namespace
     private:
         static SteamBot::DataFile& getDataFile();
 
-        void loadItem(Setting&) const;
         void storeItem(const Setting&);
         void loadSettings();
 
@@ -93,27 +92,27 @@ void SettingsModule::storeItem(const Setting& setting)
 
 /************************************************************************/
 
-void SettingsModule::loadItem(Setting& setting) const
+void Setting::load(const SteamBot::DataFile& dataFile)
 {
-    dataFile.examine([&setting](const boost::json::value& json) {
-        if (auto item=SteamBot::JSON::getItem(json, settingsKey, setting.name()))
+    dataFile.examine([this](const boost::json::value& json) {
+        if (auto item=SteamBot::JSON::getItem(json, settingsKey, name()))
         {
             if (auto string=item->if_string())
             {
-                if (setting.setString(*string))
+                if (setString(*string))
                 {
-                    BOOST_LOG_TRIVIAL(info) << "Setting \"" << setting.name() << "\": "
-                                            << "loaded value \"" << setting.getString() << "\"";
+                    BOOST_LOG_TRIVIAL(info) << "Setting \"" << name() << "\": "
+                                            << "loaded value \"" << getString() << "\"";
                 }
                 else
                 {
-                    BOOST_LOG_TRIVIAL(error) << "Setting \"" << setting.name() << "\": "
+                    BOOST_LOG_TRIVIAL(error) << "Setting \"" << name() << "\": "
                                              << "ignored invalid value \"" << *string << "\"";
                 }
             }
             else
             {
-                BOOST_LOG_TRIVIAL(error) << "Setting \"" << setting.name() << "\": "
+                BOOST_LOG_TRIVIAL(error) << "Setting \"" << name() << "\": "
                                          << "ignored non-string json value";
             }
         }
@@ -125,7 +124,7 @@ void SettingsModule::loadItem(Setting& setting) const
 void SettingsModule::loadSettings()
 {
     SteamBot::Startup::InitBase<Setting>::create([this](std::unique_ptr<Setting> created) {
-        loadItem(*created);
+        created->load(dataFile);
 
         std::shared_ptr<Setting> setting{std::move(created)};
         setting->storeWhiteboard(setting);

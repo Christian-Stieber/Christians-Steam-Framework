@@ -69,6 +69,9 @@ namespace SteamBot
             virtual std::string_view getString() const =0;
 
             virtual void storeWhiteboard(Ptr<>) const =0;
+
+        public:
+            void load(const SteamBot::DataFile& dataFile);
         };
     }
 }
