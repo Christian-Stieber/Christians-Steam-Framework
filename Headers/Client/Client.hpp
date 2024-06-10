@@ -133,6 +133,8 @@ namespace SteamBot
     public:
         const std::string accountName;
 
+        std::string displayName() const;
+
     public:
         ClientInfo(std::string);		// internal use
         ~ClientInfo();

@@ -3,6 +3,7 @@
 #include "Helpers/JSON.hpp"
 #include "SteamID.hpp"
 #include "Vector.hpp"
+#include "Settings.hpp"
 #include "Modules/Executor.hpp"
 
 #include <filesystem>
@@ -253,4 +254,61 @@ void ClientInfo::quitAll()
         }
     }
     SteamBot::Client::waitAll();
+}
+
+/************************************************************************/
+
+namespace
+{
+    class AccountDisplayName : public SteamBot::Settings::SettingString
+    {
+    public:
+        using SettingString::SettingString;
+
+    private:
+        virtual const std::string_view& name() const override
+        {
+            static const std::string_view string{"account-display-name"};
+            return string;
+        }
+
+        virtual void storeWhiteboard(Ptr<> setting) const override
+        {
+            SteamBot::Settings::Internal::storeWhiteboard<AccountDisplayName>(std::move(setting));
+        }
+    };
+
+    SteamBot::Settings::Init<AccountDisplayName> accountDisplayNameInit;
+}
+
+/************************************************************************/
+/*
+ * For now(?), we only support a setting to change the name, i.e.  no
+ * profile names from Steam.
+ */
+
+std::string ClientInfo::displayName() const
+{
+    typedef SteamBot::Settings::Setting Setting;
+    std::unique_ptr<Setting> setting;
+
+    SteamBot::Startup::InitBase<Setting>::create([&setting](std::unique_ptr<Setting> created) {
+        setting=std::move(created);
+    }, [](const SteamBot::Settings::Setting::InitBase& init)
+    {
+        return &init==&accountDisplayNameInit;
+    });
+
+    if (setting)
+    {
+        SteamBot::DataFile& dataFile=SteamBot::DataFile::get(accountName, SteamBot::DataFile::FileType::Account);
+        setting->load(dataFile);
+
+        const auto& item=dynamic_cast<AccountDisplayName&>(*setting);
+        if (!item.value.empty())
+        {
+            return item.value;
+        }
+    }
+    return accountName;
 }
