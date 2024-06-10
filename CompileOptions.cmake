@@ -22,7 +22,7 @@ function(setCompileOptions target)
     target_compile_options(${target} PRIVATE
       -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-overflow=2 -Wformat-signedness -Wswitch-default
       -Wuninitialized -Wduplicated-branches -Wfloat-equal -Wshadow -Wcast-qual -Wcast-align -Wsign-conversion
-      -Wlogical-op -Wmissing-declarations -Wno-psabi
+      -Wlogical-op -Wmissing-declarations -Wno-psabi -Wnon-virtual-dtor
     )
   endif()
 
