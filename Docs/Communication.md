@@ -12,6 +12,8 @@ You can find the protofiles in `steamdatabase/protofiles/steam`.
 
 For the most part, you'll want to create typedefs similar to the ones found in [these headers](/Headers/Steam/ProtoBuf) to combine a header, payload, and message code into a C++ type.
 
+## Handling request/response in a blocking fashion
+
 ### Sending protobuf messages
 
 As you can imagine, sending a message means allocating one, filling its payload, and sending it off.
@@ -72,3 +74,35 @@ Sometimes, you'll need to access webpages as your user; the framework provides a
 ## Unified Messages (client)
 
 Steam provides a system of "remote procedure calls" to provide a request/response flow. At this stage, the framework still views this as request and response messages; it dos not try to provide a function call interface. However, the API is blocking, for some basic function-call feeling.
+
+Note that gooe protobuf has a "service" feature, which is also used by Steam to decribe their RPC. However, I have been unable to make use of this.
+
+To use a (client-)service, start by bridging the protobuf service into the framework:
+
+```c++
+#include "steamdatabase/protobufs/steam/steammessages_cloud.steamclient.pb.h"
+
+void example()
+{
+   typedef SteamBot::Modules::UnifiedMessageClient::ProtobufService::Info<decltype(&::Cloud::EnumerateUserFiles)> EnumerateUserFilesInfo;
+```
+This will access the rpc-call `EnumerateUserFiles` from the `Cloud` service (defined in `steammessages_cloud.steamclient.proto`).
+
+This `Info` type provides two typedefs, for the request and response message:
+
+```c++
+   std::shared_ptr<EnumerateUserFilesInfo::ResultType> response;
+   {
+        EnumerateUserFilesInfo::RequestType request;
+        request.set_appid(760);
+        response=SteamBot::Modules::UnifiedMessageClient::execute<EnumerateUserFilesInfo::ResultType>("Cloud.EnumerateUserFiles#1", std::move(request));
+   }
+```
+
+The response will simply be a protobuf message for you to process:
+
+```c++
+   std::vector<File> files;
+   files.reseerve(response->total_files());
+   ...
+```
