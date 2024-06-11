@@ -8,9 +8,9 @@ You can send/receive protobuf-backed messages over the client connection.
 
 Note that for some of these APIs, Steam also has a "web flavored" variant using API keys; while I don't specifically support or recommend that (I won't use API keys while I can avoid it), their documentation can often be used for the protobuf variant as well.
 
-You can find the protofiles [here](/steamdatabase/protofiles/steam).
+You can find the protofiles in `steamdatabase/protofiles/steam`.
 
-For the most part, you'll want to create typedefs similar to the ones found in [these headers](/Headers/Steam/ProtoBufs) to combine a header, payload, and message code into a C++ type.
+For the most part, you'll want to create typedefs similar to the ones found in [these headers](/Headers/Steam/ProtoBuf) to combine a header, payload, and message code into a C++ type.
 
 ### Sending protobuf messages
 
@@ -29,7 +29,7 @@ To receive messages, you need to subscribe to them using a `Waiter`; if you are 
 can just use the module-provided waiter for this:
 
 ```c++
-class MyModule
+class MyModule : public SteamBot::Client::Module
 {
 private:
    SteamBot::Messageboard::WaiterType<Steam::CMsgClientLoggedOffMessageType> logoffMessageWaiter;
@@ -41,7 +41,7 @@ private:
 };
 ```
 
-Note that by doing this, you'll also register the message code with the C++ type and the protobuf class, which allows the logging to show readable message dumps.
+Note that by doing this, you'll also register the message code with the protobuf class, which allows the logging to show readable message dumps. Unregistered messages will just be logged with their message code.
 
 With this in place, incoming messages of that type will be posted on the messageboard, so you can use it however you want.
 
