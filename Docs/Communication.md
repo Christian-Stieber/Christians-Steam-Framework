@@ -82,9 +82,41 @@ If your callback returns `false`, the call will wait for more responses; return 
 Responses that can arrive in multiple messages have suitable information in the payload; as an example, `CMsgClientPICSProductInfoResponseMessageType` has a `response->content.response_pending()` indicating that more messages will follow.\
 However, to my knowledge, I cannot auto-detect this as different messages might use different mechanics to provide such information.
 
-## Web-API
+## WebSession
 
 Sometimes, you'll need to access webpages as your user; the framework provides an API to add necessary session cookies into your https request.
+
+```c++
+#include "Modules/WebSession.hpp"
+...
+void loadPage()
+{
+   std::shared_ptr<const SteamBot::Modules::WebSession::Messageboard::Response> response;
+   {
+      auto request=std::make_shared<SteamBot::Modules::WebSession::Messageboard::Request>();
+```
+This request then takes a callback to create the actual query later:
+```c++
+      request->queryMaker=[]() {
+         static const boost::urls::url_view myUrl("https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123");
+         auto query=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, myUrl);
+         SteamBot::URLs::setParam(query->url, "appid", SteamBot::toInteger(1234));
+         return query;
+      };
+```
+Now you can just send off the request; the framework will add required session data into the request for you:
+```c++
+      response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
+   }
+```
+and deal with the response:
+```c++
+   if (response->query->response.result()==boost::beast::http::status::ok)
+   {
+      std::cout << SteamBot::HTTPClient::parseString(*(response->query)) << '\n';
+   }
+}
+```
 
 ## Unified Messages (client)
 
