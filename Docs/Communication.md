@@ -12,8 +12,6 @@ You can find the protofiles in `steamdatabase/protofiles/steam`.
 
 For the most part, you'll want to create typedefs similar to the ones found in [these headers](/Headers/Steam/ProtoBuf) to combine a header, payload, and message code into a C++ type.
 
-## Handling request/response in a blocking fashion
-
 ### Sending protobuf messages
 
 As you can imagine, sending a message means allocating one, filling its payload, and sending it off.
@@ -66,6 +64,23 @@ private:
       }
    }
 ```
+### Handling request/response in a blocking fashion
+
+Sometimes, you'll want to just send a request and wait for the response. While steam does provide an RPC-style API, not all such cases are covered by this.
+
+If you've set up a request message as described before, you can use the `sendAndWait` call:
+```c++
+#include "BlockingQuery.hpp"
+...
+SteamBot::sendAndWait<ResponseType>(std::move(request), [](std::shared_ptr<const ResponseType> response) -> bool {
+});
+```
+This will wait for responses to arrive, specifically for your request (i.e. several in-flight requests for the same type will not mix up responses).
+
+If your callback returns `false`, the call will wait for more responses; return `true` if all expected data has been received.
+
+Responses that can arrive in multiple messages have suitable information in the payload; as an example, `CMsgClientPICSProductInfoResponseMessageType` has a `response->content.response_pending()` indicating that more messages will follow.\
+However, to my knowledge, I cannot auto-detect this as different messages might use different mechanics to provide such information.
 
 ## Web-API
 
