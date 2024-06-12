@@ -21,6 +21,8 @@
 #include "Helpers/StringCompare.hpp"
 #include "EnumFlags.hpp"
 
+#include <array>
+
 /************************************************************************/
 /*
  * https://partner.steamgames.com/doc/webapi/icloudservice
