@@ -32,6 +32,7 @@
 #include "UI/UI.hpp"
 #include "Client/Sleep.hpp"
 #include "Helpers/JSON.hpp"
+#include "Helpers/Time.hpp"
 #include "UI/UI.hpp"
 #include "EnumString.hpp"
 
@@ -589,7 +590,29 @@ void LoginModule::sendHello()
 
 void LoginModule::doLogon()
 {
-    SteamBot::UI::Thread::outputText("starting login with key");
+    std::unique_ptr<SteamBot::Modules::Login::ParsedToken> parsedToken;
+    try
+    {
+        parsedToken=std::make_unique<decltype(parsedToken)::element_type>(refreshToken);
+    }
+    catch(...)
+    {
+        BOOST_LOG_TRIVIAL(error) << "error while parsing refresh token: "
+                                 << boost::current_exception_diagnostic_information();
+    }
+
+    {
+        SteamBot::UI::OutputText output;
+        output << "starting login with key";
+        if (parsedToken)
+        {
+            time_t exp;
+            if (SteamBot::JSON::optNumber(parsedToken->toJson(), "exp", exp))
+            {
+                output << " (expires " << SteamBot::Time::toString(std::chrono::system_clock::from_time_t(exp)) << ")";
+            }
+        }
+    }
 
     auto message=std::make_unique<Steam::CMsgClientLogonMessageType>();
 
@@ -623,15 +646,9 @@ void LoginModule::doLogon()
         BOOST_LOG_TRIVIAL(debug) << "refresh token: " << refreshToken;
         message->content.set_access_token(refreshToken);
 
-        try
+        if (parsedToken)
         {
-            SteamBot::Modules::Login::ParsedToken parsed(refreshToken);
-            BOOST_LOG_TRIVIAL(debug) << "refresh token: " << parsed.toJson();
-        }
-        catch(...)
-        {
-            BOOST_LOG_TRIVIAL(error) << "error while parsing refresh token: "
-                                     << boost::current_exception_diagnostic_information();
+            BOOST_LOG_TRIVIAL(debug) << "refresh token: " << parsedToken->toJson();
         }
     }
 
