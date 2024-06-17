@@ -71,6 +71,9 @@ namespace SteamBot
     {
         class WaiterBase : public SteamBot::Waiter::ItemBase
         {
+        private:
+            std::function<void()> cancelFunction;
+
         protected:
             mutable std::mutex mutex;
             bool resultAvailable=false;
@@ -85,6 +88,11 @@ namespace SteamBot
 
         protected:
             bool isResultValid() const;
+
+        public:
+            void setCancel(std::function<void()>);
+            void clearCancel();
+            void cancel();
         };
 
         template <typename T> class Waiter : public WaiterBase

@@ -97,6 +97,33 @@ bool WaiterBase::isResultValid() const
 
 /************************************************************************/
 
+void WaiterBase::clearCancel()
+{
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    cancelFunction=nullptr;
+}
+
+/************************************************************************/
+
+void WaiterBase::setCancel(std::function<void()> function)
+{
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    cancelFunction=std::move(function);
+}
+
+/************************************************************************/
+
+void WaiterBase::cancel()
+{
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    if (cancelFunction)
+    {
+        cancelFunction();
+    }
+}
+
+/************************************************************************/
+
 decltype(Thread::queue)::value_type Thread::dequeue()
 {
     while (true)
