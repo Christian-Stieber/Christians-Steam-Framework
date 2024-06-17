@@ -37,6 +37,12 @@ Base::Base() =default;
 Base::~Base() =default;
 
 /************************************************************************/
+
+void Base::quit()
+{
+}
+
+/************************************************************************/
 /*
  * This pushes "function" to the front of the queue.
  */
@@ -113,7 +119,10 @@ Thread::Thread()
     thread=std::thread([this]() {
         BOOST_LOG_TRIVIAL(debug) << "UI thread running";
         isUiThread=true;
-        ui=SteamBot::UI::create();
+        {
+            std::lock_guard<decltype(mutex)> lock(mutex);
+            ui=SteamBot::UI::create();
+        }
         while (true)
         {
             if (auto item=dequeue())
@@ -125,11 +134,11 @@ Thread::Thread()
                 break;
             }
         }
-        ui.reset();
-
         BOOST_LOG_TRIVIAL(debug) << "UI thread terminating";
+
         {
             std::lock_guard<decltype(mutex)> lock(mutex);
+            ui.reset();
             assert(!didQuit);
             didQuit=true;
         }
@@ -266,7 +275,15 @@ bool Thread::isThread()
 
 void Thread::quit()
 {
-    get().enqueue(nullptr, true);
+    Thread& thread=get();
+    {
+        std::lock_guard<decltype(thread.mutex)> lock(thread.mutex);
+        if (thread.ui)
+        {
+            thread.ui->quit();
+        }
+    }
+    thread.enqueue(nullptr, true);
 }
 
 /************************************************************************/

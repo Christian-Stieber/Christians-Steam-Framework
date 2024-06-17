@@ -158,6 +158,9 @@ namespace SteamBot
 
             virtual void outputText(ClientInfo&, std::string) =0;
             virtual void requestPassword(ClientInfo&, ResultParam<std::string>, PasswordType, bool(*)(const std::string&)) =0;
+
+        public:
+            virtual void quit();
         };
     }
 }
