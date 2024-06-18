@@ -33,6 +33,7 @@
 #include "Client/Sleep.hpp"
 #include "Helpers/JSON.hpp"
 #include "Helpers/Time.hpp"
+#include "Helpers/Destruct.hpp"
 #include "UI/UI.hpp"
 #include "EnumString.hpp"
 
@@ -476,6 +477,13 @@ void LoginModule::startAuthSession()
         auto result=execute(makeBeginAuthRequest(getPublicKey()));
         if (result)
         {
+            // ToDo: the response CAuthentication_BeginAuthSessionViaCredentials_Response
+            // has a "weak_token" -- I somewhat suspect that I can use that to avoid the
+            // server killing the connection on us, by just terminating the connection
+            // myself and then somehow using the "weak_token" when I have the SteamGuard
+            // code to skip the previous steps and continue right with giving that
+            // code to Steam...
+
             getConfirmationType(*result);
             requestCode();
         }
@@ -799,6 +807,11 @@ void LoginModule::run(SteamBot::Client& client)
             accessToken=string->as_string();
         }
 #endif
+    });
+
+    SteamBot::ExecuteOnDestruct destructor([this]() {
+        if (passwordWaiter) passwordWaiter->cancel();
+        if (steamguardCodeWaiter) steamguardCodeWaiter->cancel();
     });
 
     while (true)
