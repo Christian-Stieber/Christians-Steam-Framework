@@ -220,6 +220,31 @@ public:
 
 /************************************************************************/
 
+class SteamBot::Modules::UnifiedMessageClient::Error
+{
+public:
+    std::shared_ptr<const ServiceMethodResponseMessage> message;
+
+public:
+    Error(std::shared_ptr<const ServiceMethodResponseMessage>&& message_)
+        : message(std::move(message_))
+    {
+    }
+
+public:
+    SteamBot::ResultCode getResultCode() const
+    {
+        return static_cast<SteamBot::ResultCode>(message->header.proto.eresult());
+    }
+
+    operator SteamBot::ResultCode() const
+    {
+        return getResultCode();
+    }
+};
+
+/************************************************************************/
+
 template <typename REQUEST, typename RESPONSE, SteamBot::Connection::Message::Type TYPE> class SteamBot::Modules::UnifiedMessageClient::Internal::UnifiedMessage
     : public SteamBot::Modules::UnifiedMessageClient::Internal::UnifiedMessageBase
 {
@@ -233,15 +258,45 @@ public:
 public:
     std::shared_ptr<const ServiceMethodResponseMessage> execute(std::string_view method, REQUEST&& body)
     {
+        typedef SteamBot::Modules::Connection::Messageboard::SendSteamMessage SendSteamMessage;
+        std::shared_ptr<SendSteamMessage> sendSteamMessage;
         {
             auto message=std::make_unique<RequestMessageType>();
             message->content=std::move(body);
             message->header.proto.set_jobid_source(jobId.getValue());
             message->header.proto.set_target_job_name(std::string(method));
-            SteamBot::Modules::Connection::Messageboard::SendSteamMessage::send(std::move(message));
+            sendSteamMessage=std::make_shared<SendSteamMessage>(std::move(message));
         }
 
-        return waitForResponse();
+        int counter=0;
+        while (true)
+        {
+            SteamBot::Client::getClient().messageboard.send(sendSteamMessage);
+            try
+            {
+                return waitForResponse();
+            }
+            catch(const SteamBot::Modules::UnifiedMessageClient::Error& exception)
+            {
+                // https://github.com/Christian-Stieber/Christians-Steam-Framework/issues/28
+                if (exception.getResultCode()!=SteamBot::ResultCode::Busy)
+                {
+                    throw;
+                }
+
+                // ToDo: maybe retrying isn't the solution?
+                if (counter>=10)
+                {
+                    throw;
+                }
+
+                // ToDo: I'm adding this so I can see when it happens. It should be removed eventually.
+                std::cout << "UnifiedMessage::execute() retrying #" << ++counter << " due to 'Busy' response" << std::endl;
+
+                // ToDo: quick and dirty, for now...
+                boost::this_fiber::sleep_for(std::chrono::seconds(10));
+            }
+        }
     }
 
 private:
@@ -271,23 +326,3 @@ SteamBot::Modules::UnifiedMessageClient::execute(std::string_view method, REQUES
 {
     return executeFull<RESPONSE, TYPE, REQUEST>(method, std::move(body))->template getContent<RESPONSE>();
 }
-
-/************************************************************************/
-
-class SteamBot::Modules::UnifiedMessageClient::Error
-{
-public:
-    std::shared_ptr<const ServiceMethodResponseMessage> message;
-
-public:
-    Error(std::shared_ptr<const ServiceMethodResponseMessage>&& message_)
-        : message(std::move(message_))
-    {
-    }
-
-public:
-    operator SteamBot::ResultCode() const
-    {
-        return static_cast<SteamBot::ResultCode>(message->header.proto.eresult());
-    }
-};
