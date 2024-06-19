@@ -73,7 +73,9 @@ namespace
     public:
         bool handle()
         {
+            BOOST_LOG_TRIVIAL(info) << "handling session " << session->clientInfo.accountName;
             assert(input);
+
             if (auto string=input->getResult())
             {
                 switch(passwordType)
@@ -110,7 +112,7 @@ namespace
     {
     private:
         const std::shared_ptr<SteamBot::Waiter> waiter{SteamBot::Waiter::create()};
-        SteamBot::Signal signal{waiter};
+        SteamBot::Signal::WaiterType signal{SteamBot::Signal::createWaiter(*waiter)};
 
         std::vector<SessionState> sessions;
 
@@ -165,13 +167,19 @@ namespace
     private:
         void body()
         {
+            BOOST_LOG_TRIVIAL(info) << "session thread running";
+
             bool quit=false;
             std::queue<std::shared_ptr<CredentialsSession>> fiberQueue;
 
             auto mainFiber=boost::fibers::fiber(std::allocator_arg, boost::fibers::protected_fixedsize_stack(), [this, &quit, &fiberQueue]() {
+                BOOST_LOG_TRIVIAL(info) << "session thread main fiber running";
                 while (true)
                 {
                     waiter->wait();
+                    BOOST_LOG_TRIVIAL(info) << "main fiber wakeup";
+                    signal->testAndClear();
+
                     launchSessions(fiberQueue);
                     handleInputs();
 
@@ -193,6 +201,7 @@ namespace
             });
 
             auto commFiber=boost::fibers::fiber(std::allocator_arg, boost::fibers::protected_fixedsize_stack(), [this, &quit, &fiberQueue]() {
+                BOOST_LOG_TRIVIAL(info) << "session thread comm fiber running";
                 while (true)
                 {
                     std::unique_lock<decltype(mutex)> lock(mutex);
@@ -205,12 +214,15 @@ namespace
                         fiberQueue.push(std::move(threadQueue.front()));
                         threadQueue.pop();
                     }
-                    signal.signal();
+                    BOOST_LOG_TRIVIAL(info) << "signaling main fiber";
+                    signal->signal();
                 }
             });
 
             mainFiber.join();
             commFiber.join();
+
+            BOOST_LOG_TRIVIAL(info) << "session thread ended";
         }
 
     public:
@@ -223,6 +235,7 @@ namespace
     public:
         void run(std::shared_ptr<CredentialsSession> session)
         {
+            BOOST_LOG_TRIVIAL(info) << "running session " << session->clientInfo.accountName;
             {
                 std::lock_guard<decltype(mutex)> lock(mutex);
                 threadQueue.push(std::move(session));
@@ -253,17 +266,20 @@ CredentialsSession::~CredentialsSession() =default;
  * Get the session for the clientInfo. Create one if we don't have one.
  */
 
-CredentialsSession& CredentialsSession::get(SteamBot::ClientInfo& clientInfo)
+std::shared_ptr<CredentialsSession> CredentialsSession::get(SteamBot::ClientInfo& clientInfo)
 {
     std::lock_guard<decltype(mutex)> lock(mutex);
     for (const auto& session: sessions)
     {
         if (&session->clientInfo==&clientInfo)
         {
-            return *session;
+            return session;
         }
     }
-    return *sessions.emplace_back(std::make_unique<CredentialsSession>(clientInfo));
+
+    auto session=std::make_shared<CredentialsSession>(clientInfo);
+    sessions.emplace_back(session);
+    return session;
 }
 
 /************************************************************************/
@@ -272,8 +288,8 @@ CredentialsSession& CredentialsSession::get(SteamBot::ClientInfo& clientInfo)
  * asks the user for whatever we need, and restarts the client.
  */
 
-void CredentialsSession::run()
+void CredentialsSession::run(std::shared_ptr<CredentialsSession> session)
 {
     SteamBot::Client::getClient().quit();
-    SessionThread::get().run(shared_from_this());
+    SessionThread::get().run(std::move(session));
 }

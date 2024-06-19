@@ -110,7 +110,7 @@ namespace SteamBot
 		~Client();
 
     public:
-        const ClientInfo& getClientInfo() const
+        ClientInfo& getClientInfo() const
         {
             return clientInfo;
         }

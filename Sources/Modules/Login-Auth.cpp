@@ -33,9 +33,9 @@
 #include "Client/Sleep.hpp"
 #include "Helpers/JSON.hpp"
 #include "Helpers/Time.hpp"
-#include "Helpers/Destruct.hpp"
 #include "UI/UI.hpp"
 #include "EnumString.hpp"
+#include "./Login-Session.hpp"
 
 #include "steamdatabase/protobufs/steam/steammessages_auth.steamclient.pb.h"
 #include "Steam/ProtoBuf/steammessages_clientserver_login.hpp"
@@ -83,10 +83,13 @@ typedef UnifiedMessageClient::ProtobufService::Info<decltype(&::Authentication::
 
 using SteamBot::Connection::Message::Type::ServiceMethodCallFromClientNonAuthed;
 
+typedef SteamBot::Modules::Login::Internal::CredentialsSession CredentialsSession;
+
 /************************************************************************/
 
 class UnsupportedConfirmationsException { };
 class AuthenticationFailedException { };
+class InteractiveSessionException { };
 
 /************************************************************************/
 
@@ -141,6 +144,9 @@ namespace
         SteamBot::Whiteboard::WaiterType<ConnectionStatus> connectionStatus;
         SteamBot::Messageboard::WaiterType<Steam::CMsgClientLoggedOffMessageType> cmsgClientLoggedOffMessage;
         SteamBot::Messageboard::WaiterType<Steam::CMsgClientLogonResponseMessageType> cmsgClientLogonResponse;
+
+    private:
+        std::shared_ptr<CredentialsSession> session;
 
     public:
         LoginModule() =default;
@@ -197,17 +203,11 @@ namespace
         void handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMessageType>);
 
     private:
-        SteamBot::UI::Base::ResultParam<std::string> steamguardCodeWaiter;
-        SteamBot::UI::Base::ResultParam<std::string> passwordWaiter;
-
-    private:
         void doLogon();
         void requestCode();
         void doPollAuthSessionStatus();
         void queryPollAuthSessionStatus();
         void sendGuardCode(std::string);
-        void handleGuardCodeEntry();
-        void handlePasswordEntry();
         void getConfirmationType(const BeginAuthSessionViaCredentialsInfo::ResultType&);
         std::shared_ptr<BeginAuthSessionViaCredentialsInfo::ResultType> execute(BeginAuthSessionViaCredentialsInfo::RequestType&&);
         BeginAuthSessionViaCredentialsInfo::RequestType makeBeginAuthRequest(const LoginModule::PublicKey&);
@@ -241,6 +241,8 @@ std::string LoginModule::PublicKey::encrypt(const std::string& plainText) const
 
 BeginAuthSessionViaCredentialsInfo::RequestType LoginModule::makeBeginAuthRequest(const LoginModule::PublicKey& publicKey)
 {
+    assert(!session->password.empty());
+
     SteamBot::UI::Thread::outputText("obtaining login key");
     BeginAuthSessionViaCredentialsInfo::RequestType request;
     request.set_account_name(getClient().getClientInfo().accountName);
@@ -254,7 +256,7 @@ BeginAuthSessionViaCredentialsInfo::RequestType LoginModule::makeBeginAuthReques
             }
         });
 	}
-    request.set_encrypted_password(publicKey.encrypt(password));
+    request.set_encrypted_password(publicKey.encrypt(session->password));
     request.set_encryption_timestamp(publicKey.timestamp);
     {
         auto deviceDetails=request.mutable_device_details();
@@ -274,24 +276,12 @@ BeginAuthSessionViaCredentialsInfo::RequestType LoginModule::makeBeginAuthReques
 
 std::shared_ptr<BeginAuthSessionViaCredentialsInfo::ResultType> LoginModule::execute(BeginAuthSessionViaCredentialsInfo::RequestType&& request)
 {
-    std::shared_ptr<BeginAuthSessionViaCredentialsInfo::ResultType> content;
+    typedef BeginAuthSessionViaCredentialsInfo::ResultType ResultType;
+    std::shared_ptr<ResultType> content;
+
     std::shared_ptr<const SteamBot::Modules::UnifiedMessageClient::ServiceMethodResponseMessage> response;
-    try
-    {
-        typedef BeginAuthSessionViaCredentialsInfo::ResultType ResultType;
-        response=UnifiedMessageClient::executeFull<ResultType, ServiceMethodCallFromClientNonAuthed>("Authentication.BeginAuthSessionViaCredentials#1", std::move(request));
-    }
-    catch(const SteamBot::Modules::UnifiedMessageClient::Error& error)
-    {
-        if (error!=SteamBot::ResultCode::InvalidPassword)
-        {
-            throw;
-        }
-        BOOST_LOG_TRIVIAL(info) << "got an \"invalid password\" response";
-        SteamBot::UI::Thread::outputText("invalid password");
-        getClient().quit(false);
-        return content;
-    }
+    response=UnifiedMessageClient::executeFull<ResultType, ServiceMethodCallFromClientNonAuthed>("Authentication.BeginAuthSessionViaCredentials#1", std::move(request));
+
     content=response->getContent<BeginAuthSessionViaCredentialsInfo::ResultType>();
 
     assert(response->header.proto.has_client_sessionid());
@@ -395,6 +385,8 @@ void LoginModule::sendGuardCode(std::string code)
         {
             throw;
         }
+
+        session->steamGuardCode.clear();
     }
 
     if (response)
@@ -404,35 +396,6 @@ void LoginModule::sendGuardCode(std::string code)
     else
     {
         requestCode();
-    }
-}
-
-/************************************************************************/
-
-void LoginModule::handleGuardCodeEntry()
-{
-    if (steamguardCodeWaiter)
-    {
-        if (auto code=steamguardCodeWaiter->getResult())
-        {
-            sendGuardCode(std::move(*code));
-            steamguardCodeWaiter.reset();
-        }
-    }
-}
-
-/************************************************************************/
-
-void LoginModule::handlePasswordEntry()
-{
-    if (passwordWaiter)
-    {
-        if (auto entered=passwordWaiter->getResult())
-        {
-            password=std::move(*entered);
-            passwordWaiter.reset();
-            startAuthSession();
-        }
     }
 }
 
@@ -454,8 +417,14 @@ void LoginModule::requestCode()
 
     case EAuthSessionGuardType::k_EAuthSessionGuardType_DeviceCode:
     case EAuthSessionGuardType::k_EAuthSessionGuardType_EmailCode:
-        assert(!steamguardCodeWaiter);
-        steamguardCodeWaiter=SteamBot::UI::Thread::requestPassword(waiter, SteamBot::UI::Base::PasswordType::SteamGuard_EMail);
+        if (session->steamGuardCode.empty())
+        {
+            throw InteractiveSessionException();
+        }
+        else
+        {
+            sendGuardCode(session->steamGuardCode);
+        }
         break;
 
     default:
@@ -467,26 +436,11 @@ void LoginModule::requestCode()
 
 void LoginModule::startAuthSession()
 {
-    if (password.empty())
+    auto result=execute(makeBeginAuthRequest(getPublicKey()));
+    if (result)
     {
-        assert(!passwordWaiter);
-        passwordWaiter=SteamBot::UI::Thread::requestPassword(waiter, SteamBot::UI::Base::PasswordType::AccountPassword);
-    }
-    else
-    {
-        auto result=execute(makeBeginAuthRequest(getPublicKey()));
-        if (result)
-        {
-            // ToDo: the response CAuthentication_BeginAuthSessionViaCredentials_Response
-            // has a "weak_token" -- I somewhat suspect that I can use that to avoid the
-            // server killing the connection on us, by just terminating the connection
-            // myself and then somehow using the "weak_token" when I have the SteamGuard
-            // code to skip the previous steps and continue right with giving that
-            // code to Steam...
-
-            getConfirmationType(*result);
-            requestCode();
-        }
+        getConfirmationType(*result);
+        requestCode();
     }
 }
 
@@ -801,18 +755,9 @@ void LoginModule::run(SteamBot::Client& client)
         {
             refreshToken=string->as_string();
         }
-#if 0
-        if (auto string=SteamBot::JSON::getItem(value, Keys::Login, Keys::Access))
-        {
-            accessToken=string->as_string();
-        }
-#endif
     });
 
-    SteamBot::ExecuteOnDestruct destructor([this]() {
-        if (passwordWaiter) passwordWaiter->cancel();
-        if (steamguardCodeWaiter) steamguardCodeWaiter->cancel();
-    });
+    session=SteamBot::Modules::Login::Internal::CredentialsSession::get(client.getClientInfo());
 
     while (true)
     {
@@ -820,27 +765,29 @@ void LoginModule::run(SteamBot::Client& client)
         {
             waiter->wait();
 
-            while (cmsgClientLoggedOffMessage->fetch())
-                ;
-
+            cmsgClientLoggedOffMessage->discardMessages();
             cmsgClientLogonResponse->handle(this);
-
-            handleGuardCodeEntry();
-            handlePasswordEntry();
 
             if (connectionStatus->get(ConnectionStatus::Disconnected)==ConnectionStatus::Connected)
             {
                 if (client.whiteboard.get(LoginStatus::LoggedOut)==LoginStatus::LoggedOut)
                 {
-                    setStatus(LoginStatus::LoggingIn);
-                    sendHello();
-                    if (refreshToken.empty())
+                    if (session->password.empty())
                     {
-                        startAuthSession();
+                        throw InteractiveSessionException();
                     }
                     else
                     {
-                        doLogon();
+                        setStatus(LoginStatus::LoggingIn);
+                        sendHello();
+                        if (refreshToken.empty())
+                        {
+                            startAuthSession();
+                        }
+                        else
+                        {
+                            doLogon();
+                        }
                     }
                 }
             }
@@ -853,11 +800,22 @@ void LoginModule::run(SteamBot::Client& client)
             case SteamBot::ResultCode::ServiceUnavailable:
                 SteamBot::UI::Thread::outputText("login unavailable");
                 getClient().quit(true);
-                break;
+                return;
+
+            case SteamBot::ResultCode::InvalidPassword:
+                SteamBot::UI::Thread::outputText("invalid password");
+                session->password.clear();
+                getClient().quit(false);
+                return;
 
             default:
                 throw;
             }
+        }
+        catch(const InteractiveSessionException&)
+        {
+            CredentialsSession::run(std::move(session));
+            return;
         }
     }
 }

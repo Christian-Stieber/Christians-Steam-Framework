@@ -31,7 +31,7 @@ namespace SteamBot
         {
             namespace Internal
             {
-                class CredentialsSession : public std::enable_shared_from_this<CredentialsSession>
+                class CredentialsSession
                 {
                 private:
                     static inline boost::fibers::mutex mutex;
@@ -50,9 +50,8 @@ namespace SteamBot
                     void run_();
 
                 public:
-                    static CredentialsSession& get(SteamBot::ClientInfo&);
-
-                    void run();
+                    static std::shared_ptr<CredentialsSession> get(SteamBot::ClientInfo&);
+                    static void run(std::shared_ptr<CredentialsSession>);
                 };
             }
         }
