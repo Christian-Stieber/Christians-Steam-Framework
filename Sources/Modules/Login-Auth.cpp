@@ -243,7 +243,7 @@ BeginAuthSessionViaCredentialsInfo::RequestType LoginModule::makeBeginAuthReques
 {
     assert(!session->password.empty());
 
-    SteamBot::UI::Thread::outputText("obtaining login key");
+    SteamBot::UI::Thread::outputText("sending credentials");
     BeginAuthSessionViaCredentialsInfo::RequestType request;
     request.set_account_name(getClient().getClientInfo().accountName);
     request.set_persistence(ESessionPersistence::k_ESessionPersistence_Persistent);
@@ -349,6 +349,7 @@ void LoginModule::getConfirmationType(const BeginAuthSessionViaCredentialsInfo::
 
 void LoginModule::sendGuardCode(std::string code)
 {
+    SteamBot::UI::Thread::outputText("sending guard code");
     UpdateAuthSessionWithSteamGuardCodeInfo::RequestType request;
     request.set_code_type(confirmation.type);
     request.set_code(std::move(code));
@@ -552,6 +553,8 @@ void LoginModule::sendHello()
 
 void LoginModule::doLogon()
 {
+    CredentialsSession::remove(std::move(session));
+
     std::unique_ptr<SteamBot::Modules::Login::ParsedToken> parsedToken;
     try
     {

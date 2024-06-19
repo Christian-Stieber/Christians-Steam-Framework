@@ -51,6 +51,7 @@ namespace SteamBot
 
                 public:
                     static std::shared_ptr<CredentialsSession> get(SteamBot::ClientInfo&);
+                    static void remove(std::shared_ptr<CredentialsSession>);
                     static void run(std::shared_ptr<CredentialsSession>);
                 };
             }

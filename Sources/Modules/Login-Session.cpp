@@ -173,11 +173,9 @@ namespace
             std::queue<std::shared_ptr<CredentialsSession>> fiberQueue;
 
             auto mainFiber=boost::fibers::fiber(std::allocator_arg, boost::fibers::protected_fixedsize_stack(), [this, &quit, &fiberQueue]() {
-                BOOST_LOG_TRIVIAL(info) << "session thread main fiber running";
                 while (true)
                 {
                     waiter->wait();
-                    BOOST_LOG_TRIVIAL(info) << "main fiber wakeup";
                     signal->testAndClear();
 
                     launchSessions(fiberQueue);
@@ -201,7 +199,6 @@ namespace
             });
 
             auto commFiber=boost::fibers::fiber(std::allocator_arg, boost::fibers::protected_fixedsize_stack(), [this, &quit, &fiberQueue]() {
-                BOOST_LOG_TRIVIAL(info) << "session thread comm fiber running";
                 while (true)
                 {
                     std::unique_lock<decltype(mutex)> lock(mutex);
@@ -214,7 +211,6 @@ namespace
                         fiberQueue.push(std::move(threadQueue.front()));
                         threadQueue.pop();
                     }
-                    BOOST_LOG_TRIVIAL(info) << "signaling main fiber";
                     signal->signal();
                 }
             });
@@ -292,4 +288,19 @@ void CredentialsSession::run(std::shared_ptr<CredentialsSession> session)
 {
     SteamBot::Client::getClient().quit();
     SessionThread::get().run(std::move(session));
+}
+
+/************************************************************************/
+/*
+ * This will kill the session data that we have
+ */
+
+void CredentialsSession::remove(std::shared_ptr<CredentialsSession> session)
+{
+    BOOST_LOG_TRIVIAL(info) << "removing session " << session->clientInfo.accountName;
+
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    SteamBot::erase(sessions, [&session](const std::shared_ptr<CredentialsSession>& session_) {
+        return session_==session;
+    });
 }
