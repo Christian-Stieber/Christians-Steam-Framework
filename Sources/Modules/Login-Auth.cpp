@@ -772,22 +772,22 @@ void LoginModule::run(SteamBot::Client& client)
             {
                 if (client.whiteboard.get(LoginStatus::LoggedOut)==LoginStatus::LoggedOut)
                 {
-                    if (session->password.empty())
+                    setStatus(LoginStatus::LoggingIn);
+                    if (refreshToken.empty())
                     {
-                        throw InteractiveSessionException();
-                    }
-                    else
-                    {
-                        setStatus(LoginStatus::LoggingIn);
-                        sendHello();
-                        if (refreshToken.empty())
+                        if (session->password.empty())
                         {
-                            startAuthSession();
+                            throw InteractiveSessionException();
                         }
                         else
                         {
-                            doLogon();
+                            sendHello();
+                            startAuthSession();
                         }
+                    }
+                    else
+                    {
+                        doLogon();
                     }
                 }
             }
