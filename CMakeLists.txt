@@ -65,7 +65,7 @@ addSource("Modules"
   UnifiedMessageServer OwnedGames LicenseList PackageInfo PackageData ClientAppList PersonaState
   WebSession PlayGames Login-Auth AddFreeLicense CardFarmer DiscoveryQueue SaleQueue ViewStream
   SaleSticker ClientNotification TradeOffers TradeOffersParser Inventory TradeToken LoginTracking
-  InventoryNotification BadgeData/GetBadgeData BadgeData/BadgeInfo)
+  InventoryNotification BadgeData/GetBadgeData BadgeData/BadgeInfo Login-Session)
 
 addSource("Settings"
     Settings SettingBool SettingBotName SettingString)
