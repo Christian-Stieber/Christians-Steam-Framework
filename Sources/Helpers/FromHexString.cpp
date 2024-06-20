@@ -17,28 +17,28 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
-
-#include <string>
-#include <span>
-#include <cstddef>
-#include <cstdint>
+#include "Helpers/HexString.hpp"
 
 /************************************************************************/
 
-namespace SteamBot
+static uint16_t digit(char c)
 {
-    std::string makeHexString(std::span<const std::byte>, char separator='\0');
-
-    inline std::string makeHexString(std::span<const std::uint8_t> bytes, char separator='\0')
-    {
-        return makeHexString(std::span<const std::byte>{static_cast<const std::byte*>(static_cast<const void*>(bytes.data())), bytes.size()}, separator);
-    }
+    if (c>='0' && c<='9') return c-'0';
+    if (c>='a' && c<='f') return c-'a'+10;
+    if (c>='A' && c<='F') return c-'A'+10;
+    return 0x100;
 }
 
 /************************************************************************/
 
-namespace SteamBot
+bool SteamBot::fromHexString(std::string_view string, std::span<std::byte> result)
 {
-    bool fromHexString(std::string_view, std::span<std::byte>);
+    if (string.size()!=2*result.size()) return false;
+    for (size_t i=0; i<result.size(); i++)
+    {
+        uint16_t byte=(digit(string[2*i+0]) << 4) | digit(string[2*i+1]);
+        if ((byte & ~0xff)!=0) return false;
+        result[i]=static_cast<std::byte>(byte & 0xff);
+    }
+    return true;
 }

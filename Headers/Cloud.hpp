@@ -132,6 +132,10 @@ namespace SteamBot
                 std::string fileName;
                 std::chrono::system_clock::time_point timestamp;
                 Platform platforms;
+                std::array<std::byte, 20> fileSha;
+                uint64_t creator;
+                uint64_t ugcId;
+                uint32_t flags;
 
             public:
                 class InvalidFileException {};

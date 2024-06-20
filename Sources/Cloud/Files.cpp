@@ -22,12 +22,14 @@
 #include "SafeCast.hpp"
 #include "EnumFlags.hpp"
 #include "Helpers/Time.hpp"
+#include "Helpers/HexString.hpp"
 
 #include "steamdatabase/protobufs/steam/steammessages_cloud.steamclient.pb.h"
 
 /************************************************************************/
 
 typedef SteamBot::Cloud::Files Files;
+typedef SteamBot::Cloud::Platform Platform;
 
 /************************************************************************/
 
@@ -38,31 +40,45 @@ Files::File::~File() =default;
 
 /************************************************************************/
 
+static Platform getPlatforms(const CCloud_UserFile& userFile)
+{
+
+    Platform platforms=Platform::None;
+    for (int index=0; index<userFile.platforms_to_sync_size(); index++)
+    {
+        const std::string& name=userFile.platforms_to_sync(index);
+        const Platform platform=SteamBot::Cloud::getPlatform(name);
+        if (platform==Platform::None)
+        {
+            BOOST_LOG_TRIVIAL(error) << "Invalid platform string: \"" << name << "\"";
+            throw Files::File::InvalidFileException{};
+        }
+        platforms=SteamBot::addEnumFlags(platforms, platform);
+    }
+    return platforms;
+}
+
+/************************************************************************/
+
 Files::File::File(const CCloud_UserFile& userFile)
 {
-    if (userFile.has_appid() && userFile.has_filename() && userFile.has_timestamp() && userFile.has_file_size())
+    if (userFile.has_appid() && userFile.has_filename() && userFile.has_timestamp() && userFile.has_file_size() &&
+        userFile.has_steamid_creator() && userFile.has_ugcid() && userFile.has_flags() && userFile.has_file_sha())
     {
         appId=SteamBot::safeCast<SteamBot::AppID>(userFile.appid());
         fileSize=userFile.file_size();
         fileName=userFile.filename();
         timestamp=std::chrono::system_clock::from_time_t(SteamBot::safeCast<time_t>(userFile.timestamp()));
-        platforms=Platform::None;
-        for (int index=0; index<userFile.platforms_to_sync_size(); index++)
+        platforms=getPlatforms(userFile);
+        creator=userFile.steamid_creator();
+        ugcId=userFile.ugcid();
+        flags=userFile.flags();
+        if (SteamBot::fromHexString(userFile.file_sha(), fileSha))
         {
-            const std::string& name=userFile.platforms_to_sync(index);
-            const Platform platform=getPlatform(name);
-            if (platform==Platform::None)
-            {
-                BOOST_LOG_TRIVIAL(error) << "Invalid platform string: \"" << name << "\"";
-                throw InvalidFileException{};
-            }
-            platforms=SteamBot::addEnumFlags(platforms, platform);
+            return;
         }
     }
-    else
-    {
-        throw InvalidFileException{};
-    }
+    throw InvalidFileException{};
 }
 
 /************************************************************************/
@@ -86,6 +102,10 @@ boost::json::value Files::File::toJson() const
         }
         json["platforms"]=std::move(array);
     }
+    json["creator"]=creator;
+    json["ugcId"]=ugcId;
+    json["flags"]=flags;
+    json["fileSha"]=SteamBot::makeHexString(fileSha);
     return json;
 }
 
