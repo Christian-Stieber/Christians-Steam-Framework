@@ -69,10 +69,7 @@ boost::asio::ssl::context& BasicQuery::getSslContext()
 BasicQuery::BasicQuery(HTTPClient::Query& query_, Callback&& callback_)
     : query(&query_),
       callback(std::move(callback_)),
-      host(query->url.host()),
-      ioContext(SteamBot::Asio::getIoContext()),
-      resolver(ioContext),
-      stream(ioContext, getSslContext())
+      resolver(SteamBot::Asio::getIoContext())
 {
     assert(SteamBot::Asio::isThread());
     BOOST_LOG_TRIVIAL(debug) << "constructed query to " << query->url;
@@ -82,7 +79,6 @@ BasicQuery::BasicQuery(HTTPClient::Query& query_, Callback&& callback_)
 
 BasicQuery::~BasicQuery()
 {
-    assert(query==nullptr);
     BOOST_LOG_TRIVIAL(debug) << "destroying query";
 }
 
@@ -124,10 +120,8 @@ void BasicQuery::complete(const ErrorCode& error)
         printSslError(error);
     }
 
-    assert(query!=nullptr);
     query->error=error;
-    query=nullptr;
-    callback();
+    callback(*this);
 }
 
 /************************************************************************/
@@ -137,14 +131,14 @@ void BasicQuery::close()
     // Gracefully close the stream
     // Note: shutdown can hang: https://github.com/boostorg/beast/issues/995
 
-    auto timer=std::make_shared<boost::asio::steady_timer>(ioContext, std::chrono::seconds(2));
+    auto timer=std::make_shared<boost::asio::steady_timer>(SteamBot::Asio::getIoContext(), std::chrono::seconds(2));
     auto self=shared_from_this();
 
     timer->async_wait([self](const ErrorCode&) {
-        self->stream.next_layer().cancel();
+        self->stream->next_layer().cancel();
     });
 
-    stream.async_shutdown([self=std::move(self), timer=std::move(timer)](const ErrorCode& error) {
+    stream->async_shutdown([self=std::move(self), timer=std::move(timer)](const ErrorCode& error) {
         BOOST_LOG_TRIVIAL(debug) << "ssl shutdown completed with " << error;
     });
 }
@@ -199,7 +193,7 @@ void BasicQuery::write_completed(const ErrorCode& error, size_t bytes)
     // Receive the HTTP response
     query->responseBuffer=decltype(query->responseBuffer)();
     query->response=decltype(query->response)();
-    boost::beast::http::async_read(stream, query->responseBuffer, query->response, std::bind_front(&BasicQuery::read_completed, shared_from_this()));
+    boost::beast::http::async_read(*stream, query->responseBuffer, query->response, std::bind_front(&BasicQuery::read_completed, shared_from_this()));
 }
 
 /************************************************************************/
@@ -248,7 +242,7 @@ void BasicQuery::handshake_completed(const ErrorCode& error)
     }
 
     // Send the HTTP request to the remote host
-    http::async_write(stream, query->request, std::bind_front(&BasicQuery::write_completed, shared_from_this()));
+    http::async_write(*stream, query->request, std::bind_front(&BasicQuery::write_completed, shared_from_this()));
 }
 
 /************************************************************************/
@@ -264,7 +258,7 @@ void BasicQuery::connect_completed(const ErrorCode& error, const Resolver::endpo
 
     // Perform the SSL handshake
     // ToDo: for some reason, certificate problems don't seem to matter...
-    stream.async_handshake(boost::asio::ssl::stream_base::client, std::bind_front(&BasicQuery::handshake_completed, shared_from_this()));
+    stream->async_handshake(boost::asio::ssl::stream_base::client, std::bind_front(&BasicQuery::handshake_completed, shared_from_this()));
 }
 
 /************************************************************************/
@@ -279,14 +273,15 @@ void BasicQuery::resolve_completed(const ErrorCode& error, Resolver::results_typ
     BOOST_LOG_TRIVIAL(debug) << "resolve_completed";
 
     // Setup the SSL stream
-    if (!SSL_set_tlsext_host_name(stream.native_handle(), host.c_str()))
+    stream=std::make_unique<decltype(stream)::element_type>(SteamBot::Asio::getIoContext(), getSslContext());
+    if (!SSL_set_tlsext_host_name(stream->native_handle(), host.c_str()))
     {
         const boost::beast::error_code ec{static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category()};
         return complete(error);
     }
 
     // Make the connection on an IP address we got from the lookup
-    boost::beast::get_lowest_layer(stream).async_connect(resolverResults, std::bind_front(&BasicQuery::connect_completed, shared_from_this()));
+    boost::beast::get_lowest_layer(*stream).async_connect(resolverResults, std::bind_front(&BasicQuery::connect_completed, shared_from_this()));
 }
 
 /************************************************************************/
@@ -297,5 +292,6 @@ void BasicQuery::perform()
     if (port.empty()) port="443";
 
     // Look up the host name
+    host=query->url.host();
     resolver.async_resolve(host, port, std::bind_front(&BasicQuery::resolve_completed, shared_from_this()));
 }

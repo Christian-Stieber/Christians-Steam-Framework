@@ -38,13 +38,13 @@ namespace SteamBot
             class BasicQuery : public std::enable_shared_from_this<BasicQuery>
             {
             public:
-                typedef std::function<void()> Callback;
+                typedef std::function<void(BasicQuery&)> Callback;
 
             private:
                 typedef boost::asio::ip::tcp::resolver Resolver;
                 typedef boost::system::error_code ErrorCode;
 
-            private:
+            public:
                 HTTPClient::Query* query;
                 Callback callback;
 
@@ -53,9 +53,8 @@ namespace SteamBot
                 std::string host;
 
             private:
-                boost::asio::io_context& ioContext;
                 Resolver resolver;
-                boost::beast::ssl_stream<boost::beast::tcp_stream> stream;
+                std::unique_ptr<boost::beast::ssl_stream<boost::beast::tcp_stream>> stream;
 
             private:
                 static boost::asio::ssl::context& getSslContext();
@@ -77,6 +76,19 @@ namespace SteamBot
             public:
                 void perform();
             };
+        }
+    }
+}
+
+/************************************************************************/
+
+namespace SteamBot
+{
+    namespace HTTPClient
+    {
+        namespace Internal
+        {
+            void performWithRedirect(std::shared_ptr<BasicQuery>);
         }
     }
 }

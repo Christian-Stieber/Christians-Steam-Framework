@@ -94,36 +94,6 @@ HTTPClient::Query::QueryPtr HTTPClient::perform(HTTPClient::Query::QueryPtr quer
 }
 
 /************************************************************************/
-
-static bool checkRetry(HTTPClient::Query& query)
-{
-    auto status=query.response.result();
-    if (status==boost::beast::http::status::found)
-    {
-        auto location=query.response.base()["Location"];
-        if (!location.empty())
-        {
-            BOOST_LOG_TRIVIAL(info) << "we've been redirected from \"" << query.url << "\" to \"" << location << "\"";
-            try
-            {
-                boost::urls::url redirected(location);
-                if (query.url!=redirected)
-                {
-                    query.url=std::move(redirected);
-                    return true;
-                }
-                BOOST_LOG_TRIVIAL(error) << "redirection loop on " << query.url;
-            }
-            catch(...)
-            {
-                BOOST_LOG_TRIVIAL(info) << "server returned invalid redirection URL: \"" << location << "\": " << boost::current_exception_diagnostic_information();
-            }
-        }
-    }
-    return false;
-}
-
-/************************************************************************/
 /*
  * For some reason, I want to serialize the http queries, and also
  * slow them down a bit.
@@ -160,18 +130,16 @@ namespace
                 }
                 else
                 {
+                    typedef SteamBot::HTTPClient::Internal::BasicQuery BasicQuery;
                     auto& item=queue.front();
-                    auto query=std::make_shared<SteamBot::HTTPClient::Internal::BasicQuery>(*(item->setResult()),[this, item]() {
+                    auto query=std::make_shared<BasicQuery>(*(item->setResult()),[this, item](BasicQuery&) {
                         lastQuery=decltype(lastQuery)::clock::now();
                         assert(!queue.empty() && queue.front()==item);
-                        if (!checkRetry(*(item->setResult())))
-                        {
-                            item->completed();
-                            queue.pop();
-                        }
+                        item->completed();
+                        queue.pop();
                         performNext();
                     });
-                    query->perform();
+                    SteamBot::HTTPClient::Internal::performWithRedirect(std::move(query));
                 }
             }
         }
