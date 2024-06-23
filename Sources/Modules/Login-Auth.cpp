@@ -28,6 +28,7 @@
 #include "OpenSSL/RSA.hpp"
 #include "Base64.hpp"
 #include "Steam/MachineInfo.hpp"
+#include "Steam/AccountFlags.hpp"
 #include "Steam/OSType.hpp"
 #include "UI/UI.hpp"
 #include "Client/Sleep.hpp"
@@ -670,6 +671,12 @@ void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMes
         case SteamBot::ResultCode::OK:
             {
                 SteamBot::UI::Thread::outputText("login success");
+
+                if (message->content.has_account_flags())
+                {
+                    auto accountFlags=static_cast<Steam::AccountFlags>(message->content.account_flags());
+                    BOOST_LOG_TRIVIAL(info) << "account flags: " << magic_enum::enum_flags_name(accountFlags);
+                }
 
                 auto& whiteboard=getClient().whiteboard;
                 if (message->header.proto.has_steamid())
