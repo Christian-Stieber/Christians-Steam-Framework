@@ -106,6 +106,12 @@ namespace SteamBot
             public:
                 // Note: this will trash the PostWithSession instance
                 std::shared_ptr<const Messageboard::Response> execute();
+
+            public:
+                PostWithSession();
+                virtual ~PostWithSession();
+
+                virtual void patchQuery(SteamBot::HTTPClient::Query&);
             };
 
         }

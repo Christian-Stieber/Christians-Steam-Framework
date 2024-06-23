@@ -46,8 +46,20 @@ std::shared_ptr<const Response> PostWithSession::execute()
         query->request.body()=std::move(body);
         query->request.content_length(query->request.body().size());
         query->request.base().set("Content-Type", "application/x-www-form-urlencoded");
+        patchQuery(*query);
         return query;
     };
 
     return SteamBot::Modules::WebSession::makeQuery(std::move(request));
+}
+
+/************************************************************************/
+
+PostWithSession::PostWithSession() =default;
+PostWithSession::~PostWithSession() =default;
+
+/************************************************************************/
+
+void PostWithSession::patchQuery(SteamBot::HTTPClient::Query&)
+{
 }
