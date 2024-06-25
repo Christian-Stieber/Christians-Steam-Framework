@@ -43,7 +43,7 @@
 #include "Helpers/ParseNumber.hpp"
 #include "Helpers/JSON.hpp"
 #include "Helpers/Time.hpp"
-#include "RateLimit.hpp"
+#include "Asio/RateLimit.hpp"
 #include "MiscIDs.hpp"
 #include "SteamID.hpp"
 #include "UI/UI.hpp"
@@ -163,7 +163,6 @@ namespace
         std::chrono::system_clock::time_point lastUpdateNotification;
 
     private:
-        static SteamBot::RateLimiter& getRateLimiter();
         static boost::urls::url makeUrl(SteamBot::AppID, SteamBot::ContextID);
         static std::shared_ptr<const Response> makeInventoryQuery(const boost::urls::url&);
 
@@ -192,14 +191,6 @@ namespace
     };
 
     InventoryModule::Init<InventoryModule> init;
-}
-
-/************************************************************************/
-
-SteamBot::RateLimiter& InventoryModule::getRateLimiter()
-{
-    static auto& instance=*new SteamBot::RateLimiter(std::chrono::seconds(30));
-    return instance;
 }
 
 /************************************************************************/
@@ -288,15 +279,17 @@ boost::urls::url InventoryModule::makeUrl(SteamBot::AppID appId, SteamBot::Conte
 
 std::shared_ptr<const Response> InventoryModule::makeInventoryQuery(const boost::urls::url& url)
 {
-    std::shared_ptr<const Response> response;
-    getRateLimiter().limit([&url, &response]() {
-        auto request=std::make_shared<Request>();
-        request->queryMaker=[&url](){
-            return std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, url);
-        };
-        response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
-    });
-    return response;
+    auto request=std::make_shared<Request>();
+    request->queryMaker=[&url](){
+        return std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, url);
+    };
+
+    // we use a more restrictive rate-limiting, but independent of the
+    // main one (for now, anyway. Let's see if this causes problems)
+    static auto& queue=*new SteamBot::HTTPClient::RateLimitQueue(std::chrono::seconds(30));
+    request->queue=&queue;
+
+    return SteamBot::Modules::WebSession::makeQuery(std::move(request));
 }
 
 /************************************************************************/

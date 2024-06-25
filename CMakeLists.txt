@@ -72,7 +72,7 @@ addSource("Settings"
 
 addSource("."
   Main Logging WorkingDir Universe Random Base64 DestructMonitor JobID DataFile AssetKey
-  RateLimit Exception AssetData SendTrade SendInventory PostWithSession AcceptTrade DeclineTrade
+  Exception AssetData SendTrade SendInventory PostWithSession AcceptTrade DeclineTrade
   CancelTrade ExecuteFibers MaintainBPE CacheFile AppInfo Boost ParseToken)
 
 addSource("Asio" Asio Signals HTTPClient BasicQuery BasicQueryRedirect RateLimit Fiber Connections)
