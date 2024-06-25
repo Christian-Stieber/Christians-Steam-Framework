@@ -22,8 +22,6 @@
 #include "Client/ResultWaiter.hpp"
 #include "Web/CookieJar.hpp"
 
-#include <memory>
-
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
 #include <boost/beast/http/dynamic_body.hpp>
@@ -32,6 +30,18 @@
 #include <boost/url/url.hpp>
 
 #include <boost/json/value.hpp>
+
+/************************************************************************/
+
+namespace SteamBot
+{
+    namespace HTTPClient
+    {
+        class RateLimitQueue;
+
+        extern RateLimitQueue& defaultQueue;
+    }
+}
 
 /************************************************************************/
 
@@ -63,8 +73,6 @@ namespace SteamBot
             typedef std::unique_ptr<Query> QueryPtr;
             typedef SteamBot::ResultWaiter<QueryPtr> WaiterType;
         };
-
-        std::shared_ptr<Query::WaiterType> perform(std::shared_ptr<SteamBot::WaiterBase>, Query::QueryPtr);
     }
 }
 
@@ -79,7 +87,7 @@ namespace SteamBot
 {
     namespace HTTPClient
     {
-        Query::QueryPtr perform(Query::QueryPtr);
+        Query::QueryPtr perform(Query::QueryPtr, RateLimitQueue& queue=defaultQueue);
     }
 }
 

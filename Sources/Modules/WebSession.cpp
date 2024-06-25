@@ -248,7 +248,7 @@ void WebSessionModule::handleRequests()
         auto query=front->queryMaker();
         query->cookies=cookies;
 
-        query=SteamBot::HTTPClient::perform(std::move(query));
+        query=SteamBot::HTTPClient::perform(std::move(query), *(front->queue));
 
         if (query->response.result()!=boost::beast::http::status::forbidden)
         {

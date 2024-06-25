@@ -17,7 +17,7 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "./RateLimit.hpp"
+#include "Asio/RateLimit.hpp"
 #include "./BasicQuery.hpp"
 
 #include "Asio/Asio.hpp"

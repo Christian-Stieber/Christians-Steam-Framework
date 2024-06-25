@@ -17,7 +17,7 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-#include "./RateLimit.hpp"
+#include "Asio/RateLimit.hpp"
 #include "Client/Client.hpp"
 
 #include <boost/asio/steady_timer.hpp>
@@ -29,6 +29,10 @@
 /************************************************************************/
 
 namespace HTTPClient=SteamBot::HTTPClient;
+
+/************************************************************************/
+
+HTTPClient::RateLimitQueue& HTTPClient::defaultQueue=*new HTTPClient::RateLimitQueue(std::chrono::seconds(15));
 
 /************************************************************************/
 
@@ -77,20 +81,12 @@ std::string SteamBot::HTTPClient::parseString(const SteamBot::HTTPClient::Query&
 
 /************************************************************************/
 
-std::shared_ptr<HTTPClient::Query::WaiterType> HTTPClient::perform(std::shared_ptr<SteamBot::WaiterBase> waiter, HTTPClient::Query::QueryPtr query)
-{
-    static SteamBot::HTTPClient::RateLimitQueue& queue=*new RateLimitQueue(std::chrono::seconds(15));
-    return queue.perform(waiter , std::move(query));
-}
-
-/************************************************************************/
-
-HTTPClient::Query::QueryPtr HTTPClient::perform(HTTPClient::Query::QueryPtr query)
+HTTPClient::Query::QueryPtr HTTPClient::perform(HTTPClient::Query::QueryPtr query, HTTPClient::RateLimitQueue& queue)
 {
     auto waiter=SteamBot::Waiter::create();
     auto cancellation=SteamBot::Client::getClient().cancel.registerObject(*waiter);
 
-    auto responseWaiter=perform(waiter, std::move(query));
+    auto responseWaiter=queue.perform(waiter, std::move(query));
 
     while (true)
     {
