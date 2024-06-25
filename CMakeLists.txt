@@ -75,7 +75,7 @@ addSource("."
   RateLimit Exception AssetData SendTrade SendInventory PostWithSession AcceptTrade DeclineTrade
   CancelTrade ExecuteFibers MaintainBPE CacheFile AppInfo Boost ParseToken)
 
-addSource("Asio" Asio Signals HTTPClient BasicQuery BasicQueryRedirect Fiber Connections)
+addSource("Asio" Asio Signals HTTPClient BasicQuery BasicQueryRedirect RateLimit Fiber Connections)
 addSource("Client" Client Waiter Whiteboard Messageboard Execute Module Sleep ClientInfo)
 addSource("Connection" Endpoint Serialize Base TCP Message Encrypted)
 addSource("OpenSSL" Exception SHA1 RSA AESBase AES AESHMAC Random)
