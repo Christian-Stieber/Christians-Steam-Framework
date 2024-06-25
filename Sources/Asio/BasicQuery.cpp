@@ -116,7 +116,7 @@ void BasicQuery::complete(const ErrorCode& error)
 
     if (error)
     {
-        BOOST_LOG_TRIVIAL(error) << "query has failed with " << error.message() << " (" << error << ")";
+        BOOST_LOG_TRIVIAL(error) << "query " << query->url << " has failed with " << error.message() << " (" << error << ")";
         printSslError(error);
     }
 
@@ -131,16 +131,42 @@ void BasicQuery::close()
     // Gracefully close the stream
     // Note: shutdown can hang: https://github.com/boostorg/beast/issues/995
 
-    auto timer=std::make_shared<boost::asio::steady_timer>(SteamBot::Asio::getIoContext(), std::chrono::seconds(2));
-    auto self=shared_from_this();
+    class Shutdown
+    {
+    private:
+        boost::asio::steady_timer timer;
+        std::unique_ptr<boost::beast::ssl_stream<boost::beast::tcp_stream>> stream;
+        boost::urls::url url;
 
-    timer->async_wait([self](const ErrorCode&) {
-        self->stream->next_layer().cancel();
-    });
+    public:
+        Shutdown(BasicQuery& basicQuery)
+            : timer(SteamBot::Asio::getIoContext(), std::chrono::seconds(2)),
+              stream(std::move(basicQuery.stream)),
+              url(basicQuery.query->url)
+        {
+        }
 
-    stream->async_shutdown([self=std::move(self), timer=std::move(timer)](const ErrorCode& error) {
-        BOOST_LOG_TRIVIAL(debug) << "ssl shutdown completed with " << error;
-    });
+    private:
+        void perform(std::shared_ptr<Shutdown> self)
+        {
+            timer.async_wait([self](const ErrorCode&) {
+                self->stream->next_layer().cancel();
+            });
+
+            stream->async_shutdown([self](const ErrorCode& error) {
+                BOOST_LOG_TRIVIAL(debug) << "ssl shutdown for query " << self->url << " completed with " << error;
+            });
+        }
+
+    public:
+        static void perform(BasicQuery& basicQuery)
+        {
+            auto shutdown=std::make_shared<Shutdown>(basicQuery);
+            shutdown->perform(shutdown);
+        }
+    };
+
+    Shutdown::perform(*this);
 }
 
 /************************************************************************/
@@ -188,7 +214,7 @@ void BasicQuery::write_completed(const ErrorCode& error, size_t bytes)
         return complete(error);
     }
 
-    BOOST_LOG_TRIVIAL(debug) << "write_completed with " << bytes << " bytes";
+    BOOST_LOG_TRIVIAL(debug) << "BasicQuery::write_completed for query \"" << query->url << "\" with " << bytes << " bytes";
 
     // Receive the HTTP response
     query->responseBuffer=decltype(query->responseBuffer)();
@@ -205,7 +231,7 @@ void BasicQuery::handshake_completed(const ErrorCode& error)
         return complete(error);
     }
 
-    BOOST_LOG_TRIVIAL(debug) << "handshake_completed";
+    BOOST_LOG_TRIVIAL(debug) << "BasicQuery::handshake_completed for query \"" << query->url << "\"";
 
     query->request.target(query->url.encoded_target());
     query->request.set(http::field::host, host);
@@ -254,7 +280,7 @@ void BasicQuery::connect_completed(const ErrorCode& error, const Resolver::endpo
         return complete(error);
     }
 
-    BOOST_LOG_TRIVIAL(debug) << "connect_completed with endpoint " << endpoint;
+    BOOST_LOG_TRIVIAL(debug) << "BasicQuery::connect_completed for query \"" << query->url << "\" with endpoint " << endpoint;
 
     // Perform the SSL handshake
     // ToDo: for some reason, certificate problems don't seem to matter...
@@ -270,7 +296,7 @@ void BasicQuery::resolve_completed(const ErrorCode& error, Resolver::results_typ
         return complete(error);
     }
 
-    BOOST_LOG_TRIVIAL(debug) << "resolve_completed";
+    BOOST_LOG_TRIVIAL(debug) << "BasicQuery::resolve_completed for query \"" << query->url << "\"";
 
     // Setup the SSL stream
     stream=std::make_unique<decltype(stream)::element_type>(SteamBot::Asio::getIoContext(), getSslContext());
@@ -288,6 +314,8 @@ void BasicQuery::resolve_completed(const ErrorCode& error, Resolver::results_typ
 
 void BasicQuery::perform()
 {
+    BOOST_LOG_TRIVIAL(info) << "BasicQuery::perform query \"" << query->url << "\"";
+
     std::string_view port=query->url.port();
     if (port.empty()) port="443";
 
