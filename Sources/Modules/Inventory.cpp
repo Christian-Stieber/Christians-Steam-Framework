@@ -270,7 +270,7 @@ boost::urls::url InventoryModule::makeUrl(SteamBot::AppID appId, SteamBot::Conte
     url.segments().push_back(std::to_string(toInteger(contextId)));
 
     url.params().set("l", "english");
-    url.params().set("count", "1000");
+    url.params().set("count", "2000");
 
     return url;
 }
