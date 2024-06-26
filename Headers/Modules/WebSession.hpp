@@ -53,7 +53,7 @@ namespace SteamBot
                 class Request
                 {
                 public:
-                    SteamBot::HTTPClient::RateLimitQueue* queue=&SteamBot::HTTPClient::defaultQueue;
+                    SteamBot::HTTPClient::RateLimitQueue* queue;
                     std::function<QueryPtr()> queryMaker;
 
                 public:

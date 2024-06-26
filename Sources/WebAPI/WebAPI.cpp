@@ -102,7 +102,7 @@ std::shared_ptr<Query::WaiterType> SteamBot::WebAPI::perform(std::shared_ptr<Ste
     auto initiator=[query=std::move(query)](std::shared_ptr<SteamBot::WaiterBase> waiter_, std::shared_ptr<Query::WaiterType> result) mutable {
         result->setResult()=std::move(query);
         auto httpQuery=std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, result->setResult().get()->url);
-        return SteamBot::HTTPClient::defaultQueue.perform(std::move(waiter_), std::move(httpQuery));
+        return SteamBot::HTTPClient::getDefaultQueue().perform(std::move(waiter_), std::move(httpQuery));
     };
 
     auto completer=[](std::shared_ptr<SteamBot::HTTPClient::Query::WaiterType> http, std::shared_ptr<Query::WaiterType> result) {

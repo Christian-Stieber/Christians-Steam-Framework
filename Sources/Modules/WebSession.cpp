@@ -101,8 +101,14 @@ namespace
 
 /************************************************************************/
 
-Request::Request() =default;
+Request::Request()
+    : queue(&SteamBot::HTTPClient::getDefaultQueue())
+{
+}
+
 Request::~Request() =default;
+
+/************************************************************************/
 
 Response::Response() =default;
 Response::~Response() =default;

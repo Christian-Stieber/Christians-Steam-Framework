@@ -32,7 +32,11 @@ namespace HTTPClient=SteamBot::HTTPClient;
 
 /************************************************************************/
 
-HTTPClient::RateLimitQueue& HTTPClient::defaultQueue=*new HTTPClient::RateLimitQueue(std::chrono::seconds(15));
+HTTPClient::RateLimitQueue& HTTPClient::getDefaultQueue()
+{
+    static RateLimitQueue& queue=*new RateLimitQueue(std::chrono::seconds(5));
+    return queue;
+}
 
 /************************************************************************/
 

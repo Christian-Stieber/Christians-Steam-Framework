@@ -38,8 +38,7 @@ namespace SteamBot
     namespace HTTPClient
     {
         class RateLimitQueue;
-
-        extern RateLimitQueue& defaultQueue;
+        RateLimitQueue& getDefaultQueue();
     }
 }
 
@@ -87,7 +86,7 @@ namespace SteamBot
 {
     namespace HTTPClient
     {
-        Query::QueryPtr perform(Query::QueryPtr, RateLimitQueue& queue=defaultQueue);
+        Query::QueryPtr perform(Query::QueryPtr, RateLimitQueue& =getDefaultQueue());
     }
 }
 
