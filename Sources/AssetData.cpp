@@ -150,8 +150,9 @@ static AssetInfo::ItemType checkItemType_TradingCard(const boost::json::value& j
                             auto appId=SteamBot::AppID::None;
                             if (SteamBot::parseNumberSlash(string, appId))
                             {
+                                // ToDo: there could be a "?border=1" following (and maybe other stuff?)
                                 assert(appId==assetInfo.marketFeeApp);
-                                assert(string.size()==0);
+                                assert(string.size()==0 || string[0]=='?');
                                 return AssetInfo::ItemType::TradingCard;
                             }
                         }
