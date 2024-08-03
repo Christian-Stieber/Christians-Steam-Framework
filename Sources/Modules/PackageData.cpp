@@ -27,6 +27,7 @@
 #include "Modules/PackageData.hpp"
 #include "DataFile.hpp"
 #include "Steam/KeyValue.hpp"
+#include "Steam/BillingType.hpp"
 #include "JobID.hpp"
 #include "Vector.hpp"
 
@@ -538,4 +539,20 @@ bool PackageData::isCurrent()
         }
     }
     return false;
+}
+
+/************************************************************************/
+/*
+ * Extract the "billingtype" value.
+ * Returns "None" if the item is not available.
+ */
+
+SteamBot::BillingType SteamBot::getBillingType(const SteamBot::Modules::PackageData::PackageInfo& info)
+{
+    BillingType type=BillingType::Unknown;
+    if (auto json=SteamBot::JSON::getItem(info.data, "billingtype"))
+    {
+        type=SteamBot::JSON::toNumber<BillingType>(*json);
+    }
+    return type;
 }
