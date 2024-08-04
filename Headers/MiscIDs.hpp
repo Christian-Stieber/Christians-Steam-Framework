@@ -97,9 +97,6 @@ namespace SteamBot
 /************************************************************************/
 /*
  * Output an AppID as "number (name)"
- *
- * Note: this accesses OwnedGames, so it only works on client threads.
- * ToDo: make it use AppInfo to get the name instead.
  */
 
 namespace SteamBot

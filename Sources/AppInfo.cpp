@@ -38,6 +38,7 @@ namespace
     class AppInfoFile : public SteamBot::CacheFile
     {
     private:
+        // ToDo: why does this exist?
         std::unordered_map<std::string /* appId */, boost::json::value> updates;
 
     private:
@@ -114,6 +115,33 @@ namespace
 
 /************************************************************************/
 /*
+ * Get the "listofdlc" from the AppInfo chunk, parsed and all.
+ */
+
+static std::vector<SteamBot::AppID> getDLCList(const boost::json::value& json)
+{
+    std::vector<SteamBot::AppID> result;
+    if (auto listofdlcs=SteamBot::JSON::getItem(json, "extended", "listofdlc"))
+    {
+        std::string string;
+        const std::string_view view(listofdlcs->as_string());
+        string.reserve(2+view.length());
+        string+='[';
+        string+=view;
+        string+=']';
+
+        auto array=boost::json::parse(string).as_array();
+        for (const auto& dlc: array)
+        {
+            const auto appId=SteamBot::JSON::toNumber<SteamBot::AppID>(dlc);
+            result.push_back(appId);
+        }
+    }
+    return result;
+}
+
+/************************************************************************/
+/*
  * Fetch AppInfo for a list of provided AppIDs.
  * This is mostly just a helper for higher-level update functions that
  * actually determine AppIDs that need updating.
@@ -168,17 +196,29 @@ void AppInfoFile::update_noMutex(const std::vector<SteamBot::AppID>& appIds)
 }
 
 /************************************************************************/
+
+static const boost::json::value* getJson(const boost::json::object& json, SteamBot::AppID appId)
+{
+    char key[16];
+    {
+        auto result=std::to_chars(key, key+sizeof(key), toInteger(appId));
+        assert(result.ec==std::errc());
+        *(result.ptr)='\0';
+    }
+    auto iterator=json.find(key);
+    if (iterator!=json.end())
+    {
+        return &((*iterator).value());
+    }
+    return nullptr;
+}
+
+/************************************************************************/
 /*
- * This goes through the exising AppInfo, and fetches DLC AppInfos that
- * are still missing.
+ * Fetch the missing DLC AppInfos.
  *
- * I don't know whether a DLC can have a DLC as well, so we just continue
- * doing this until no more updates are needed.
- *
- * Note: our entire logic is based around app-ids, not package-ids. Thus,
- * I believe we don't have to check for "dupliates" when generating the
- * list of DLC app-ids, since any given DLC can only be attached to
- * one parent app-id.
+ * We do this repeatedly in case the newly loaded AppInfos have
+ * new DLCs to add. I don't think that can happen, but...
  */
 
 void AppInfoFile::updateDlcs_noMutex()
@@ -187,59 +227,53 @@ void AppInfoFile::updateDlcs_noMutex()
 
     while (true)
     {
-        std::vector<SteamBot::AppID> dlcs;
+        std::vector<SteamBot::AppID> DLCs;
 
-        file->examine([this, &dlcs](const boost::json::value& json) -> void {
-            const auto& jsonObject=json.as_object();
+        file->examine([this, &DLCs](const boost::json::value& json) {
+            const boost::json::object& jsonObject=json.as_object();
             for (const auto& item: jsonObject)
             {
-                if (auto listofdlcs=SteamBot::JSON::getItem(item.value(), "extended", "listofdlc"))
+                auto appIds=getDLCList(item.value());
+                for (const auto appId: appIds)
                 {
-                    std::string string;
-                    const std::string_view view(listofdlcs->as_string());
-                    string.reserve(2+view.length());
-                    string+='[';
-                    string+=view;
-                    string+=']';
-
-                    auto array=boost::json::parse(string).as_array();
-                    for (const auto& dlc: array)
+                    if (getJson(jsonObject, appId)==nullptr)
                     {
-                        const auto appId=SteamBot::JSON::toNumber<SteamBot::AppID>(dlc);
-
-                        char key[16];
-                        auto result=std::to_chars(key, key+sizeof(key), toInteger(appId));
-                        assert(result.ec==std::errc());
-                        *(result.ptr)='\0';
-                        if (jsonObject.find(key)==jsonObject.end())
-                        {
-                            dlcs.push_back(appId);
-                        }
+                        DLCs.push_back(appId);
                     }
                 }
             }
         });
 
-        if (dlcs.empty())
+        if (DLCs.empty())
         {
             return;
         }
 
-        // endless loop...
-        assert(dlcs!=prev);
+        // ToDo: since we uae AppIds, not PackageIds, I don't think we
+        // need to worry about duplicates: each DLCs should only have
+        // come from one Game-app... for now, let's check it anyway.
+        {
+            auto prevSize=DLCs.size();
+            std::sort(DLCs.begin(), DLCs.end());
+            DLCs.erase(std::unique(DLCs.begin(), DLCs.end()), DLCs.end());
+            assert(prevSize==DLCs.size());
+        }
+
+        // a check for endless loops...
+        assert(DLCs!=prev);
 
         {
             std::ostringstream string;
-            for (auto appId: dlcs)
+            for (auto appId: DLCs)
             {
                 string << ' ' << static_cast<unsigned int>(appId);
             }
             BOOST_LOG_TRIVIAL(info) << "getting AppInfos for DLCs:" << string.view();
         }
 
-        update_noMutex(dlcs);
+        update_noMutex(DLCs);
 
-        prev=std::move(dlcs);
+        prev=std::move(DLCs);
     }
 }
 
@@ -305,5 +339,40 @@ std::optional<boost::json::value> SteamBot::AppInfo::get(std::span<const std::st
         result=*item;
         return true;
     });
+    return result;
+}
+
+/************************************************************************/
+/*
+ * Output numeric AppID to stream, possibly with the name attached if
+ * we have one.
+ */
+
+std::ostream& SteamBot::operator<<(std::ostream& stream, SteamBot::AppID appId)
+{
+    stream << SteamBot::toInteger(appId);
+    if (auto nameJson=SteamBot::AppInfo::get(appId, "common", "name"))
+    {
+        if (auto nameString=nameJson.value().if_string())
+        {
+            stream << " (" << *nameString << ")";
+        }
+    }
+    return stream;
+}
+
+/************************************************************************/
+
+std::vector<SteamBot::AppID> SteamBot::AppInfo::getDLCs(SteamBot::AppID appId)
+{
+    std::vector<SteamBot::AppID> result;
+    {
+        auto& appInfoFile=AppInfoFile::get();
+        std::lock_guard<decltype(appInfoFile.mutex)> lock(appInfoFile.mutex);
+        if (auto json=appInfoFile.get_noMutex(appId))
+        {
+            result=getDLCList(*json);
+        }
+    }
     return result;
 }
