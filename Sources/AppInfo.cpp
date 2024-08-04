@@ -21,6 +21,7 @@
 #include "AppInfo.hpp"
 #include "CacheFile.hpp"
 #include "Steam/KeyValue.hpp"
+#include "Helpers/JSON.hpp"
 
 #include "Steam/ProtoBuf/steammessages_clientserver_appinfo.hpp"
 
@@ -100,6 +101,7 @@ namespace
 
     public:
         void update_noMutex(const std::vector<SteamBot::AppID>&);
+        void updateDlcs_noMutex();
 
     public:
         static AppInfoFile& get()
@@ -149,8 +151,9 @@ void AppInfoFile::update_noMutex(const std::vector<SteamBot::AppID>& appIds)
                         if (auto tree=Steam::KeyValue::deserialize(buffer, name))
                         {
                             assert(name=="appinfo");
-                            BOOST_LOG_TRIVIAL(info) << "obtained appInfo for app-id " << SteamBot::toInteger(appId);
-                            update_noMutex(appId, tree->toJson());
+                            auto json=tree->toJson();
+                            BOOST_LOG_TRIVIAL(info) << "obtained appInfo for app-id " << SteamBot::toInteger(appId) << ": " << json;
+                            update_noMutex(appId, std::move(json));
                         }
                         else
                         {
@@ -161,6 +164,82 @@ void AppInfoFile::update_noMutex(const std::vector<SteamBot::AppID>& appIds)
             }
             return !(response->content.has_response_pending() && response->content.response_pending());
         });
+    }
+}
+
+/************************************************************************/
+/*
+ * This goes through the exising AppInfo, and fetches DLC AppInfos that
+ * are still missing.
+ *
+ * I don't know whether a DLC can have a DLC as well, so we just continue
+ * doing this until no more updates are needed.
+ *
+ * Note: our entire logic is based around app-ids, not package-ids. Thus,
+ * I believe we don't have to check for "dupliates" when generating the
+ * list of DLC app-ids, since any given DLC can only be attached to
+ * one parent app-id.
+ */
+
+void AppInfoFile::updateDlcs_noMutex()
+{
+    std::vector<SteamBot::AppID> prev;  // check for undetected issues
+
+    while (true)
+    {
+        std::vector<SteamBot::AppID> dlcs;
+
+        file->examine([this, &dlcs](const boost::json::value& json) -> void {
+            const auto& jsonObject=json.as_object();
+            for (const auto& item: jsonObject)
+            {
+                if (auto listofdlcs=SteamBot::JSON::getItem(item.value(), "extended", "listofdlc"))
+                {
+                    std::string string;
+                    const std::string_view view(listofdlcs->as_string());
+                    string.reserve(2+view.length());
+                    string+='[';
+                    string+=view;
+                    string+=']';
+
+                    auto array=boost::json::parse(string).as_array();
+                    for (const auto& dlc: array)
+                    {
+                        const auto appId=SteamBot::JSON::toNumber<SteamBot::AppID>(dlc);
+
+                        char key[16];
+                        auto result=std::to_chars(key, key+sizeof(key), toInteger(appId));
+                        assert(result.ec==std::errc());
+                        *(result.ptr)='\0';
+                        if (jsonObject.find(key)==jsonObject.end())
+                        {
+                            dlcs.push_back(appId);
+                        }
+                    }
+                }
+            }
+        });
+
+        if (dlcs.empty())
+        {
+            return;
+        }
+
+        // endless loop...
+        assert(dlcs!=prev);
+
+        {
+            std::ostringstream string;
+            for (auto appId: dlcs)
+            {
+                string << ' ' << static_cast<unsigned int>(appId);
+            }
+            BOOST_LOG_TRIVIAL(info) << "getting AppInfos for DLCs:" << string.view();
+        }
+
+        update_noMutex(dlcs);
+
+        prev=std::move(dlcs);
     }
 }
 
@@ -187,11 +266,9 @@ void SteamBot::AppInfo::update(const SteamBot::Modules::OwnedGames::Whiteboard::
         }
     }
 
-    if (!appIds.empty())
-    {
-        appInfoFile.update_noMutex(appIds);
-        appInfoFile.save_noMutex(true);
-    }
+    appInfoFile.update_noMutex(appIds);
+    appInfoFile.updateDlcs_noMutex();
+    appInfoFile.save_noMutex(true);
 }
 
 /************************************************************************/
