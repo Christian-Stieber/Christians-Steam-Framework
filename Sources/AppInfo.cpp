@@ -99,6 +99,9 @@ namespace
         }
 
     public:
+        void update_noMutex(const std::vector<SteamBot::AppID>&);
+
+    public:
         static AppInfoFile& get()
         {
             static AppInfoFile& file=*new AppInfoFile();
@@ -108,36 +111,25 @@ namespace
 }
 
 /************************************************************************/
+/*
+ * Fetch AppInfo for a list of provided AppIDs.
+ * This is mostly just a helper for higher-level update functions that
+ * actually determine AppIDs that need updating.
+ */
 
-void SteamBot::AppInfo::update(const SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames& games)
+void AppInfoFile::update_noMutex(const std::vector<SteamBot::AppID>& appIds)
 {
-    auto& appInfoFile=AppInfoFile::get();
-    std::lock_guard<decltype(appInfoFile.mutex)> lock(appInfoFile.mutex);
-
-    // For now, only request appInfo that we don't already have
-    //
-    // ToDo: can we somehow request only updated info?
-    // Or should we just request everything all the time?
-    std::unique_ptr<Steam::CMsgClientPICSProductInfoRequestMessageType> request;
+    if (!appIds.empty())
     {
-        for (const auto& game : games.games)
+        auto request=std::make_unique<Steam::CMsgClientPICSProductInfoRequestMessageType>();
+        for (const auto appId : appIds)
         {
-            if (appInfoFile.get_noMutex(game.first)==nullptr)
-            {
-                if (!request)
-                {
-                    request.reset(new Steam::CMsgClientPICSProductInfoRequestMessageType());
-                }
-                auto& app=*(request->content.add_apps());
-                app.set_appid(SteamBot::toUnsignedInteger(game.first));
-            }
+            auto& app=*(request->content.add_apps());
+            app.set_appid(SteamBot::toUnsignedInteger(appId));
         }
-    }
 
-    if (request)
-    {
         typedef Steam::CMsgClientPICSProductInfoResponseMessageType ResponseType;
-        SteamBot::sendAndWait<ResponseType>(std::move(request),[&appInfoFile](std::shared_ptr<const ResponseType> response) -> bool {
+        SteamBot::sendAndWait<ResponseType>(std::move(request),[this](std::shared_ptr<const ResponseType> response) -> bool {
             for (int i=0; i<response->content.apps_size(); i++)
             {
                 auto& app=response->content.apps(i);
@@ -158,7 +150,7 @@ void SteamBot::AppInfo::update(const SteamBot::Modules::OwnedGames::Whiteboard::
                         {
                             assert(name=="appinfo");
                             BOOST_LOG_TRIVIAL(info) << "obtained appInfo for app-id " << SteamBot::toInteger(appId);
-                            appInfoFile.update_noMutex(appId, tree->toJson());
+                            update_noMutex(appId, tree->toJson());
                         }
                         else
                         {
@@ -170,8 +162,36 @@ void SteamBot::AppInfo::update(const SteamBot::Modules::OwnedGames::Whiteboard::
             return !(response->content.has_response_pending() && response->content.response_pending());
         });
     }
+}
 
-    appInfoFile.save_noMutex(true);
+/************************************************************************/
+
+void SteamBot::AppInfo::update(const SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames& games)
+{
+    auto& appInfoFile=AppInfoFile::get();
+    std::lock_guard<decltype(appInfoFile.mutex)> lock(appInfoFile.mutex);
+
+    // For now, only request appInfo that we don't already have
+    //
+    // ToDo: can we somehow request only updated info?
+    // Or should we just request everything all the time?
+    // We need to find SOME way to update existing info that's
+    // been updated server-side...
+
+    std::vector<AppID> appIds;
+    for (const auto& game : games.games)
+    {
+        if (appInfoFile.get_noMutex(game.first)==nullptr)
+        {
+            appIds.push_back(game.first);
+        }
+    }
+
+    if (!appIds.empty())
+    {
+        appInfoFile.update_noMutex(appIds);
+        appInfoFile.save_noMutex(true);
+    }
 }
 
 /************************************************************************/
