@@ -26,7 +26,7 @@
 
 template <std::integral T> std::string SteamBot::toString_(T value)
 {
-    char buffer[64];
+    char buffer[32];
     auto result=std::to_chars(buffer, buffer+sizeof(buffer), value);
     assert(result.ec==std::errc());
     return std::string(buffer, result.ptr);

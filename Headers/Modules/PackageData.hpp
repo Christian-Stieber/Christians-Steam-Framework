@@ -74,6 +74,7 @@ namespace SteamBot
                 };
             }
 
+            // These are thread-safe
             std::shared_ptr<const PackageInfo> getPackageInfo(const SteamBot::Modules::LicenseList::Whiteboard::LicenseIdentifier&);
             std::vector<std::shared_ptr<const PackageInfo>> getPackageInfo(SteamBot::AppID);
         }

@@ -49,6 +49,7 @@ namespace SteamBot
                 boost::json::value toJson() const;
 
             public:
+                // This is threadsafe
                 static Ptr get(SteamBot::PackageID);
             };
         }
