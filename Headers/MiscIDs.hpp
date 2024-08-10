@@ -96,10 +96,11 @@ namespace SteamBot
 
 /************************************************************************/
 /*
- * Output an AppID as "number (name)"
+ * Output a Package/AppID as "number (name)"
  */
 
 namespace SteamBot
 {
     std::ostream& operator<<(std::ostream&, AppID);
+    std::ostream& operator<<(std::ostream&, PackageID);
 }

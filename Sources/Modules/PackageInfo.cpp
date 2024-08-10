@@ -1203,6 +1203,27 @@ void PackageInfoModule::run(SteamBot::Client&)
 
 /************************************************************************/
 /*
+ * Output numeric PackageID to stream, possibly with the name attached if
+ * we have one.
+ */
+
+std::ostream& SteamBot::operator<<(std::ostream& stream, SteamBot::PackageID packageId)
+{
+    stream << SteamBot::toInteger(packageId);
+
+    if (auto info=SteamBot::Modules::PackageInfo::Info::get(packageId))
+    {
+        if (!info->packageName.empty())
+        {
+            stream << " (\"" << info->packageName << "\")";
+        }
+    }
+
+    return stream;
+}
+
+/************************************************************************/
+/*
  * This is a collection of support pages that I can't use to get the
  * package name. They are specific to my account, though, so not useful
  * for anyone else.
