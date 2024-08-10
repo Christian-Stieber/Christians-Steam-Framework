@@ -21,6 +21,7 @@
 #include "AppInfo.hpp"
 #include "CacheFile.hpp"
 #include "Steam/KeyValue.hpp"
+#include "Steam/AppType.hpp"
 #include "Helpers/JSON.hpp"
 
 #include "Steam/ProtoBuf/steammessages_clientserver_appinfo.hpp"
@@ -260,7 +261,9 @@ void AppInfoFile::updateDlcs_noMutex()
         }
 
         // a check for endless loops...
-        assert(DLCs!=prev);
+        // assert(DLCs!=prev);
+        // Above can fail...
+        if (DLCs==prev) return;
 
         {
             std::ostringstream string;
@@ -375,4 +378,21 @@ std::vector<SteamBot::AppID> SteamBot::AppInfo::getDLCs(SteamBot::AppID appId)
         }
     }
     return result;
+}
+
+/************************************************************************/
+
+SteamBot::AppType SteamBot::AppInfo::getAppType(SteamBot::AppID appId)
+{
+    if (auto value=get(appId, "common", "type"))
+    {
+        if (auto string=value->if_string())
+        {
+            const std::string_view view=*string;
+            if (view=="Game") return AppType::Game;
+            if (view=="DLC") return AppType::DLC;
+        }
+        return AppType::Other;
+    }
+    return AppType::Unknown;
 }

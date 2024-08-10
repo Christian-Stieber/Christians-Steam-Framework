@@ -49,6 +49,7 @@ namespace SteamBot
             return get(array);
         }
 
+        // this is thread-safe
         std::vector<SteamBot::AppID> getDLCs(SteamBot::AppID);
     }
 }
