@@ -114,6 +114,9 @@ namespace
 }
 
 /************************************************************************/
+/*
+ * Keeping support for the "old" page format in there for now.
+ */
 
 namespace
 {
@@ -135,10 +138,26 @@ namespace
         {
             if (element.name=="div")
             {
+                // "Old" page format?
                 if (auto value=element.getAttribute("data-broadcast_available_for_page"))
                 {
                     assert(data.empty());
                     data=*value;
+                    return;
+                }
+
+                // "New" page format?
+                if (auto id=element.getAttribute("id"))
+                {
+                    if (*id=="application_config")
+                    {
+                        if (auto value=element.getAttribute("data-broadcastsinfo"))
+                        {
+                            assert(data.empty());
+                            data=*value;
+                            return;
+                        }
+                    }
                 }
             }
         }
@@ -173,8 +192,13 @@ void ViewStream::doHeartbeat()
 
     if (nextReport<=now)
     {
-        SteamBot::UI::OutputText() << "stream \"" << title << "\" (" << broadcastSteamId << ") active for "
-                                   << SteamBot::Time::toString(std::chrono::duration_cast<std::chrono::minutes>(now-startTime));
+        SteamBot::UI::OutputText output;
+        output << "stream " << broadcastSteamId;
+        if (!title.empty())
+        {
+            output << " (\"" << title << ')';
+        }
+        output << " active for " << SteamBot::Time::toString(std::chrono::duration_cast<std::chrono::minutes>(now-startTime));
         nextReport=now+std::chrono::minutes(1);
     }
 }
@@ -212,6 +236,10 @@ bool ViewStream::sendHeartbeat()
 /*
  * Read the webpage, find the data-broadcast_available_for_page
  * atribute, and get the broadcastStreamID for the first stream.
+ *
+ * The "new"(?) page format looks like this:
+ *   <div id="application_config" ...
+ *     data-broadcastsinfo="{&quot;steamid&quot;:&quot;76561199029183645&quot;}"
  */
 
 void ViewStream::getBroadcastSteamID()
@@ -240,20 +268,36 @@ void ViewStream::getBroadcastSteamID()
 
         json=boost::json::parse(parser.data).as_object();
     }
-    BOOST_LOG_TRIVIAL(info) << "data-broadcast_available_for_page: " << json;
+    BOOST_LOG_TRIVIAL(info) << "broadcast info: " << json;
 
-    auto filtered=json.at("filtered").as_array();
-    auto first=filtered.at(0);
-
-    if (!SteamBot::JSON::optString(first, "broadcaststeamid", broadcastSteamId))
+    if (auto filtered=json.if_contains("filtered"))
     {
-        throw ErrorException();
+        // Old(?) page format
+        if (auto array=filtered->if_array())
+        {
+            if (auto first=array->if_contains(0))
+            {
+                if (SteamBot::JSON::optString(*first, "broadcaststeamid", broadcastSteamId))
+                {
+                    return;
+                }
+            }
+        }
     }
+    else
+    {
+        // New(?) page format
+        if (SteamBot::JSON::optString(json, "steamid", broadcastSteamId))
+        {
+            return;
+        }
+    }
+    throw ErrorException();
 }
 
 /************************************************************************/
 /*
- * Issue the getbroadcastmpd query to get more stuff
+ * Issue the getbroadcastmpd query to get more info
  */
 
 void ViewStream::getTmpdData()
@@ -290,6 +334,15 @@ void ViewStream::getTmpdData()
         if (!SteamBot::JSON::optNumber(json, "eresult", result) || result!=SteamBot::ResultCode::OK) throw ErrorException();
     }
 
+    if (auto success=SteamBot::JSON::optString(json, "success"))
+    {
+        if (*success!="ready")
+        {
+            SteamBot::UI::OutputText() << "stream status: " << *success;
+            throw ErrorException();
+        }
+    }
+
     if (!SteamBot::JSON::optString(json, "broadcastid", broadcastId)) throw ErrorException();
     if (!SteamBot::JSON::optString(json, "viewertoken", viewerToken)) throw ErrorException();
 
@@ -299,7 +352,7 @@ void ViewStream::getTmpdData()
         heartbeatInterval=std::chrono::seconds(seconds);
     }
 
-    if (SteamBot::JSON::optString(json, "title", title))
+    if (SteamBot::JSON::optString(json, "title", title) &&!title.empty())
     {
         SteamBot::UI::OutputText() << "stream title: " << title;
     }
