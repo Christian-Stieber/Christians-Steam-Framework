@@ -19,9 +19,6 @@
 
 #pragma once
 
-#include "Client/ResultWaiter.hpp"
-#include "Web/CookieJar.hpp"
-
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
 #include <boost/beast/http/dynamic_body.hpp>
@@ -30,6 +27,9 @@
 #include <boost/url/url.hpp>
 
 #include <boost/json/value.hpp>
+
+#include "Client/ResultWaiter.hpp"
+#include "Web/CookieJar.hpp"
 
 /************************************************************************/
 

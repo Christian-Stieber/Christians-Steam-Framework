@@ -17,6 +17,8 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #include "Asio/HTTPClient.hpp"
 
 #include <queue>

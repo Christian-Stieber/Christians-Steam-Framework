@@ -24,6 +24,7 @@
 #include <vector>
 #include <cstdint>
 #include <string_view>
+#include <array>
 
 #include <boost/json/value.hpp>
 

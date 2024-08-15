@@ -20,8 +20,6 @@
 #include "Asio/RateLimit.hpp"
 #include "Client/Client.hpp"
 
-#include <boost/asio/steady_timer.hpp>
-
 #include <boost/log/trivial.hpp>
 #include <boost/json/stream_parser.hpp>
 #include <boost/exception/diagnostic_information.hpp>
