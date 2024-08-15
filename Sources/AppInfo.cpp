@@ -23,6 +23,7 @@
 #include "Steam/KeyValue.hpp"
 #include "Steam/AppType.hpp"
 #include "Helpers/JSON.hpp"
+#include "Helpers/StringCompare.hpp"
 
 #include "Steam/ProtoBuf/steammessages_clientserver_appinfo.hpp"
 
@@ -389,8 +390,9 @@ SteamBot::AppType SteamBot::AppInfo::getAppType(SteamBot::AppID appId)
         if (auto string=value->if_string())
         {
             const std::string_view view=*string;
-            if (view=="Game") return AppType::Game;
-            if (view=="DLC") return AppType::DLC;
+            if (SteamBot::caseInsensitiveStringCompare_equal(view, "Game")) return AppType::Game;
+            if (SteamBot::caseInsensitiveStringCompare_equal(view, "DLC")) return AppType::DLC;
+            if (SteamBot::caseInsensitiveStringCompare_equal(view, "Application")) return AppType::Application;
         }
         return AppType::Other;
     }

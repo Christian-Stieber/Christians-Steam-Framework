@@ -36,6 +36,7 @@ namespace SteamBot
         Unknown=0,
         Game,
         DLC,
+        Application,
         Other
     };
 
