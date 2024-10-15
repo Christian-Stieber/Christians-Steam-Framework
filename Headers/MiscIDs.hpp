@@ -69,7 +69,6 @@ namespace SteamBot
     enum class NotificationID : uint64_t {
         None=0
     };
-
 }
 
 /************************************************************************/

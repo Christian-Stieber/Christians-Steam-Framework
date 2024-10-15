@@ -102,7 +102,8 @@ TCP::~TCP() =default;
 
 void TCP::connect(const Endpoint& endpoint)
 {
-	socket.async_connect(endpoint, boost::fibers::asio::yield);
+    BOOST_LOG_TRIVIAL(debug) << "TCP: connecting to " << endpoint.address <<  ":" << endpoint.port;
+    socket.async_connect(endpoint, boost::fibers::asio::yield);
 }
 
 /************************************************************************/
@@ -141,10 +142,10 @@ TCP::MutableBytes TCP::readPacket()
 
 void TCP::writePacket(TCP::ConstBytes bytes)
 {
-	auto header=PacketHeader(bytes.size()).serialize();
-	std::array<boost::asio::const_buffer, 2> buffers={ boost::asio::buffer(header), boost::asio::const_buffer(bytes.data(), bytes.size()) };
-	// BOOST_LOG_TRIVIAL(debug) << "writing packet of " << bytes.size() << " bytes";
-	boost::asio::async_write(socket, buffers, boost::fibers::asio::yield);
+    auto header=PacketHeader(bytes.size()).serialize();
+    std::array<boost::asio::const_buffer, 2> buffers={ boost::asio::buffer(header), boost::asio::const_buffer(bytes.data(), bytes.size()) };
+    // BOOST_LOG_TRIVIAL(debug) << "writing packet of " << bytes.size() << " bytes";
+    boost::asio::async_write(socket, buffers, boost::fibers::asio::yield);
 }
 
 /************************************************************************/

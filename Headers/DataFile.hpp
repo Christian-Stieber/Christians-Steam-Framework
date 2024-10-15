@@ -34,8 +34,9 @@
  * from examine().
  *
  * Updates work in a similar way. If your update function returns
- * normally, the json will be saved back to disk. If it throws, the
- * tree will be reloaded from disk.
+ * true, the json will be saved back to disk. If it throws, the
+ * tree will be reloaded from disk. If it returnd false, make sure
+ * you really don't change anything.
  *
  * For now(?), loading/saving is not async.
  */

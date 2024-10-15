@@ -22,14 +22,25 @@
 #include "Asio/Connections.hpp"
 #include "WebAPI/ISteamDirectory/GetCMList.hpp"
 #include "Random.hpp"
+#include "Client/Client.hpp"
+#include "Helpers/JSON.hpp"
 
 #include <boost/fiber/operations.hpp>
 #include <boost/exception/diagnostic_information.hpp>
+#include <boost/fiber/protected_fixedsize_stack.hpp>
 
 /************************************************************************/
 
 typedef SteamBot::Connections Connections;
 typedef Connections::Connection Connection;
+typedef SteamBot::Connection::Endpoint Endpoint;
+
+/************************************************************************/
+/*
+ * The key for the last working endpoint in the account file.
+ */
+
+static const char previousEndpointKey[]="previousEndpoint";
 
 /************************************************************************/
 
@@ -136,27 +147,18 @@ decltype(Connection::localEndpoint) Connection::getLocalEndpoint() const
 
 /************************************************************************/
 
-Connections& Connections::get()
+decltype(Connection::remoteEndpoint) Connection::getRemoteEndpoint() const
 {
-    static Connections& instance=*new Connections;
-    return instance;
+    std::lock_guard<decltype(mutex)> lock(mutex);
+    return remoteEndpoint;
 }
 
 /************************************************************************/
 
-void Connections::makeConnection(Connections::ConnectResult result, std::shared_ptr<const SteamBot::WebAPI::ISteamDirectory::GetCMList> cmList)
+Connections& Connections::get()
 {
-    // Select a random endpoint
-    const size_t index=SteamBot::Random::generateRandomNumber()%cmList->serverlist.size();
-    SteamBot::Connection::Endpoint endpoint(cmList->serverlist[index]);
-    BOOST_LOG_TRIVIAL(info) << "connecting to " << endpoint.address;
-
-    // ... and try to connect to it
-    result->connection->connect(endpoint);
-    BOOST_LOG_TRIVIAL(info) << "connected to " << endpoint.address;
-
-    std::lock_guard<decltype(result->mutex)> lock(result->mutex);
-    result->connection->getLocalAddress(result->localEndpoint);
+    static Connections& instance=*new Connections;
+    return instance;
 }
 
 /************************************************************************/
@@ -263,58 +265,6 @@ void Connections::run(ConnectResult::weak_type result)
 
 /************************************************************************/
 
-void Connections::getCMList_completed(Connections::ConnectResult result, std::shared_ptr<const SteamBot::WebAPI::ISteamDirectory::GetCMList> cmList)
-{
-    // I'm using the old fiber-based connection code
-    boost::fibers::fiber([cmList=std::move(cmList), result=std::move(result)]() mutable {
-        static constexpr int maxTries=10;
-
-        int count=0;
-        while (result->peekStatus()==Connection::Status::Connecting)
-        {
-            try
-            {
-                makeConnection(result, cmList);
-                result->setStatus(Connection::Status::Connected);
-            }
-            catch(const boost::system::system_error& exception)
-            {
-                logException(exception);
-
-                switch(exception.code().value())
-                {
-                case boost::asio::error::eof:
-                    result->setStatus(Connection::Status::GotEOF);
-                    break;
-
-                case boost::asio::error::operation_aborted:
-                    assert(false);
-                    break;
-
-                default:
-                    count++;
-                    if (count==maxTries)
-                    {
-                        result->setStatus(Connection::Status::Error);
-                    }
-                    else
-                    {
-                        boost::this_fiber::sleep_for(std::chrono::seconds(10));
-                    }
-                    break;
-                }
-            }
-            catch(...)
-            {
-                BOOST_LOG_TRIVIAL(error) << "exception on Steam connection: " << boost::current_exception_diagnostic_information();
-            }
-        }
-        run(result);
-    }).detach();
-}
-
-/************************************************************************/
-
 void Connection::doWritePackets()
 {
     assert(SteamBot::Asio::isThread());
@@ -365,8 +315,93 @@ void Connection::doWritePackets()
 
 /************************************************************************/
 /*
- * This can be called from any thread. It fetches endpoints
- * from Steam, and makes a connection.
+ * Get the previous endpoint for the current client
+ */
+
+static std::shared_ptr<Endpoint> getPreviousEndpoint()
+{
+    auto& dataFile=SteamBot::Client::getClient().dataFile;
+    auto string=dataFile.examine([](const boost::json::value& value) {
+        return SteamBot::JSON::getItem(value, previousEndpointKey);
+    });
+
+    if (string!=nullptr)
+    {
+        try
+        {
+            return std::make_shared<Endpoint>(string->as_string());
+        }
+        catch(...)
+        {
+        }
+    }
+    return nullptr;
+}
+
+/************************************************************************/
+/*
+ * Tries to make a connection to the endpoint. We must be on a fiber
+ * on the Asio thread for this to work.
+ */
+
+bool Connections::makeConnection(const Endpoint& endpoint, Connections::ConnectResult& result)
+{
+    BOOST_LOG_TRIVIAL(info) << "connecting to " << endpoint.address << ":" << endpoint.port;
+
+    try
+    {
+        {
+            std::lock_guard<decltype(result->mutex)> lock(result->mutex);
+            result->connection->connect(endpoint);
+            result->connection->getLocalAddress(result->localEndpoint);
+            result->remoteEndpoint=endpoint;
+        }
+        result->setStatus(Connection::Status::Connected);
+        BOOST_LOG_TRIVIAL(info) << "connected to " << endpoint.address << ":" << endpoint.port;
+        return true;
+    }
+    catch (const boost::system::system_error& exception)
+    {
+        if (exception.code().value()==boost::asio::error::eof)
+        {
+            // Not sure what's going on here, but it suddenly seems to happen a *lot*
+            BOOST_LOG_TRIVIAL(debug) << "remote end closed the connection?";
+            result->connection->disconnect();
+            return false;
+        }
+        throw;
+    }
+}
+
+/************************************************************************/
+
+void Connections::fetchEndpointsAndMakeConnection(Connections::ConnectResult result)
+{
+    SteamBot::WebAPI::ISteamDirectory::GetCMList::get(0, [result=std::move(result)](std::shared_ptr<const SteamBot::WebAPI::ISteamDirectory::GetCMList> cmList) mutable {
+        boost::fibers::fiber(std::allocator_arg, boost::fibers::protected_fixedsize_stack(), [result=std::move(result), cmList=std::move(cmList)]() mutable {
+            int count=100;
+            while (--count>0)
+            {
+                const size_t index=SteamBot::Random::generateRandomNumber()%cmList->serverlist.size();
+                Endpoint endpoint(cmList->serverlist[index]);
+                if (makeConnection(endpoint, result))
+                {
+                    run(result);
+                    break;
+                }
+                boost::this_fiber::sleep_for(std::chrono::milliseconds(200));
+            }
+        }).detach();
+    });
+}
+
+/************************************************************************/
+/*
+ * This can be called from any thread.
+ *
+ * It tries to make a connection to the last endpoint that has
+ * worked for this connection; if that doesn't work then it
+ * fetches endpoints from Steam and tries them.
  *
  * Just delete the connection if you don't need it anymore.
  */
@@ -374,9 +409,27 @@ void Connection::doWritePackets()
 Connections::ConnectResult Connections::connect(std::shared_ptr<SteamBot::WaiterBase> waiter)
 {
     auto result=waiter->createWaiter<ConnectResult::element_type>();
+    auto previousEndpoint=getPreviousEndpoint();
 
-    SteamBot::Asio::post("Connections::create", [result]() mutable {
-        SteamBot::WebAPI::ISteamDirectory::GetCMList::get(0, std::bind_front(&Connections::getCMList_completed, std::move(result)));
+    SteamBot::Asio::post("Connections::connect", [result, previousEndpoint=std::move(previousEndpoint)]() mutable {
+        if (previousEndpoint)
+        {
+            // We are still using the old fiber-based connection code
+            boost::fibers::fiber(std::allocator_arg, boost::fibers::protected_fixedsize_stack(), [result=std::move(result), previousEndpoint=std::move(previousEndpoint)]() mutable {
+                if (makeConnection(*previousEndpoint, result))
+                {
+                    run(result);
+                }
+                else
+                {
+                    fetchEndpointsAndMakeConnection(std::move(result));
+                }
+            }).detach();
+        }
+        else
+        {
+            fetchEndpointsAndMakeConnection(std::move(result));
+        }
     });
 
     return result;

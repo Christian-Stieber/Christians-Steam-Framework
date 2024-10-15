@@ -62,8 +62,8 @@ namespace SteamBot
 
         static bool readPacket(ConnectResult::weak_type);
         static void run(ConnectResult::weak_type);
-        static void makeConnection(ConnectResult, std::shared_ptr<const SteamBot::WebAPI::ISteamDirectory::GetCMList>);
-        static void getCMList_completed(ConnectResult, std::shared_ptr<const SteamBot::WebAPI::ISteamDirectory::GetCMList>);
+        static bool makeConnection(const SteamBot::Connection::Endpoint&, Connections::ConnectResult&);
+        static void fetchEndpointsAndMakeConnection(Connections::ConnectResult);
 
     public:
         static ConnectResult connect(std::shared_ptr<SteamBot::WaiterBase>);
@@ -106,6 +106,7 @@ private:
     bool statusChanged=true;
     std::queue<std::vector<std::byte>> writePackets;
     SteamBot::Connection::Endpoint localEndpoint;
+    SteamBot::Connection::Endpoint remoteEndpoint;
 
 private:
     void doWritePackets();
@@ -124,6 +125,7 @@ public:
     Status getStatus();						// this will reset the changed status
     std::vector<std::byte> readPacket();	// empty when there's none
     decltype(localEndpoint) getLocalEndpoint() const;
+    decltype(remoteEndpoint) getRemoteEndpoint() const;
 
     void writePacket(std::vector<std::byte>);
 };

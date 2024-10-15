@@ -260,7 +260,7 @@ void Encrypted::handleEncryptResult(std::span<const std::byte> bytes)
 
 void Encrypted::establishEncryption()
 {
-	while (encryptionState!=EncryptionState::Encrypting)
+    while (encryptionState!=EncryptionState::Encrypting)
 	{
 		auto bytes=connection->readPacket();
 		const auto msgType=Message::Header::Base::peekMessgeType(bytes);
