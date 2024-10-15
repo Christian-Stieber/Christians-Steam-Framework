@@ -146,6 +146,21 @@ void ConnectionModule::init(SteamBot::Client& client)
 
 /************************************************************************/
 
+static bool updateWhiteboard(SteamBot::Whiteboard& whiteboard, ConnectionStatus status)
+{
+    if (auto current=whiteboard.has<ConnectionStatus>())
+    {
+        if (*current==status)
+        {
+            return false;
+        }
+    }
+    whiteboard.set(status);
+    return true;
+}
+
+/************************************************************************/
+
 void ConnectionModule::body()
 {
     auto& whiteboard=getClient().whiteboard;
@@ -167,12 +182,15 @@ void ConnectionModule::body()
         }
         else if (status==Status::Connecting)
         {
-            whiteboard.set(ConnectionStatus::Connecting);
+            updateWhiteboard(whiteboard, ConnectionStatus::Connecting);
         }
         else if (status==Status::Connected)
         {
-            whiteboard.set(ConnectionStatus::Connected);
-            whiteboard.set<SteamBot::Modules::Connection::Whiteboard::LocalEndpoint>(connection->getLocalEndpoint());
+            if (updateWhiteboard(whiteboard, ConnectionStatus::Connected))
+            {
+                connection->storeEndpoint();
+                whiteboard.set<SteamBot::Modules::Connection::Whiteboard::LocalEndpoint>(connection->getLocalEndpoint());
+            }
         }
     }
 }

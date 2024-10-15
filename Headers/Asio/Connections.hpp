@@ -121,11 +121,15 @@ public:
     virtual void install(std::shared_ptr<ItemBase>) override;
 
 public:
+    // Must be called on the client thread.
+    // Stores the "previousEndpoint".
+    void storeEndpoint() const;
+
+public:
     Status peekStatus() const;
     Status getStatus();						// this will reset the changed status
     std::vector<std::byte> readPacket();	// empty when there's none
     decltype(localEndpoint) getLocalEndpoint() const;
-    decltype(remoteEndpoint) getRemoteEndpoint() const;
 
     void writePacket(std::vector<std::byte>);
 };

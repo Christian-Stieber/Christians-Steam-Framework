@@ -147,14 +147,6 @@ decltype(Connection::localEndpoint) Connection::getLocalEndpoint() const
 
 /************************************************************************/
 
-decltype(Connection::remoteEndpoint) Connection::getRemoteEndpoint() const
-{
-    std::lock_guard<decltype(mutex)> lock(mutex);
-    return remoteEndpoint;
-}
-
-/************************************************************************/
-
 Connections& Connections::get()
 {
     static Connections& instance=*new Connections;
@@ -321,8 +313,8 @@ void Connection::doWritePackets()
 static std::shared_ptr<Endpoint> getPreviousEndpoint()
 {
     auto& dataFile=SteamBot::Client::getClient().dataFile;
-    auto string=dataFile.examine([](const boost::json::value& value) {
-        return SteamBot::JSON::getItem(value, previousEndpointKey);
+    auto string=dataFile.examine([](const boost::json::value& json) {
+        return SteamBot::JSON::getItem(json, previousEndpointKey);
     });
 
     if (string!=nullptr)
@@ -336,6 +328,29 @@ static std::shared_ptr<Endpoint> getPreviousEndpoint()
         }
     }
     return nullptr;
+}
+
+/************************************************************************/
+
+void Connection::storeEndpoint() const
+{
+    auto& dataFile=SteamBot::Client::getClient().dataFile;
+
+    std::ostringstream string;
+    string << remoteEndpoint.address << ":" << remoteEndpoint.port;
+
+    dataFile.update([&string](boost::json::value& json) {
+        auto& item=SteamBot::JSON::createItem(json, previousEndpointKey);
+        if (auto existing=item.if_string())
+        {
+            if (*existing==string.view())
+            {
+                return false;
+            }
+        }
+        item.emplace_string()=string.view();
+        return true;
+    });
 }
 
 /************************************************************************/
