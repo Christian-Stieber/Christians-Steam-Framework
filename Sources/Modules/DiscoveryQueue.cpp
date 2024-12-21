@@ -150,6 +150,10 @@ static bool performClear()
                 return true;
             }
         }
+        else
+        {
+            SteamBot::UI::OutputText() << "error on discovery queue";
+        }
     }
     catch(...)
     {
