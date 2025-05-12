@@ -390,6 +390,7 @@ SteamBot::AppType SteamBot::AppInfo::getAppType(SteamBot::AppID appId)
         if (auto string=value->if_string())
         {
             const std::string_view view=*string;
+            if (SteamBot::caseInsensitiveStringCompare_equal(view, "Demo")) return AppType::Demo;
             if (SteamBot::caseInsensitiveStringCompare_equal(view, "Game")) return AppType::Game;
             if (SteamBot::caseInsensitiveStringCompare_equal(view, "DLC")) return AppType::DLC;
             if (SteamBot::caseInsensitiveStringCompare_equal(view, "Application")) return AppType::Application;

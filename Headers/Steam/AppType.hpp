@@ -37,6 +37,7 @@ namespace SteamBot
         Game,
         DLC,
         Application,
+        Demo,
         Other
     };
 
