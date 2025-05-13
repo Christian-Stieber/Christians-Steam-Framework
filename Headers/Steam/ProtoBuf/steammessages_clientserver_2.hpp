@@ -29,24 +29,6 @@
 
 namespace Steam
 {
-	typedef SteamBot::Connection::Message::Message<SteamBot::Connection::Message::Type::ClientUpdateMachineAuth,
-                                                   SteamBot::Connection::Message::Header::ProtoBuf,
-                                                   CMsgClientUpdateMachineAuth> CMsgClientUpdateMachineAuthMessageType;
-}
-
-/************************************************************************/
-
-namespace Steam
-{
-	typedef SteamBot::Connection::Message::Message<SteamBot::Connection::Message::Type::ClientUpdateMachineAuthResponse,
-                                                   SteamBot::Connection::Message::Header::ProtoBuf,
-                                                   CMsgClientUpdateMachineAuthResponse> CMsgClientUpdateMachineAuthResponseMessageType;
-}
-
-/************************************************************************/
-
-namespace Steam
-{
 	typedef SteamBot::Connection::Message::Message<SteamBot::Connection::Message::Type::ClientRequestFreeLicense,
                                                    SteamBot::Connection::Message::Header::ProtoBuf,
                                                    CMsgClientRequestFreeLicense> CMsgClientRequestFreeLicenseMessageType;
