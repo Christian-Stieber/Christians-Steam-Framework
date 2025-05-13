@@ -81,6 +81,7 @@ addSource("Connection" Endpoint Serialize Base TCP Message Encrypted)
 addSource("OpenSSL" Exception SHA1 RSA AESBase AES AESHMAC Random)
 addSource("Web" URLEncode Cookies CookieJar)
 addSource("WebAPI" WebAPI ISteamDirectory/GetCMList)
+addSource("Cloud" Files Platform)
 addSource("UI" UI)
 
 addSource("Steam"
