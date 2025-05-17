@@ -212,7 +212,16 @@ void PageParser::handleBodyRow(PageParser::Element& element)
                                 std::string* href=link->getAttribute("href");
                                 if (href!=nullptr)
                                 {
-                                    return true;
+                                    boost::urls::url_view url(*href);
+                                    const auto &params=url.params();
+                                    auto iterator=params.find("appid");
+                                    if (iterator!=params.end())
+                                    {
+                                        if (SteamBot::parseNumber((*iterator).value, app.appId))
+                                        {
+                                            return true;
+                                        }
+                                    }
                                 }
                             }
                         }
