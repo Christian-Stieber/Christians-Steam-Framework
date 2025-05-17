@@ -53,6 +53,7 @@ namespace
         typedef HTMLParser::Tree::Element Element;
 
     private:
+        Apps &apps;
         const Element* table=nullptr;
 
     private:
@@ -66,7 +67,11 @@ namespace
         virtual void endElement(Element&) override;
 
     public:
-        using Parser::Parser;
+        PageParser (Apps& apps_, std::string_view html)
+            : Parser (html), apps (apps_)
+        {
+        }
+
         virtual ~PageParser() =default;
     };
 }
@@ -151,7 +156,6 @@ void PageParser::handleHeadRow(PageParser::Element& element)
                     std::string_view string;
                     if (getTextChild (child, string))
                     {
-                        std::cout << string << "\n";
                         if (string==headers[count])
                         {
                             return true;
@@ -174,39 +178,58 @@ void PageParser::handleBodyRow(PageParser::Element& element)
 {
     if (table!=nullptr)
     {
-        bool success=SteamBot::HTML::iterateChildElements(element, [](size_t count, HTMLParser::Tree::Element& child)
+        struct SteamBot::Cloud::Apps::App app;
+        bool success=SteamBot::HTML::iterateChildElements(element, [&app](size_t count, HTMLParser::Tree::Element& child)
         {
             if (child.name=="td")
             {
-                if (count<=2)
+                switch(count)
                 {
-                    std::string_view string;
-                    if (getTextChild(child, string))
+                case 0:
                     {
-                        std::cout << string << "\n";
-                        return true;
-                    }
-                }
-                else if (count==3)
-                {
-                    auto link=getElementChild(child);
-                    if (link!=nullptr)
-                    {
-                        if (link->name=="a")
+                        std::string_view string;
+                        if (getTextChild(child, string))
                         {
-                            std::string* href=link->getAttribute("href");
-                            if (href!=nullptr)
+                            app.name=std::string(string);
+                            return true;
+                        }
+                    }
+                    break;
+
+                case 1:
+                    return true;
+
+                case 2:
+                    return true;
+
+                case 3:
+                    {
+                        auto link=getElementChild(child);
+                        if (link!=nullptr)
+                        {
+                            if (link->name=="a")
                             {
-                                std::cout << *href << "\n";
-                                return true;
+                                std::string* href=link->getAttribute("href");
+                                if (href!=nullptr)
+                                {
+                                    return true;
+                                }
                             }
                         }
                     }
+                    break;
+
+                default:
+                    break;
                 }
             }
             return false;
         });
-        if (!success)
+        if (success)
+        {
+            apps.apps.emplace_back(std::move(app));
+        }
+        else
         {
             table=nullptr;
         }
@@ -236,7 +259,8 @@ void PageParser::handleRow(PageParser::Element& element)
 /************************************************************************/
 
 void PageParser::endElement(PageParser::Element& element)
-{ handleRow (element);
+{
+    handleRow (element);
 }
 
 /************************************************************************/
@@ -250,6 +274,7 @@ PageParser::Callback PageParser::startElement(const PageParser::Element& element
 
 bool Apps::load()
 {
+    apps.clear();
     auto request=std::make_shared<Request>();
     request->queryMaker=[]() {
         static const boost::urls::url_view url("https://store.steampowered.com/account/remotestorage?l=english");
@@ -263,7 +288,7 @@ bool Apps::load()
     }
 
     auto html=SteamBot::HTTPClient::parseString(*(response->query));
-    PageParser parser (html);
+    PageParser parser (*this, html);
     try
     {
         parser.parse();

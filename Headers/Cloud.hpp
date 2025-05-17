@@ -88,10 +88,10 @@ namespace SteamBot
             class App
             {
             public:
-                SteamBot::AppID appId;
+                SteamBot::AppID appId=SteamBot::AppID::None;
                 std::string name;
-                uint32_t totalCount;
-                uint64_t totalSize;
+                uint32_t totalCount=0;
+                uint64_t totalSize=0;
 
             public:
                 boost::json::value toJson() const;
