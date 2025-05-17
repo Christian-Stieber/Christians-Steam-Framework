@@ -21,6 +21,7 @@
 
 #include <string>
 #include <optional>
+#include <functional>
 
 #include "Helpers/ParseNumber.hpp"
 #include "HTMLParser/Tree.hpp"
@@ -56,6 +57,21 @@ namespace SteamBot
     namespace HTML
     {
         std::string getCleanText(const HTMLParser::Tree::Element&);
+    }
+}
+
+/************************************************************************/
+/*
+ * Invokes you callback with each element-child.
+ * Return false from callback to abort, true to continue.
+ * Returns false if aborted by callback, true if all was processed.
+ */
+
+namespace SteamBot
+{
+    namespace HTML
+    {
+        bool iterateChildElements(const HTMLParser::Tree::Element&, std::function <bool(size_t, HTMLParser::Tree::Element&)>);
     }
 }
 

@@ -176,3 +176,23 @@ bool SteamBot::HTML::checkAttribute(const HTMLParser::Tree::Element& element, st
     }
     return false;
 }
+
+/************************************************************************/
+
+bool SteamBot::HTML::iterateChildElements(const HTMLParser::Tree::Element& element, std::function <bool(size_t, HTMLParser::Tree::Element&)> callback)
+{
+    size_t count=0;
+    for (const auto& node : element.children)
+    {
+        auto child=dynamic_cast<HTMLParser::Tree::Element*>(node.get());
+        if (child!=nullptr)
+        {
+            if (!callback(count, *child))
+            {
+                return false;
+            }
+            count++;
+        }
+    }
+    return true;
+}

@@ -19,14 +19,23 @@
 
 #include "Cloud.hpp"
 #include "SafeCast.hpp"
-#include "Modules/UnifiedMessageClient.hpp"
-#include "Modules/OwnedGames.hpp"
+#include "Modules/WebSession.hpp"
+#include "HTMLParser/Parser.hpp"
+#include "Helpers/HTML.hpp"
 
-#include "steamdatabase/protobufs/steam/steammessages_cloud.steamclient.pb.h"
+/************************************************************************/
+/*
+ * Note: there used to be a Cloud.EnumerateUserApps unified message
+ * API, but it seems that was removed. I'm now downloading the cloud
+ * app overview via the webpage.
+ */
 
 /************************************************************************/
 
 typedef SteamBot::Cloud::Apps Apps;
+
+typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
+typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
 
 /************************************************************************/
 
@@ -35,30 +44,235 @@ Apps::Apps() =default;
 
 /************************************************************************/
 
-void Apps::load()
+namespace
 {
-    typedef SteamBot::Modules::UnifiedMessageClient::ProtobufService::Info<decltype(&::Cloud::EnumerateUserApps)> EnumerateUserAppsInfo;
-
-    std::shared_ptr<EnumerateUserAppsInfo::ResultType> response;
+    class PageParser : public HTMLParser::Parser
     {
-        EnumerateUserAppsInfo::RequestType request;
-        response=SteamBot::Modules::UnifiedMessageClient::execute<EnumerateUserAppsInfo::ResultType>("Cloud.EnumerateUserApps#1", std::move(request));
-    }
+    private:
+        typedef std::function<void(const HTMLParser::Tree::Element&)> Callback;
+        typedef HTMLParser::Tree::Element Element;
 
-    apps.clear();
-    apps.reserve(static_cast<size_t>(response->apps_size()));
-    for (int index=0; index<response->apps_size(); index++)
+    private:
+        const Element* table=nullptr;
+
+    private:
+        Callback handleTable(const Element&);
+        void handleHeadRow(Element&);
+        void handleBodyRow(Element&);
+        void handleRow(Element&);
+
+    private:
+        virtual Callback startElement(const Element&) override;
+        virtual void endElement(Element&) override;
+
+    public:
+        using Parser::Parser;
+        virtual ~PageParser() =default;
+    };
+}
+
+/************************************************************************/
+
+PageParser::Callback PageParser::handleTable(const PageParser::Element& element)
+{
+    Callback callback;
+    if (table==nullptr)
     {
-        const auto& appData=response->apps(index);
-        if (appData.has_appid() && appData.has_totalcount() && appData.has_totalsize())
+        if (element.name=="table" && SteamBot::HTML::checkClass(element, "accounttable"))
         {
-            auto& app=apps.emplace_back();
-            app.appId=SteamBot::safeCast<SteamBot::AppID>(appData.appid());
-            app.name=SteamBot::Modules::OwnedGames::getName(app.appId);
-            app.totalCount=SteamBot::safeCast<uint32_t>(appData.totalcount());
-            app.totalSize=SteamBot::safeCast<uint64_t>(appData.totalsize());
+            table=&element;
+            callback=[this](const HTMLParser::Tree::Element&) {
+                table=nullptr;
+            };
         }
     }
+    return callback;
+}
+
+/************************************************************************/
+/*
+ * Expects element to have exactly one child, a Text node.
+ */
+
+static bool getTextChild(HTMLParser::Tree::Element& element, std::string_view& result)
+{
+    if (element.children.size()==1)
+    {
+        auto text=dynamic_cast<HTMLParser::Tree::Text*>(element.children.front().get());
+        if (text!=nullptr)
+        {
+            result=text->text;
+            SteamBot::HTML::trimWhitespace(result);
+            return true;
+        }
+    }
+    return false;
+}
+
+/************************************************************************/
+/*
+ * Expects element to have exactly one child, an element node.
+ * Everything else is ignored.
+ */
+
+static HTMLParser::Tree::Element* getElementChild(HTMLParser::Tree::Element& element)
+{
+    HTMLParser::Tree::Element* result=nullptr;
+    SteamBot::HTML::iterateChildElements(element, [&result](size_t count, HTMLParser::Tree::Element& child)
+    {
+        if (count==0)
+        {
+            result=&child;
+            return true;
+        }
+        else
+        {
+            result=nullptr;
+            return false;
+        }
+    });
+    return result;
+}
+
+/************************************************************************/
+
+void PageParser::handleHeadRow(PageParser::Element& element)
+{
+    static const char* headers[]={ "Game", "Number Of Files", "Total Size Of Files" };
+
+    if (table!=nullptr)
+    {
+        bool success=SteamBot::HTML::iterateChildElements(element, [](size_t count, HTMLParser::Tree::Element& child)
+        {
+            if (count<=std::size(headers))
+            {
+                if (child.name=="th")
+                {
+                    std::string_view string;
+                    if (getTextChild (child, string))
+                    {
+                        std::cout << string << "\n";
+                        if (string==headers[count])
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        });
+        if (!success)
+        {
+            table=nullptr;
+        }
+    }
+}
+
+/************************************************************************/
+
+void PageParser::handleBodyRow(PageParser::Element& element)
+{
+    if (table!=nullptr)
+    {
+        bool success=SteamBot::HTML::iterateChildElements(element, [](size_t count, HTMLParser::Tree::Element& child)
+        {
+            if (child.name=="td")
+            {
+                if (count<=2)
+                {
+                    std::string_view string;
+                    if (getTextChild(child, string))
+                    {
+                        std::cout << string << "\n";
+                        return true;
+                    }
+                }
+                else if (count==3)
+                {
+                    auto link=getElementChild(child);
+                    if (link!=nullptr)
+                    {
+                        if (link->name=="a")
+                        {
+                            std::string* href=link->getAttribute("href");
+                            if (href!=nullptr)
+                            {
+                                std::cout << *href << "\n";
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        });
+        if (!success)
+        {
+            table=nullptr;
+        }
+    }
+}
+
+/************************************************************************/
+
+void PageParser::handleRow(PageParser::Element& element)
+{
+    if (table!=nullptr)
+    {
+        if (element.parent->parent==table && element.name=="tr")
+        {
+            if (element.parent->name=="thead")
+            {
+                return handleHeadRow(element);
+            }
+            else if (element.parent->name=="tbody")
+            {
+                return handleBodyRow(element);
+            }
+        }
+    }
+}
+
+/************************************************************************/
+
+void PageParser::endElement(PageParser::Element& element)
+{ handleRow (element);
+}
+
+/************************************************************************/
+
+PageParser::Callback PageParser::startElement(const PageParser::Element& element)
+{
+    return handleTable(element);
+}
+
+/************************************************************************/
+
+bool Apps::load()
+{
+    auto request=std::make_shared<Request>();
+    request->queryMaker=[]() {
+        static const boost::urls::url_view url("https://store.steampowered.com/account/remotestorage?l=english");
+        return std::make_unique<SteamBot::HTTPClient::Query>(boost::beast::http::verb::get, url);
+    };
+
+    auto response=SteamBot::Modules::WebSession::makeQuery(std::move(request));
+    if (response->query->response.result()!=boost::beast::http::status::ok)
+    {
+        return false;
+    }
+
+    auto html=SteamBot::HTTPClient::parseString(*(response->query));
+    PageParser parser (html);
+    try
+    {
+        parser.parse();
+    }
+    catch(const HTMLParser::SyntaxException&)
+    {
+        return false;
+    }
+    return true;
 }
 
 /************************************************************************/

@@ -105,7 +105,7 @@ namespace SteamBot
             ~Apps();
 
         public:
-            void load();
+            bool load();
 
         public:
             boost::json::value toJson() const;
