@@ -64,14 +64,14 @@ namespace SteamBot
 /*
  * Invokes you callback with each element-child.
  * Return false from callback to abort, true to continue.
- * Returns false if aborted by callback, true if all was processed.
+ * Returns the number of elements processed, or <0 if aborted.
  */
 
 namespace SteamBot
 {
     namespace HTML
     {
-        bool iterateChildElements(const HTMLParser::Tree::Element&, std::function <bool(size_t, HTMLParser::Tree::Element&)>);
+        ssize_t iterateChildElements(const HTMLParser::Tree::Element&, std::function <bool(size_t, HTMLParser::Tree::Element&)>);
     }
 }
 

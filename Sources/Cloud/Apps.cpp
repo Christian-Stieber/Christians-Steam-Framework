@@ -34,6 +34,8 @@
 
 typedef SteamBot::Cloud::Apps Apps;
 
+typedef HTMLParser::Tree::Element Element;
+
 typedef SteamBot::Modules::WebSession::Messageboard::Request Request;
 typedef SteamBot::Modules::WebSession::Messageboard::Response Response;
 
@@ -49,8 +51,7 @@ namespace
     class PageParser : public HTMLParser::Parser
     {
     private:
-        typedef std::function<void(const HTMLParser::Tree::Element&)> Callback;
-        typedef HTMLParser::Tree::Element Element;
+        typedef std::function<void(const Element&)> Callback;
 
     private:
         Apps &apps;
@@ -78,7 +79,7 @@ namespace
 
 /************************************************************************/
 
-PageParser::Callback PageParser::handleTable(const PageParser::Element& element)
+PageParser::Callback PageParser::handleTable(const Element& element)
 {
     Callback callback;
     if (table==nullptr)
@@ -86,7 +87,7 @@ PageParser::Callback PageParser::handleTable(const PageParser::Element& element)
         if (element.name=="table" && SteamBot::HTML::checkClass(element, "accounttable"))
         {
             table=&element;
-            callback=[this](const HTMLParser::Tree::Element&) {
+            callback=[this](const Element&) {
                 table=nullptr;
             };
         }
@@ -99,7 +100,7 @@ PageParser::Callback PageParser::handleTable(const PageParser::Element& element)
  * Expects element to have exactly one child, a Text node.
  */
 
-static bool getTextChild(HTMLParser::Tree::Element& element, std::string_view& result)
+static bool getTextChild(Element& element, std::string_view& result)
 {
     if (element.children.size()==1)
     {
@@ -120,10 +121,10 @@ static bool getTextChild(HTMLParser::Tree::Element& element, std::string_view& r
  * Everything else is ignored.
  */
 
-static HTMLParser::Tree::Element* getElementChild(HTMLParser::Tree::Element& element)
+static Element* getElementChild(Element& element)
 {
-    HTMLParser::Tree::Element* result=nullptr;
-    SteamBot::HTML::iterateChildElements(element, [&result](size_t count, HTMLParser::Tree::Element& child)
+    Element* result=nullptr;
+    SteamBot::HTML::iterateChildElements(element, [&result](size_t count, Element& child)
     {
         if (count==0)
         {
@@ -141,13 +142,13 @@ static HTMLParser::Tree::Element* getElementChild(HTMLParser::Tree::Element& ele
 
 /************************************************************************/
 
-void PageParser::handleHeadRow(PageParser::Element& element)
+void PageParser::handleHeadRow(Element& element)
 {
     static const char* headers[]={ "Game", "Number Of Files", "Total Size Of Files" };
 
     if (table!=nullptr)
     {
-        bool success=SteamBot::HTML::iterateChildElements(element, [](size_t count, HTMLParser::Tree::Element& child)
+        auto elements=SteamBot::HTML::iterateChildElements(element, [](size_t count, Element& child)
         {
             if (count<=std::size(headers))
             {
@@ -165,7 +166,7 @@ void PageParser::handleHeadRow(PageParser::Element& element)
             }
             return false;
         });
-        if (!success)
+        if (elements!=static_cast<ssize_t>(std::size(headers)))
         {
             table=nullptr;
         }
@@ -174,67 +175,119 @@ void PageParser::handleHeadRow(PageParser::Element& element)
 
 /************************************************************************/
 
-void PageParser::handleBodyRow(PageParser::Element& element)
+static bool getGameColumn(SteamBot::Cloud::Apps::App& app, Element& td)
+{
+    std::string_view string;
+    if (getTextChild(td, string))
+    {
+        app.name=std::string(string);
+        return true;
+    }
+    return false;
+}
+
+/************************************************************************/
+
+static bool getNumberOfFilesColumn(SteamBot::Cloud::Apps::App& app, Element& td)
+{
+    std::string_view string;
+    if (getTextChild(td, string))
+    {
+        if (SteamBot::parseNumber(string, app.totalCount))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+/************************************************************************/
+
+static bool getTotalSizeOfFilesColumn(SteamBot::Cloud::Apps::App& app, Element& td)
+{
+    std::string_view string;
+    if (getTextChild(td, string))
+    {
+        double value;
+        if (SteamBot::parseNumberPrefix(string, value))
+        {
+            if (string==" B")
+            {
+                app.totalSize=static_cast<decltype(app.totalSize)>(value);
+                return true;
+            }
+            else if (string==" KB")
+            {
+                app.totalSize=static_cast<decltype(app.totalSize)>(value*1024);
+                std::cout << app.name << " -> " << app.totalSize << "\n";
+                return true;
+            }
+            else if (string==" MB")
+            {
+                app.totalSize=static_cast<decltype(app.totalSize)>(value*1024*1024);
+                return true;
+            }
+            else if (string==" GB")
+            {
+                app.totalSize=static_cast<decltype(app.totalSize)>(value*1024*1024*1024);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/************************************************************************/
+
+static bool getShowFilesColumn(SteamBot::Cloud::Apps::App& app, Element& td)
+{
+    auto link=getElementChild(td);
+    if (link!=nullptr)
+    {
+        if (link->name=="a")
+        {
+            std::string* href=link->getAttribute("href");
+            if (href!=nullptr)
+            {
+                boost::urls::url_view url(*href);
+                const auto &params=url.params();
+                auto iterator=params.find("appid");
+                if (iterator!=params.end())
+                {
+                    if (SteamBot::parseNumber((*iterator).value, app.appId))
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
+
+/************************************************************************/
+
+void PageParser::handleBodyRow(Element& element)
 {
     if (table!=nullptr)
     {
-        struct SteamBot::Cloud::Apps::App app;
-        bool success=SteamBot::HTML::iterateChildElements(element, [&app](size_t count, HTMLParser::Tree::Element& child)
+        SteamBot::Cloud::Apps::App app;
+        auto elements=SteamBot::HTML::iterateChildElements(element, [&app](size_t count, Element& child)
         {
             if (child.name=="td")
             {
                 switch(count)
                 {
-                case 0:
-                    {
-                        std::string_view string;
-                        if (getTextChild(child, string))
-                        {
-                            app.name=std::string(string);
-                            return true;
-                        }
-                    }
-                    break;
-
-                case 1:
-                    return true;
-
-                case 2:
-                    return true;
-
-                case 3:
-                    {
-                        auto link=getElementChild(child);
-                        if (link!=nullptr)
-                        {
-                            if (link->name=="a")
-                            {
-                                std::string* href=link->getAttribute("href");
-                                if (href!=nullptr)
-                                {
-                                    boost::urls::url_view url(*href);
-                                    const auto &params=url.params();
-                                    auto iterator=params.find("appid");
-                                    if (iterator!=params.end())
-                                    {
-                                        if (SteamBot::parseNumber((*iterator).value, app.appId))
-                                        {
-                                            return true;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    break;
-
-                default:
-                    break;
+                case 0: return getGameColumn(app, child);
+                case 1: return getNumberOfFilesColumn(app, child);
+                case 2: return getTotalSizeOfFilesColumn(app, child);
+                case 3: return getShowFilesColumn(app, child);
+                default: break;
                 }
             }
             return false;
         });
-        if (success)
+        if (elements==4)
         {
             apps.apps.emplace_back(std::move(app));
         }
@@ -247,7 +300,7 @@ void PageParser::handleBodyRow(PageParser::Element& element)
 
 /************************************************************************/
 
-void PageParser::handleRow(PageParser::Element& element)
+void PageParser::handleRow(Element& element)
 {
     if (table!=nullptr)
     {
@@ -267,14 +320,14 @@ void PageParser::handleRow(PageParser::Element& element)
 
 /************************************************************************/
 
-void PageParser::endElement(PageParser::Element& element)
+void PageParser::endElement(Element& element)
 {
     handleRow (element);
 }
 
 /************************************************************************/
 
-PageParser::Callback PageParser::startElement(const PageParser::Element& element)
+PageParser::Callback PageParser::startElement(const Element& element)
 {
     return handleTable(element);
 }
