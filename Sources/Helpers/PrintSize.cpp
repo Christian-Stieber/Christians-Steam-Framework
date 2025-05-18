@@ -35,12 +35,12 @@ std::string SteamBot::printSize(size_t size)
 
     if (size>=1024*1024)
     {
-        size=(size*10)/(1024*1024)+5;
+        size=((size+50*1000)*10)/(1024*1024);
         unit="MiB";
     }
     else if (size>=1024)
     {
-        size=(size*10)/(1024)+5;
+        size=((size+50)*10)/(1024);
         unit="KiB";
     }
 
