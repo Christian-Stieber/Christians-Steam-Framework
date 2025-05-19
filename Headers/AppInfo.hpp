@@ -51,5 +51,7 @@ namespace SteamBot
 
         // this is thread-safe
         std::vector<SteamBot::AppID> getDLCs(SteamBot::AppID);
+
+        bool isEarlyAccess(SteamBot::AppID);
     }
 }
