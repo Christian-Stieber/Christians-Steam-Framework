@@ -79,4 +79,6 @@ namespace SteamBot
             std::vector<std::shared_ptr<const PackageInfo>> getPackageInfo(SteamBot::AppID);
         }
     }
+
+    bool getFreePromotion(const Modules::PackageData::PackageInfo&);
 }

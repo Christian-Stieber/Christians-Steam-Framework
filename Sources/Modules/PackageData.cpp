@@ -556,3 +556,21 @@ SteamBot::BillingType SteamBot::getBillingType(const SteamBot::Modules::PackageD
     }
     return type;
 }
+
+/************************************************************************/
+/*
+ * Extract the "extended/freepromotion" value.
+ * Returns false if the item is not available.
+ */
+
+bool SteamBot::getFreePromotion(const SteamBot::Modules::PackageData::PackageInfo& info)
+{
+    if (auto json=SteamBot::JSON::getItem(info.data, "extended", "freepromotion"))
+    {
+        if (SteamBot::JSON::toNumber<int>(*json)==1)
+        {
+            return true;
+        }
+    }
+    return false;
+}
