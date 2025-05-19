@@ -22,6 +22,7 @@
 #include "Modules/WebSession.hpp"
 #include "HTMLParser/Parser.hpp"
 #include "Helpers/HTML.hpp"
+#include "Helpers/URLs.hpp"
 
 /************************************************************************/
 /*
@@ -246,18 +247,15 @@ static bool getShowFilesColumn(SteamBot::Cloud::Apps::App& app, Element& td)
     {
         if (link->name=="a")
         {
-            std::string* href=link->getAttribute("href");
+            const std::string* href=link->getAttribute("href");
             if (href!=nullptr)
             {
                 boost::urls::url_view url(*href);
-                const auto &params=url.params();
-                auto iterator=params.find("appid");
-                if (iterator!=params.end())
+                auto appId=SteamBot::URLs::getParam<SteamBot::AppID>(url, "appid");
+                if (appId)
                 {
-                    if (SteamBot::parseNumber((*iterator).value, app.appId))
-                    {
-                        return true;
-                    }
+                    app.appId=*appId;
+                    return true;
                 }
             }
         }
