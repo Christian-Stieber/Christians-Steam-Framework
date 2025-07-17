@@ -83,6 +83,14 @@ static constinit Duration steamRefundPlayTime=std::chrono::minutes(2*60+30);
 static constinit Duration steamRefundPurchaseTime=std::chrono::days(15);
 
 /************************************************************************/
+/*
+ * I'm not sure whether I'm missing it or Steam doesn't send it,
+ * but sometimes we're not getting inventory notifications.
+ */
+
+static constinit std::chrono::steady_clock::duration forceBadgeUpdateTime = std::chrono::minutes(30);
+
+/************************************************************************/
 
 typedef SteamBot::Modules::BadgeData::Whiteboard::BadgeData BadgeData;
 typedef SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames OwnedGames;
@@ -203,6 +211,7 @@ namespace
     private:
         std::unordered_map<SteamBot::AppID, std::unique_ptr<FarmInfo>> games;	// all the games we want to farm
         std::vector<SteamBot::AppID> playing;
+        std::chrono::steady_clock::time_point lastBadgeUpdate;
 
     private:
         FarmInfo* selectSingleGame(bool(*)(const FarmInfo&)) const;
@@ -247,6 +256,7 @@ void CardFarmerModule::handleBadgeData()
     decltype(games) myGames;
     if (auto badgeData=badgeDataWaiter->has())
     {
+        lastBadgeUpdate=std::chrono::steady_clock::now();
         unsigned int total=0;
         for (const auto& item : (*badgeData)->badges)
         {
@@ -493,7 +503,23 @@ void CardFarmerModule::run(SteamBot::Client&)
 
     while (true)
     {
-        waiter->wait();
+        if (playing.empty())
+        {
+            waiter->wait();
+            lastBadgeUpdate=std::chrono::steady_clock::now();
+        }
+        else
+        {
+            if (!waiter->wait<std::chrono::steady_clock>(lastBadgeUpdate+forceBadgeUpdateTime))
+            {
+                BOOST_LOG_TRIVIAL(info) << "CardFarmer: forced bagde update";
+                for (auto appId : playing)
+                {
+                    SteamBot::Modules::BadgeData::Messageboard::UpdateBadge::update(appId);
+                }
+                lastBadgeUpdate=std::chrono::steady_clock::now();
+            }
+        }
 
         if (badgeDataWaiter->isWoken())
         {
