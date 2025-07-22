@@ -87,26 +87,39 @@ static bool prcoessHeader(const HTMLParser::Tree::Element& root, std::string_vie
 
 /************************************************************************/
 
+static bool removePrefix(std::string_view &string, std::string_view prefix)
+{
+    if (string.starts_with(prefix))
+    {
+        string.remove_prefix(prefix.length());
+        return true;
+    }
+    return false;
+}
+
+/************************************************************************/
+
 static SteamBot::AppID getAppId(const HTMLParser::Tree::Element& root)
 {
-    auto appId=SteamBot::AppID::None;
     if (root.name=="div" && SteamBot::HTML::checkClass(root, "card_drop_info_dialog"))
     {
         if (auto id=root.getAttribute("id"))
         {
-            std::string_view string{*id};;
-
-            static constexpr std::string_view prefix("card_drop_info_gamebadge_");
-            static constexpr std::string_view suffix("_1_0");
-            if (string.starts_with(prefix) && string.ends_with(suffix))
+            auto appId=SteamBot::AppID::None;
+            unsigned int dummy;
+            std::string_view string{*id};
+            if (removePrefix(string, "card_drop_info_gamebadge_") &&
+                SteamBot::parseNumberPrefix(string, appId) &&
+                removePrefix(string, "_") &&
+                SteamBot::parseNumberPrefix(string, dummy) &&
+                removePrefix(string, "_") &&
+                SteamBot::parseNumberPrefix(string, dummy))
             {
-                string.remove_prefix(prefix.size());
-                string.remove_suffix(suffix.size());
-                SteamBot::parseNumber(string, appId);
+                return appId;
             }
         }
     }
-    return appId;
+    return SteamBot::AppID::None;
 }
 
 /************************************************************************/
