@@ -168,7 +168,7 @@ void GetBadgeDataModule::init(SteamBot::Client& client)
  * So, this loads either URL and returns the badget information
  * found on the page.
  *
- * Returns "true" if the page had a "netx page" button.
+ * Returns "true" if the page had a "next page" button.
  *
  * For now, we don't really communicate errors. So, we either have
  * data, or we don't.
