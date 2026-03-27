@@ -195,6 +195,14 @@ boost::json::value Licenses::toJson() const
 }
 
 /************************************************************************/
+/*
+ * Note: we can only have one license for a given package-id, which causes
+ * problems with license obtained through the family-group.
+ *
+ * Thus, if we get both a family- and non-family license, we keep the the
+ * non-family one (since it's the one that's actually owned by the account,
+ * which I think is the more useful one).
+ */
 
 void LicenseListModule::handle(std::shared_ptr<const Steam::CMsgClientLicenseListMessageType> message)
 {
@@ -218,20 +226,25 @@ void LicenseListModule::handle(std::shared_ptr<const Steam::CMsgClientLicenseLis
             {
                 auto license=std::make_shared<Licenses::LicenseInfo>(licenseData);
 
-                // For now(?), ignore FamilyGroup licenses
-                if (license->paymentMethod!=SteamBot::PaymentMethod::FamilyGroup)
+                if (!existingLicenses || existingLicenses->licenses.find(license->packageId)==existingLicenses->licenses.end())
                 {
-                    if (!existingLicenses || existingLicenses->licenses.find(license->packageId)==existingLicenses->licenses.end())
-                    {
-                        newLicenses->licenses.push_back(license->packageId);
-                    }
-
-                    bool success=licenses->licenses.try_emplace(license->packageId, std::move(license)).second;
-                    assert (success);
+                    newLicenses->licenses.push_back(license->packageId);
                 }
-                else
+
+                if (license->paymentMethod==SteamBot::PaymentMethod::FamilyGroup)
                 {
                     familyLicenses++;
+                }
+
+                auto result=licenses->licenses.try_emplace(license->packageId, std::move(license));
+                if (!result.second)
+                {
+                    familyLicenses--;
+                    if (license->paymentMethod!=SteamBot::PaymentMethod::FamilyGroup)
+                    {
+                        assert(result.first->second->paymentMethod==SteamBot::PaymentMethod::FamilyGroup);
+                        result.first->second=std::move(license);
+                    }
                 }
             }
         }
@@ -247,7 +260,7 @@ void LicenseListModule::handle(std::shared_ptr<const Steam::CMsgClientLicenseLis
         }
         if (familyLicenses>0)
         {
-            output << "; ignored " << familyLicenses << " family-group licenses";
+            output << ", including " << familyLicenses << " licenses obtained from family";
         }
     }
 

@@ -119,7 +119,8 @@ namespace SteamBot
 		OEMTicket = 256,
 		Split = 512,
 		Complimentary = 1024,
-		FamilyGroup = 1025
+		FamilyGroup = 1025,
+        max_
 	};
 }
 
@@ -132,7 +133,7 @@ namespace magic_enum
 		template <> struct enum_range<SteamBot::PaymentMethod>
 		{
 			static constexpr int min=0;
-			static constexpr int max=1024;
+			static constexpr int max=static_cast <int> (SteamBot::PaymentMethod::max_);
 		};
 	}
 }
