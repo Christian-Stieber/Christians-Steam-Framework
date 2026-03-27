@@ -206,6 +206,7 @@ void LicenseListModule::handle(std::shared_ptr<const Steam::CMsgClientLicenseLis
     auto newLicenses=std::make_shared<NewLicenses>();
 
     std::vector<SteamBot::PackageID> newPackages;
+    size_t familyLicenses = 0;
 
     for (int index=0; index<message->content.licenses_size(); index++)
     {
@@ -217,13 +218,21 @@ void LicenseListModule::handle(std::shared_ptr<const Steam::CMsgClientLicenseLis
             {
                 auto license=std::make_shared<Licenses::LicenseInfo>(licenseData);
 
-                if (!existingLicenses || existingLicenses->licenses.find(license->packageId)==existingLicenses->licenses.end())
+                // For now(?), ignore FamilyGroup licenses
+                if (license->paymentMethod!=SteamBot::PaymentMethod::FamilyGroup)
                 {
-                    newLicenses->licenses.push_back(license->packageId);
-                }
+                    if (!existingLicenses || existingLicenses->licenses.find(license->packageId)==existingLicenses->licenses.end())
+                    {
+                        newLicenses->licenses.push_back(license->packageId);
+                    }
 
-                bool success=licenses->licenses.try_emplace(license->packageId, std::move(license)).second;
-                assert(success);
+                    bool success=licenses->licenses.try_emplace(license->packageId, std::move(license)).second;
+                    assert (success);
+                }
+                else
+                {
+                    familyLicenses++;
+                }
             }
         }
     }
@@ -235,6 +244,10 @@ void LicenseListModule::handle(std::shared_ptr<const Steam::CMsgClientLicenseLis
         if (!newLicenses->licenses.empty())
         {
             output << " (+" << newLicenses->licenses.size() << ")";
+        }
+        if (familyLicenses>0)
+        {
+            output << "; ignored " << familyLicenses << " family-group licenses";
         }
     }
 

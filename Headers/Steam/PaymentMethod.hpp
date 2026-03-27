@@ -119,6 +119,7 @@ namespace SteamBot
 		OEMTicket = 256,
 		Split = 512,
 		Complimentary = 1024,
+		FamilyGroup = 1025
 	};
 }
 
