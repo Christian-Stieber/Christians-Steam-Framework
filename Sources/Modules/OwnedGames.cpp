@@ -298,6 +298,8 @@ void OwnedGamesModule::handle(std::shared_ptr<const UpdateGames> message)
 
 void OwnedGamesModule::run(SteamBot::Client&)
 {
+    waitForLogin();
+
     while (true)
     {
         waiter->wait();
