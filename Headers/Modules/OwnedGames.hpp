@@ -29,6 +29,20 @@
 
 /************************************************************************/
 /*
+ * ToDo: this needs a big revamp.
+ *
+ * Initially, the "owned games" was the core of the game information
+ * for an account, but Steam doesn't reliably list games here. So,
+ * things transitioned to licenses and information obtained through
+ * them -- including the notion of which games are onwed, and what
+ * their names are.
+ *
+ * This only really provides gametime information now, and it
+ * should be revamped to reflect this more accurately.
+ */
+
+/************************************************************************/
+/*
  * This will monitor the license list, and retrieve information about
  * owned games from Steam.
  *

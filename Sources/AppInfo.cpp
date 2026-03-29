@@ -24,6 +24,7 @@
 #include "Steam/AppType.hpp"
 #include "Helpers/JSON.hpp"
 #include "Helpers/StringCompare.hpp"
+#include "Modules/PackageData.hpp"
 
 #include "Steam/ProtoBuf/steammessages_clientserver_appinfo.hpp"
 
@@ -283,10 +284,20 @@ void AppInfoFile::updateDlcs_noMutex()
 
 /************************************************************************/
 
-void SteamBot::AppInfo::update(const SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames& games)
+void SteamBot::AppInfo::update(const SteamBot::Modules::LicenseList::Whiteboard::Licenses& licenses)
 {
+    std::unordered_set<AppID> licenseAppIds;
+    for (const auto& license : licenses.licenses)
+    {
+        auto packageInfo=SteamBot::Modules::PackageData::getPackageInfo(*license.second);
+        if (packageInfo)
+        {
+            licenseAppIds.insert(packageInfo->appIds.begin(), packageInfo->appIds.end());
+        }
+    }
+
     auto& appInfoFile=AppInfoFile::get();
-    std::lock_guard<decltype(appInfoFile.mutex)> lock(appInfoFile.mutex);
+    std::lock_guard lock(appInfoFile.mutex);
 
     // For now, only request appInfo that we don't already have
     //
@@ -296,11 +307,11 @@ void SteamBot::AppInfo::update(const SteamBot::Modules::OwnedGames::Whiteboard::
     // been updated server-side...
 
     std::vector<AppID> appIds;
-    for (const auto& game : games.games)
+    for (AppID appId : licenseAppIds)
     {
-        if (appInfoFile.get_noMutex(game.first)==nullptr)
+        if (appInfoFile.get_noMutex(appId)==nullptr)
         {
-            appIds.push_back(game.first);
+            appIds.push_back(appId);
         }
     }
 

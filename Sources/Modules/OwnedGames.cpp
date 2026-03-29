@@ -24,7 +24,6 @@
 #include "UI/UI.hpp"
 #include "Helpers/Time.hpp"
 #include "SafeCast.hpp"
-#include "AppInfo.hpp"
 
 #include "steamdatabase/protobufs/steam/steammessages_player.steamclient.pb.h"
 
@@ -177,6 +176,7 @@ OwnedGames::ChangeList OwnedGames::getGames_(const std::vector<SteamBot::AppID>*
         request.set_include_appinfo(true);
         request.set_include_extended_appinfo(true);
         request.set_include_played_free_games(true);
+        request.set_include_free_sub(true);
         request.set_skip_unvetted_apps(false);
 
         if (appIds!=nullptr)
@@ -255,8 +255,6 @@ void OwnedGamesModule::getOwnedGames()
     auto ownedGames=std::make_shared<OwnedGames>();
 
     auto changed=ownedGames->getGames_();
-
-    SteamBot::AppInfo::update(*ownedGames);
 
     BOOST_LOG_TRIVIAL(info) << "owned games: " << ownedGames->toJson();
     SteamBot::UI::OutputText() << "account owns " << ownedGames->games.size() << " games";

@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "Modules/OwnedGames.hpp"
+#include "Modules/LicenseList.hpp"
 #include "Helpers/NumberString.hpp"
 
 #include <span>
@@ -37,7 +37,9 @@ namespace SteamBot
 {
     namespace AppInfo
     {
-        void update(const SteamBot::Modules::OwnedGames::Whiteboard::OwnedGames&);
+        // ToDo: updates SHOULD be done by notifications, as always...
+        void update(const SteamBot::Modules::LicenseList::Whiteboard::Licenses&);
+
         bool examine(std::function<bool(const boost::json::value&)>);
 
         std::optional<boost::json::value> get(std::span<const std::string_view>);

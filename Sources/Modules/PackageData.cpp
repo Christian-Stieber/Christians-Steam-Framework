@@ -18,6 +18,12 @@
  */
 
 /************************************************************************/
+/*
+ * ToDo: doesn't this stuff overlap with AppInfo.cpp a lot,
+ * as they use the same protobuf messages?
+ */
+
+/************************************************************************/
 
 #include "Steam/ProtoBuf/steammessages_clientserver_appinfo.hpp"
 
@@ -30,6 +36,7 @@
 #include "Steam/BillingType.hpp"
 #include "JobID.hpp"
 #include "Vector.hpp"
+#include "AppInfo.hpp"
 
 /************************************************************************/
 
@@ -432,6 +439,7 @@ void PackageDataModule::handle(std::shared_ptr<const Steam::CMsgClientPICSProduc
 
     if (message->header.proto.jobid_target()==latestJobId.getValue())
     {
+        SteamBot::AppInfo::update(*latestLicenses);
         getClient().whiteboard.set<PackageData>(latestLicenses);
     }
 }
