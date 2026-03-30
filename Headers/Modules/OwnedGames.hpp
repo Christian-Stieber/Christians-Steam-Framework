@@ -29,16 +29,14 @@
 
 /************************************************************************/
 /*
- * ToDo: this needs a big revamp.
+ * ToDo: htis is a bit of a misnomer.
  *
- * Initially, the "owned games" was the core of the game information
- * for an account, but Steam doesn't reliably list games here. So,
- * things transitioned to licenses and information obtained through
- * them -- including the notion of which games are onwed, and what
- * their names are.
+ * It used to be the list of owned games for me, but as it turned out,
+ * Steam leaves out games occasionally. So, it mostly transitioned to
+ * using the license list.
  *
- * This only really provides gametime information now, and it
- * should be revamped to reflect this more accurately.
+ * For now, this still retrieves the Steam data, but it's not used quite
+ * as much anymore.
  */
 
 /************************************************************************/
@@ -119,7 +117,6 @@ namespace SteamBot
                         ~GameInfo();
 
                     public:
-                        AppID appId;
                         std::string name;
                         std::chrono::system_clock::time_point lastPlayed;
                         std::chrono::minutes playtimeForever{0};
@@ -140,7 +137,6 @@ namespace SteamBot
 
                 public:
                     std::shared_ptr<const GameInfo> getInfo(AppID) const;
-                    std::string getName(AppID) const;		// also understands some special AppIDs
 
                 public:
                     OwnedGames();

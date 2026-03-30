@@ -359,19 +359,63 @@ std::optional<boost::json::value> SteamBot::AppInfo::get(std::span<const std::st
 
 /************************************************************************/
 /*
+ * Empty string if no name found
+ *
+ * Has hardcoded names fro some special AppIDs.
+ */
+
+std::string SteamBot::AppInfo::getName(SteamBot::AppID appId)
+{
+    std::string name;
+    if (auto nameJson=SteamBot::AppInfo::get(appId, "common", "name"))
+    {
+        if (auto nameString=nameJson->if_string())
+        {
+            name=*nameString;
+        }
+    }
+
+    if (name.empty())
+    {
+        switch(appId)
+        {
+        case AppID::SteamClient:
+            name="Steam Client";
+            break;
+
+        case AppID::SteamBackpack:
+            name="Steam Backpack";
+            break;
+
+        case AppID::SteamScreenshots:
+            name="Steam Cloud - Screenshots";
+            break;
+
+        case AppID::SteamWorkshop:
+            name="Steam Workshop";
+            break;
+
+        default:
+            break;
+        }
+    }
+
+    return name;
+}
+
+/************************************************************************/
+/*
  * Output numeric AppID to stream, possibly with the name attached if
  * we have one.
  */
 
 std::ostream& SteamBot::operator<<(std::ostream& stream, SteamBot::AppID appId)
 {
-    stream << SteamBot::toInteger(appId);
-    if (auto nameJson=SteamBot::AppInfo::get(appId, "common", "name"))
+    stream << toInteger(appId);
+    auto name=SteamBot::AppInfo::getName(appId);
+    if (!name.empty())
     {
-        if (auto nameString=nameJson.value().if_string())
-        {
-            stream << " (" << *nameString << ")";
-        }
+        stream << " (" << name << ")";
     }
     return stream;
 }

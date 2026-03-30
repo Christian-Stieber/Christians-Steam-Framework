@@ -55,5 +55,7 @@ namespace SteamBot
         std::vector<SteamBot::AppID> getDLCs(SteamBot::AppID);
 
         bool isEarlyAccess(SteamBot::AppID);
+
+        std::string getName(SteamBot::AppID);
     }
 }

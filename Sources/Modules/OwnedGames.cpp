@@ -88,7 +88,6 @@ UpdateGames::~UpdateGames() =default;
 boost::json::value OwnedGames::GameInfo::toJson() const
 {
     boost::json::object json;
-    SteamBot::enumToJson(json, "appId", appId);
     json["name"]=name;
     if (lastPlayed!=decltype(lastPlayed)())
     {
@@ -123,35 +122,6 @@ std::shared_ptr<const OwnedGames::GameInfo> OwnedGames::getInfo(AppID appId) con
         return iterator->second;
     }
     return nullptr;
-}
-
-/************************************************************************/
-
-std::string OwnedGames::getName(AppID appId) const
-{
-    switch(appId)
-    {
-    case AppID::SteamClient:
-        return "Steam Client";
-
-    case AppID::SteamBackpack:
-        return "Steam Backpack";
-
-    case AppID::SteamScreenshots:
-        return "Steam Cloud - Screenshots";
-
-    case AppID::SteamWorkshop:
-        return "Steam Workshop";
-
-    default:
-        if (auto info=getInfo(appId))
-        {
-            return info->name;
-        }
-        break;
-    }
-
-    return std::string{};
 }
 
 /************************************************************************/
@@ -200,8 +170,8 @@ OwnedGames::ChangeList OwnedGames::getGames_(const std::vector<SteamBot::AppID>*
         const auto& gameData=response->games(index);
         if (gameData.has_appid())
         {
+            auto appId=static_cast<SteamBot::AppID>(gameData.appid());
             auto game=std::make_shared<OwnedGames::GameInfo>();
-            game->appId=static_cast<SteamBot::AppID>(gameData.appid());
             if (gameData.has_name())
             {
                 game->name=gameData.name();
@@ -217,18 +187,18 @@ OwnedGames::ChangeList OwnedGames::getGames_(const std::vector<SteamBot::AppID>*
 
             if (existingGames!=nullptr)
             {
-                const OwnedGames::GameInfo* existingGame=existingGames->getInfo(game->appId).get();
+                const OwnedGames::GameInfo* existingGame=existingGames->getInfo(appId).get();
                 if (existingGame==nullptr || *existingGame!=*game)
                 {
-                    changed.push_back(std::make_shared<GameChanged>(game->appId, existingGame==nullptr));
+                    changed.push_back(std::make_shared<GameChanged>(appId, existingGame==nullptr));
                     if (appIds!=nullptr)
                     {
-                        BOOST_LOG_TRIVIAL(info) << "game data changed: " << game->toJson();
+                        BOOST_LOG_TRIVIAL(info) << "game data for appId " << toInteger(appId) << " changed: " << game->toJson();
                     }
                 }
             }
 
-            games.insert_or_assign(game->appId, std::move(game));
+            games.insert_or_assign(appId, std::move(game));
         }
     }
 
@@ -323,18 +293,6 @@ std::shared_ptr<const OwnedGames::GameInfo> SteamBot::Modules::OwnedGames::getIn
         return (*games)->getInfo(appId);
     }
     return nullptr;
-}
-
-/************************************************************************/
-
-std::string SteamBot::Modules::OwnedGames::getName(AppID appId)
-{
-    std::string name;
-    if (auto games=SteamBot::Client::getClient().whiteboard.has<::OwnedGames::Ptr>())
-    {
-        name=(*games)->getName(appId);
-    }
-    return name;
 }
 
 /************************************************************************/
