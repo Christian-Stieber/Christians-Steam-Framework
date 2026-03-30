@@ -1156,16 +1156,20 @@ void PackageInfoModule::updateNewLicenses()
                 }
                 else
                 {
-                    typedef SteamBot::Modules::LicenseList::Whiteboard::LicenseIdentifier LicenseIdentifier;
-                    auto packageInfo=SteamBot::Modules::PackageData::getPackageInfo(LicenseIdentifier(packageId));
-                    if (packageInfo!=nullptr)
+                    if (auto licenseInfo=SteamBot::Modules::LicenseList::getLicenseInfo(packageId))
                     {
-                        for (const auto appId: packageInfo->appIds)
+                        if (licenseInfo->paymentMethod!=SteamBot::PaymentMethod::FamilyGroup)
                         {
-                            updateLicenseInfo(appId);
+                            if (auto packageInfo=SteamBot::Modules::PackageData::getPackageInfo(*licenseInfo))
+                            {
+                                for (const auto appId: packageInfo->appIds)
+                                {
+                                    updateLicenseInfo(appId);
+                                }
+                                PackageInfo::get().save(false);
+                            }
                         }
                     }
-                    PackageInfo::get().save(false);
                 }
             }
         }
