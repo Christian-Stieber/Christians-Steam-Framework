@@ -25,6 +25,7 @@
 #include "Steam/PaymentMethod.hpp"
 
 #include <unordered_map>
+#include <unordered_set>
 #include <memory>
 
 /************************************************************************/
@@ -128,7 +129,7 @@ namespace SteamBot
                 class NewLicenses
                 {
                 public:
-                    std::vector<SteamBot::PackageID> licenses;
+                    std::unordered_set<SteamBot::PackageID> licenses;
                 };
             }
         }

@@ -213,7 +213,6 @@ void LicenseListModule::handle(std::shared_ptr<const Steam::CMsgClientLicenseLis
     auto existingLicenses=client.whiteboard.get<Licenses::Ptr>(nullptr);
     auto newLicenses=std::make_shared<NewLicenses>();
 
-    std::vector<SteamBot::PackageID> newPackages;
     size_t familyLicenses = 0;
 
     for (int index=0; index<message->content.licenses_size(); index++)
@@ -228,7 +227,7 @@ void LicenseListModule::handle(std::shared_ptr<const Steam::CMsgClientLicenseLis
 
                 if (!existingLicenses || existingLicenses->licenses.find(license->packageId)==existingLicenses->licenses.end())
                 {
-                    newLicenses->licenses.push_back(license->packageId);
+                    newLicenses->licenses.insert(license->packageId);
                 }
 
                 if (license->paymentMethod==SteamBot::PaymentMethod::FamilyGroup)
