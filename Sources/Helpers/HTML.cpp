@@ -179,7 +179,7 @@ bool SteamBot::HTML::checkAttribute(const HTMLParser::Tree::Element& element, st
 
 /************************************************************************/
 
-ssize_t SteamBot::HTML::iterateChildElements(const HTMLParser::Tree::Element& element, std::function <bool(size_t, HTMLParser::Tree::Element&)> callback)
+std::make_signed_t<size_t> SteamBot::HTML::iterateChildElements(const HTMLParser::Tree::Element& element, std::function <bool(size_t, HTMLParser::Tree::Element&)> callback)
 {
     size_t count=0;
     for (const auto& node : element.children)
@@ -194,5 +194,5 @@ ssize_t SteamBot::HTML::iterateChildElements(const HTMLParser::Tree::Element& el
             count++;
         }
     }
-    return static_cast<ssize_t>(count);
+    return static_cast<std::make_signed_t<size_t>>(count);
 }

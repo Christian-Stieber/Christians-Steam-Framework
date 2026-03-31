@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <string_view>
 #include <array>
+#include <chrono>
 
 #include <boost/json/value.hpp>
 

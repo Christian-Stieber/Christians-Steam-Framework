@@ -3,6 +3,7 @@
 #include <string_view>
 #include <span>
 #include <cstdint>
+#include <string>
 
 /************************************************************************/
 

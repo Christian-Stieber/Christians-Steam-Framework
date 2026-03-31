@@ -167,7 +167,7 @@ void PageParser::handleHeadRow(Element& element)
             }
             return false;
         });
-        if (elements!=static_cast<ssize_t>(std::size(headers)))
+        if (elements!=static_cast<decltype(elements)>(std::size(headers)))
         {
             table=nullptr;
         }

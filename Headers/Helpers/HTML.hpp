@@ -71,7 +71,7 @@ namespace SteamBot
 {
     namespace HTML
     {
-        ssize_t iterateChildElements(const HTMLParser::Tree::Element&, std::function <bool(size_t, HTMLParser::Tree::Element&)>);
+        std::make_signed_t<size_t> iterateChildElements(const HTMLParser::Tree::Element&, std::function <bool(size_t, HTMLParser::Tree::Element&)>);
     }
 }
 
