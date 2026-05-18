@@ -38,6 +38,7 @@ namespace SteamBot
         DLC,
         Application,
         Demo,
+        Music,
         Other
     };
 

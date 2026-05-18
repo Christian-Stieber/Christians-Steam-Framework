@@ -449,6 +449,7 @@ SteamBot::AppType SteamBot::AppInfo::getAppType(SteamBot::AppID appId)
             if (SteamBot::caseInsensitiveStringCompare_equal(view, "Game")) return AppType::Game;
             if (SteamBot::caseInsensitiveStringCompare_equal(view, "DLC")) return AppType::DLC;
             if (SteamBot::caseInsensitiveStringCompare_equal(view, "Application")) return AppType::Application;
+            if (SteamBot::caseInsensitiveStringCompare_equal(view, "Music")) return AppType::Music;
         }
         return AppType::Other;
     }
