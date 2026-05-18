@@ -47,7 +47,7 @@
  * For non-scalar types, get<T> returns a reference to the stored item
  * or the supplied default. This reference is valid until a yield.
  *
- * For calar types, get<T> returns a copy of the stored item or the
+ * For scalar types, get<T> returns a copy of the stored item or the
  * supplied default,
  *
  * has<T> returns a pointer to the stored item, or nullptr.  This

@@ -21,7 +21,7 @@
 /*
  * I have no idea yet how to correctly handle authentication with
  * SteamGuard codes -- timeouts are rather short, and heartbeats or
- * auth status polling did anything.
+ * auth status polling don't do anything.
  *
  * So, I'm now doing the interactive stuff outside of the actual
  * client login module, and launch a client from here when I have

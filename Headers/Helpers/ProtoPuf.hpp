@@ -25,12 +25,12 @@
 /*
  * Note: either the proto files that I have, or protoc, or my usage
  * thereof are messed up. webui/service_saleitemrewards.proto doesn't
- * work for me, even after adding workaround because they use a
+ * work for me, even after adding a workaround because they use a
  * "linux" field that conflicts with a stupid macro -- I end up with
  * lots of duplicate symbols.
  *
  * Trying to use protobuf and just copying the items that I need
- * didn't realy work either, thanks to CMake being a "Complicated
+ * didn't really work either, thanks to CMake being a "Complicated
  * Make" again, so I gave up eventually and used ProtoPuf instead.
  */
 

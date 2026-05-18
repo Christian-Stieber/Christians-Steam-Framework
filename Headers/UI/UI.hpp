@@ -62,7 +62,7 @@ namespace SteamBot
  * UI input operations return a waiter-item.
  *
  * This waiter item is a "one-time" waiter: it will trigger when the
- * result is available, abd be useless afterwards.
+ * result is available, and be useless afterwards.
  */
 
 namespace SteamBot
