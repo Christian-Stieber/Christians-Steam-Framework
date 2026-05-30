@@ -1106,24 +1106,31 @@ void PackageInfoModule::updateLicenseInfo(const SteamBot::AppID appId)
                 }
                 else
                 {
-                    // ToDo: how can we get an actual boost-log object that we can << into over multiple statements?
-                    if (result.lineItemRows.empty())
+                    if (result.packageIds.empty ())
                     {
-                        BOOST_LOG_TRIVIAL(info)
-                            << "app-id " << SteamBot::toInteger(appId)
-                            << ": unable to find name for package-id "
-                            << SteamBot::toInteger(result.packageIds.front());
+                        SteamBot::UI::OutputText() << "app-id " << SteamBot::toInteger(appId) << ": unable to find name for package";
                     }
                     else
                     {
-                        BOOST_LOG_TRIVIAL(info)
-                            << "app-id " << SteamBot::toInteger(appId)
-                            << ": unable to find name for package-id "
-                            << SteamBot::toInteger(result.packageIds.front()) << ": "
-                            << SteamBot::HTML::getCleanText(*(result.lineItemRows.front().text));
+                        // ToDo: how can we get an actual boost-log object that we can << into over multiple statements?
+                        if (result.lineItemRows.empty())
+                        {
+                            BOOST_LOG_TRIVIAL(info)
+                                << "app-id " << SteamBot::toInteger(appId)
+                                << ": unable to find name for package-id "
+                                << SteamBot::toInteger(result.packageIds.front());
+                        }
+                        else
+                        {
+                            BOOST_LOG_TRIVIAL(info)
+                                << "app-id " << SteamBot::toInteger(appId)
+                                << ": unable to find name for package-id "
+                                << SteamBot::toInteger(result.packageIds.front()) << ": "
+                                << SteamBot::HTML::getCleanText(*(result.lineItemRows.front().text));
+                        }
+                        SteamBot::UI::OutputText() << "app-id " << SteamBot::toInteger(appId) << ": unable to find name for package-id " << SteamBot::toInteger(result.packageIds.front());
+                        PackageInfo::get().set(result.packageIds.front(), std::make_shared<Info>(std::string{}));
                     }
-                    SteamBot::UI::OutputText() << "app-id " << SteamBot::toInteger(appId) << ": unable to find name for package-id " << SteamBot::toInteger(result.packageIds.front());
-                    PackageInfo::get().set(result.packageIds.front(), std::make_shared<Info>(std::string{}));
                 }
             }
             else
