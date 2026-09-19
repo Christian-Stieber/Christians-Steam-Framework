@@ -359,6 +359,31 @@ static bool isRevocationLine(const HTMLParser::Tree::Element& span)
 
 /************************************************************************/
 /*
+ * Checks whether the lineItemRow is just a plain
+ *   "Added to your Steam library"
+ *
+ * Example case for me:
+ *   https://help.steampowered.com/en/wizard/HelpWithGameIssue/?issueid=123&appid=2484180
+ */
+
+static bool isPlainAddedLine(const HTMLParser::Tree::Element& span)
+{
+    assert(span.name=="span");
+    if (span.children.size() == 1)
+    {
+        if (const auto text=dynamic_cast<const HTMLParser::Tree::Text*>(span.children.front().get()))
+        {
+            if (text->text == "Added to your Steam library")
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/************************************************************************/
+/*
  * Checks whether we are looking at a lineItemRow referencing an inventory gift
  *
  *   Purchased as part of: <package name> - view receipt | View in your Steam Inventory
@@ -518,7 +543,9 @@ namespace
         // These are returned a list of date/text HTML elements, for later processing
         //
         // Note: I'm now trying to ignore the lines referring to inventory gift copies, as
-        // these mess up the other logic
+        // these mess up the other logic.
+        // Note: also, there may be lines that just say "Added to your Steam library", which
+        // are also quite pointless.
 
         bool handleLineItemRow(HTMLParser::Tree::Element& element)
         {
@@ -554,7 +581,7 @@ namespace
 
                 if (spans.size()==2)
                 {
-                    if (!isInventoryLine(*(spans[1])) && !isRevocationLine(*(spans[1])))
+                    if (!isInventoryLine(*(spans[1])) && !isRevocationLine(*(spans[1])) && !isPlainAddedLine(*(spans[1])))
                     {
                         result.lineItemRows.emplace_back(std::move(spans[0]), std::move(spans[1]));
                     }
@@ -805,7 +832,8 @@ namespace
             year=currentYear;
             auto buffer=SteamBot::HTML::getCleanText(element);
             string=buffer;
-            return parseMonth() && parseString(" ") && parseInteger(day) && parseYear() && parseString(NBSP "-");
+            return parseMonth() && parseString(" ") && parseInteger(day) && parseYear() &&
+                (parseString(NBSP "-") || parseString ("&nbsp;-"));
         }
     };
 }
@@ -847,6 +875,10 @@ bool SupportPageParser::Result::handleActivation(size_t index)
                     {
                         packageName.remove_prefix(strlen(NBSP));
                     }
+                    else if (packageName.starts_with("&nbsp;"))
+                    {
+                        packageName.remove_prefix(strlen("&nbsp;"));
+                    }
                     auto success=packages.emplace(packageIds.at(index), packageName).second;
                     assert(success);
                     return true;
@@ -873,8 +905,9 @@ bool SupportPageParser::Result::handlePurchase(size_t index)
     {
         if (auto text=dynamic_cast<HTMLParser::Tree::Text*>(lineItemRow.text->children[0].get()))
         {
-            static const std::string_view prefix("Purchased as part of:" NBSP);
-            if (text->text==prefix)
+            static const std::string_view prefix_old("Purchased as part of:" NBSP);
+            static const std::string_view prefix("Purchased as part of:&nbsp;");
+            if (text->text==prefix || text->text==prefix_old)
             {
                 if (auto element=dynamic_cast<HTMLParser::Tree::Element*>(lineItemRow.text->children[1].get()))
                 {
@@ -1035,8 +1068,9 @@ void SupportPageParser::Result::getReceipts()
             {
                 if (auto text=dynamic_cast<HTMLParser::Tree::Text*>(lineItemRow.text->children[0].get()))
                 {
-                    static const std::string_view prefix("Purchased on Steam" NBSP "-" NBSP);
-                    if (text->text==prefix)
+                    static const std::string_view prefix_old("Purchased on Steam" NBSP "-" NBSP);
+                    static const std::string_view prefix("Purchased on Steam&nbsp;-&nbsp;");
+                    if (text->text==prefix || text->text==prefix_old)
                     {
                         if (auto element=dynamic_cast<HTMLParser::Tree::Element*>(lineItemRow.text->children[1].get()))
                         {
