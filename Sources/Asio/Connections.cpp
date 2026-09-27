@@ -384,6 +384,12 @@ bool Connections::makeConnection(const Endpoint& endpoint, Connections::ConnectR
             result->connection->disconnect();
             return false;
         }
+        if (exception.code().value()==boost::asio::error::timed_out)
+        {
+            BOOST_LOG_TRIVIAL(debug) << "connection timed out";
+            result->connection->disconnect();
+            return false;
+        }
         throw;
     }
 }
