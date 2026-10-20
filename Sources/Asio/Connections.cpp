@@ -390,6 +390,12 @@ bool Connections::makeConnection(const Endpoint& endpoint, Connections::ConnectR
             result->connection->disconnect();
             return false;
         }
+        if (exception.code().value()==boost::asio::error::host_unreachable)
+        {
+            BOOST_LOG_TRIVIAL(debug) << "no route to host";
+            result->connection->disconnect();
+            return false;
+        }
         throw;
     }
 }
