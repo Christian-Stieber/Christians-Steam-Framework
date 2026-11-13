@@ -80,14 +80,44 @@ namespace SteamBot
                         virtual ~LicenseInfo();
 
                     public:
+                        // SteamKit, enum ELicenseFlags
+                        enum class Flags : uint32_t {
+                            None = 0,
+                            Renew = 0x01,
+                            RenewalFailed = 0x02,
+                            Pending = 0x04,
+                            Expired = 0x08,
+                            CancelledByUser = 0x10,
+                            CancelledByAdmin = 0x20,
+                            LowViolenceContent = 0x40,
+                            ImportedFromSteam2 = 0x80,
+                            ForceRunRestriction = 0x100,
+                            RegionRestrictionExpired = 0x200,
+                            CancelledByFriendlyFraudLock = 0x400,
+                            NotActivated = 0x800,
+                            PendingRefund = 0x2000,
+                            Borrowed = 0x4000,
+                            ReleaseStateOverride = 0x8000,
+                            CancelledByPartner = 0x40000,
+                            NonPermanent = 0x80000,
+                            PreferredOwner = 0x100000
+                        };
+
+                    public:
                         uint64_t accessToken=0;
                         LicenseType licenseType=LicenseType::NoLicense;
                         PaymentMethod paymentMethod=PaymentMethod::None;
                         Clock::time_point timeCreated;
                         Clock::time_point timeNextProcess;
+                        uint32_t flags=0;
 
                     public:
                         virtual boost::json::value toJson() const override;
+
+                        bool isExpired() const
+                        {
+                           return flags&toInteger(Flags::Expired);
+                        }
                     };
 
                 public:

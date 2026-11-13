@@ -120,6 +120,9 @@ Licenses::LicenseInfo::LicenseInfo(const CMsgClientLicenseList_License& data)
     if (data.has_payment_method())
         paymentMethod=static_cast<SteamBot::PaymentMethod>(data.payment_method());
 
+    if (data.has_flags())
+        flags=data.flags();
+
     if (data.has_access_token())
         accessToken=data.access_token();
 
@@ -214,6 +217,7 @@ void LicenseListModule::handle(std::shared_ptr<const Steam::CMsgClientLicenseLis
     auto newLicenses=std::make_shared<NewLicenses>();
 
     size_t familyLicenses = 0;
+    boost::json::array expired;
 
     for (int index=0; index<message->content.licenses_size(); index++)
     {
@@ -224,6 +228,11 @@ void LicenseListModule::handle(std::shared_ptr<const Steam::CMsgClientLicenseLis
             if (packageId!=SteamBot::PackageID::Steam)		// we don't need this
             {
                 auto license=std::make_shared<Licenses::LicenseInfo>(licenseData);
+
+                if (license->isExpired())
+                {
+                    expired.push_back(toInteger(license->packageId));
+                }
 
                 if (!existingLicenses || existingLicenses->licenses.find(license->packageId)==existingLicenses->licenses.end())
                 {
@@ -249,6 +258,11 @@ void LicenseListModule::handle(std::shared_ptr<const Steam::CMsgClientLicenseLis
         }
     }
 
+    if (!expired.empty())
+    {
+        BOOST_LOG_TRIVIAL(info) << "expired licenses: " << expired;
+    }
+
     BOOST_LOG_TRIVIAL(info) << "license list: " << *licenses;
     {
         SteamBot::UI::OutputText output;
@@ -257,9 +271,21 @@ void LicenseListModule::handle(std::shared_ptr<const Steam::CMsgClientLicenseLis
         {
             output << " (+" << newLicenses->licenses.size() << ")";
         }
+        if (familyLicenses>0 || !expired.empty())
+        {
+            output << ", including " ;
+        }
         if (familyLicenses>0)
         {
-            output << ", including " << familyLicenses << " licenses obtained from family";
+            output << familyLicenses << " licenses obtained from family";
+        }
+        if (!expired.empty())
+        {
+            if (familyLicenses>0)
+            {
+                output << " and ";
+            }
+            output << expired.size() << " expired licenses";
         }
     }
 
