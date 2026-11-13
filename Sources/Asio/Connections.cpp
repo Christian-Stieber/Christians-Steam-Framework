@@ -24,6 +24,7 @@
 #include "Random.hpp"
 #include "Client/Client.hpp"
 #include "Helpers/JSON.hpp"
+#include "Modules/Connection.hpp"
 
 #include <boost/fiber/operations.hpp>
 #include <boost/exception/diagnostic_information.hpp>
@@ -349,6 +350,19 @@ void Connection::storeEndpoint() const
             }
         }
         item.emplace_string()=string.view();
+        return true;
+    });
+}
+
+/************************************************************************/
+/*
+ * Call from client thread
+ */
+
+void SteamBot::Modules::Connection::erasePreviousEndpoint ()
+{
+    SteamBot::Client::getClient().dataFile.update([](boost::json::value& json) {
+        SteamBot::JSON::eraseItem(json, previousEndpointKey);
         return true;
     });
 }

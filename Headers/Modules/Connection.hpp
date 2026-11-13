@@ -111,6 +111,7 @@ namespace SteamBot
         namespace Connection
         {
             void handlePacket(std::span<const std::byte>);
+            void erasePreviousEndpoint ();
         }
     }
 }

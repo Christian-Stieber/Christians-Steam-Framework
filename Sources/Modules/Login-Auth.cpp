@@ -731,6 +731,7 @@ void LoginModule::handle(std::shared_ptr<const Steam::CMsgClientLogonResponseMes
         case SteamBot::ResultCode::TryAnotherCM:
         case SteamBot::ResultCode::ServiceUnavailable:
             SteamBot::UI::Thread::outputText("login unavailable");
+            SteamBot::Modules::Connection::erasePreviousEndpoint ();
             getClient().quit(true);
             break;
 
